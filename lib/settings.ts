@@ -165,9 +165,22 @@ export interface SiteSettings {
   heroBadge: string;
   heroCtaPrimary: string;
   heroCtaSecondary: string;
+  // Homepage section toggles
+  showFeatures: string;
+  showAbout: string;
+  showVideo: string;
+  showGallery: string;
+  showCta: string;
+  // Video section
+  videoUrl: string;
+  videoTitle: string;
+  videoDescription: string;
+  videoPoster: string;
+  // About
   aboutTitle: string;
   aboutText: string;
   aboutImage: string;
+  // Contact
   address: string;
   phone: string;
   email: string;
@@ -176,6 +189,7 @@ export interface SiteSettings {
   priceRange: string;
   rating: string;
   reviewCount: string;
+  // Content
   features: Feature[];
   services: string[];
   footerNote: string;
