@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
     }
 
-    const systemPrompt = buildSystemPrompt(settings as Record<string, string>, settings.aiSystemPrompt);
+    const systemPrompt = buildSystemPrompt(settings as unknown as Record<string, string>, settings.aiSystemPrompt);
     const fullMessages: ChatMessage[] = [
       { role: "system", content: systemPrompt },
       ...messages,
