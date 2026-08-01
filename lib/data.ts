@@ -45,21 +45,18 @@ export const getGallery = cache(async () => {
   return db
     .select()
     .from(galleryImages)
-    .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt))
-    .all();
+    .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
 });
 
 export const getMenu = cache(async () => {
   const categories = await db
     .select()
     .from(menuCategories)
-    .orderBy(asc(menuCategories.sortOrder))
-    .all();
+    .orderBy(asc(menuCategories.sortOrder));
   const items = await db
     .select()
     .from(menuItems)
-    .orderBy(asc(menuItems.sortOrder))
-    .all();
+    .orderBy(asc(menuItems.sortOrder));
   return categories.map((category) => ({
     ...category,
     items: items.filter((i) => i.categoryId === category.id),
@@ -71,8 +68,7 @@ export const getFeaturedItems = cache(async () => {
     .select()
     .from(menuItems)
     .where(eq(menuItems.featured, true))
-    .orderBy(asc(menuItems.sortOrder))
-    .all();
+    .orderBy(asc(menuItems.sortOrder));
 });
 
 export async function getNavLinks() {
@@ -80,8 +76,7 @@ export async function getNavLinks() {
     .select()
     .from(navLinks)
     .where(eq(navLinks.visible, true))
-    .orderBy(asc(navLinks.sortOrder))
-    .all();
+    .orderBy(asc(navLinks.sortOrder));
 }
 
 export async function getHomeSections() {
@@ -89,6 +84,5 @@ export async function getHomeSections() {
     .select()
     .from(homeSections)
     .where(eq(homeSections.visible, true))
-    .orderBy(asc(homeSections.sortOrder))
-    .all();
+    .orderBy(asc(homeSections.sortOrder));
 }

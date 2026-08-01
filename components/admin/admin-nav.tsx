@@ -18,16 +18,41 @@ import {
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
 
-const LINKS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
-  { href: "/admin/messages", label: "Messages", icon: Mail },
-  { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
-  { href: "/admin/gallery", label: "Gallery", icon: Images },
-  { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
-  { href: "/admin/homepage", label: "Homepage", icon: Blocks },
-  { href: "/admin/media", label: "Media Library", icon: FolderInput },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
+      { href: "/admin/messages", label: "Messages", icon: Mail },
+      { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
+      { href: "/admin/gallery", label: "Gallery", icon: Images },
+    ],
+  },
+  {
+    label: "Builder",
+    items: [
+      { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
+      { href: "/admin/homepage", label: "Homepage Sections", icon: Blocks },
+    ],
+  },
+  {
+    label: "Assets",
+    items: [
+      { href: "/admin/media", label: "Media Library", icon: FolderInput },
+    ],
+  },
+  {
+    label: "Configuration",
+    items: [
+      { href: "/admin/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function AdminNav({ adminName }: { adminName: string }) {
@@ -45,28 +70,37 @@ export function AdminNav({ adminName }: { adminName: string }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
-        {LINKS.map((link) => {
-          const active =
-            link.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <link.icon className="size-4" />
-              {link.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto p-3">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={group.label} className={cn("mb-2", gi > 0 && "mt-3")}>
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map((link) => {
+                const active =
+                  link.href === "/admin"
+                    ? pathname === "/admin"
+                    : pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <link.icon className="size-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t p-3">

@@ -32,6 +32,16 @@ CREATE TABLE `gallery_images` (
 	`created_at` text NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `home_sections` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`type` text NOT NULL,
+	`title` text,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`visible` integer DEFAULT true NOT NULL,
+	`config` text,
+	`created_at` text NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `media` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`filename` text NOT NULL,
@@ -77,6 +87,16 @@ CREATE TABLE `messages` (
 	`subject` text NOT NULL,
 	`message` text NOT NULL,
 	`read` integer DEFAULT false NOT NULL,
+	`created_at` text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `nav_links` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`label` text NOT NULL,
+	`href` text NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`visible` integer DEFAULT true NOT NULL,
+	`external` integer DEFAULT false NOT NULL,
 	`created_at` text NOT NULL
 );
 --> statement-breakpoint
