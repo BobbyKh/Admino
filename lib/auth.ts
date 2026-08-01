@@ -56,11 +56,10 @@ export async function getSessionUser() {
     const { payload } = await jwtVerify(token, AUTH_SECRET);
     const userId = Number(payload.sub);
     if (!userId) return null;
-    const user = await db
+    const [user] = await db
       .select()
       .from(adminUsers)
-      .where(eq(adminUsers.id, userId))
-      .get();
+      .where(eq(adminUsers.id, userId));
     return user ?? null;
   } catch {
     return null;
@@ -75,11 +74,10 @@ export async function requireAdmin() {
 }
 
 export async function verifyCredentials(email: string, password: string) {
-  const user = await db
+  const [user] = await db
     .select()
     .from(adminUsers)
-    .where(eq(adminUsers.email, email.toLowerCase()))
-    .get();
+    .where(eq(adminUsers.email, email.toLowerCase()));
   if (!user) return null;
   const ok = await verifyPassword(password, user.passwordHash);
   return ok ? user : null;
