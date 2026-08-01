@@ -320,39 +320,50 @@ export function SettingsForm({
 
         {/* ========================= THEME TAB ========================= */}
         <TabsContent value="theme" className="space-y-6 pt-4">
+          {/* Preset Themes */}
           <Section
-            title="Theme Colors"
-            hint="Customize the site colors. Use oklch format (e.g. oklch(0.5 0.11 155)). Changes apply to the entire site."
+            title="Preset Themes"
+            hint="Choose a pre-made theme or customize individual colors below."
             icon={<Paintbrush className="size-4" />}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Primary" name="themePrimary" value={initial.themePrimary} />
-              <ColorField label="Primary Foreground" name="themePrimaryForeground" value={initial.themePrimaryForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Secondary" name="themeSecondary" value={initial.themeSecondary} />
-              <ColorField label="Secondary Foreground" name="themeSecondaryForeground" value={initial.themeSecondaryForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Accent" name="themeAccent" value={initial.themeAccent} />
-              <ColorField label="Accent Foreground" name="themeAccentForeground" value={initial.themeAccentForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Background" name="themeBackground" value={initial.themeBackground} />
-              <ColorField label="Foreground" name="themeForeground" value={initial.themeForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Muted" name="themeMuted" value={initial.themeMuted} />
-              <ColorField label="Muted Foreground" name="themeMutedForeground" value={initial.themeMutedForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField label="Card" name="themeCard" value={initial.themeCard} />
-              <ColorField label="Card Foreground" name="themeCardForeground" value={initial.themeCardForeground} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <ColorField label="Border" name="themeBorder" value={initial.themeBorder} />
-              <ColorField label="Ring" name="themeRing" value={initial.themeRing} />
-              <ColorField label="Destructive" name="themeDestructive" value={initial.themeDestructive} />
+            <PresetThemes />
+          </Section>
+
+          {/* Custom Colors */}
+          <Section
+            title="Custom Colors"
+            hint="Pick colors using the visual picker or enter values in any format (hex, rgb, hsl, oklch)."
+          >
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Primary" name="themePrimary" defaultValue={initial.themePrimary} />
+                <ColorPickerField label="Primary Foreground" name="themePrimaryForeground" defaultValue={initial.themePrimaryForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Secondary" name="themeSecondary" defaultValue={initial.themeSecondary} />
+                <ColorPickerField label="Secondary Foreground" name="themeSecondaryForeground" defaultValue={initial.themeSecondaryForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Accent" name="themeAccent" defaultValue={initial.themeAccent} />
+                <ColorPickerField label="Accent Foreground" name="themeAccentForeground" defaultValue={initial.themeAccentForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Background" name="themeBackground" defaultValue={initial.themeBackground} />
+                <ColorPickerField label="Foreground" name="themeForeground" defaultValue={initial.themeForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Muted" name="themeMuted" defaultValue={initial.themeMuted} />
+                <ColorPickerField label="Muted Foreground" name="themeMutedForeground" defaultValue={initial.themeMutedForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ColorPickerField label="Card" name="themeCard" defaultValue={initial.themeCard} />
+                <ColorPickerField label="Card Foreground" name="themeCardForeground" defaultValue={initial.themeCardForeground} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <ColorPickerField label="Border" name="themeBorder" defaultValue={initial.themeBorder} />
+                <ColorPickerField label="Ring" name="themeRing" defaultValue={initial.themeRing} />
+                <ColorPickerField label="Destructive" name="themeDestructive" defaultValue={initial.themeDestructive} />
+              </div>
             </div>
           </Section>
         </TabsContent>
@@ -517,23 +528,342 @@ function ToggleField({
   );
 }
 
-function ColorField({
+function ColorPickerField({
   label,
   name,
-  value,
+  defaultValue,
 }: {
   label: string;
   name: string;
-  value: string;
+  defaultValue: string;
 }) {
+  const [value, setValue] = React.useState(defaultValue);
+
+  // Convert oklch to hex for the color input
+  function oklchToHex(oklchStr: string): string {
+    try {
+      const match = oklchStr.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/);
+      if (!match) return "#000000";
+      const l = parseFloat(match[1]);
+      const c = parseFloat(match[2]);
+      const h = parseFloat(match[3]);
+      // Simple approximation: oklch to RGB
+      const hue = (h * Math.PI) / 180;
+      const a = c * Math.cos(hue);
+      const b = c * Math.sin(hue);
+      const lAdj = l + 0.3963 * a + 0.2158 * b;
+      const mAdj = l - 0.1055 * a - 0.0639 * b;
+      const sAdj = l - 0.0895 * a - 1.2914 * b;
+      const l_ = lAdj * lAdj * lAdj;
+      const m_ = mAdj * mAdj * mAdj;
+      const s_ = sAdj * sAdj * sAdj;
+      const r = Math.round(255 * Math.max(0, Math.min(1, +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_)));
+      const g = Math.round(255 * Math.max(0, Math.min(1, -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_)));
+      const b2 = Math.round(255 * Math.max(0, Math.min(1, -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_)));
+      return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b2.toString(16).padStart(2, "0")}`;
+    } catch {
+      return "#000000";
+    }
+  }
+
+  // Convert hex to oklch (simplified)
+  function hexToOklch(hex: string): string {
+    try {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+      const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+      const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+      const l_ = Math.cbrt(l);
+      const m_ = Math.cbrt(m);
+      const s_ = Math.cbrt(s);
+      const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+      const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+      const bVal = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+      const C = Math.sqrt(a * a + bVal * bVal);
+      const H = (Math.atan2(bVal, a) * 180) / Math.PI;
+      const hue = H < 0 ? H + 360 : H;
+      return `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${hue.toFixed(1)})`;
+    } catch {
+      return "oklch(0.5 0.11 155)";
+    }
+  }
+
+  const hexValue = value.startsWith("oklch") ? oklchToHex(value) : value;
+
   return (
     <div className="space-y-2">
       <Label htmlFor={`s-${name}`}>{label}</Label>
       <div className="flex items-center gap-2">
-        <Input id={`s-${name}`} name={name} defaultValue={value} className="flex-1 font-mono text-xs" />
+        <div className="relative">
+          <input
+            type="color"
+            value={hexValue.startsWith("#") ? hexValue : "#000000"}
+            onChange={(e) => {
+              const hex = e.target.value;
+              setValue(hexToOklch(hex));
+            }}
+            className="size-9 cursor-pointer rounded-md border bg-transparent p-0.5"
+          />
+        </div>
+        <Input
+          id={`s-${name}`}
+          name={name}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="flex-1 font-mono text-xs"
+          placeholder="oklch(0.5 0.11 155) or #hex or rgb()"
+        />
       </div>
+      <input type="hidden" name={name} value={value} />
     </div>
   );
+}
+
+const THEME_PRESETS = [
+  {
+    name: "Forest Green",
+    description: "Natural green tones",
+    colors: {
+      themePrimary: "oklch(0.5 0.11 155)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.945 0.02 140)",
+      themeSecondaryForeground: "oklch(0.3 0.05 150)",
+      themeAccent: "oklch(0.93 0.03 90)",
+      themeAccentForeground: "oklch(0.3 0.06 90)",
+      themeBackground: "oklch(0.985 0.005 120)",
+      themeForeground: "oklch(0.16 0.02 145)",
+      themeMuted: "oklch(0.955 0.01 140)",
+      themeMutedForeground: "oklch(0.5 0.02 145)",
+      themeBorder: "oklch(0.9 0.015 140)",
+      themeRing: "oklch(0.5 0.11 155)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.16 0.02 145)",
+    },
+  },
+  {
+    name: "Ocean Blue",
+    description: "Cool ocean-inspired blues",
+    colors: {
+      themePrimary: "oklch(0.5 0.1 240)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.015 230)",
+      themeSecondaryForeground: "oklch(0.3 0.04 240)",
+      themeAccent: "oklch(0.92 0.03 200)",
+      themeAccentForeground: "oklch(0.3 0.05 200)",
+      themeBackground: "oklch(0.98 0.005 230)",
+      themeForeground: "oklch(0.17 0.02 240)",
+      themeMuted: "oklch(0.95 0.01 230)",
+      themeMutedForeground: "oklch(0.5 0.02 230)",
+      themeBorder: "oklch(0.89 0.015 230)",
+      themeRing: "oklch(0.5 0.1 240)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 240)",
+    },
+  },
+  {
+    name: "Royal Purple",
+    description: "Rich purple tones",
+    colors: {
+      themePrimary: "oklch(0.48 0.12 300)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.02 290)",
+      themeSecondaryForeground: "oklch(0.3 0.05 300)",
+      themeAccent: "oklch(0.92 0.03 320)",
+      themeAccentForeground: "oklch(0.3 0.06 320)",
+      themeBackground: "oklch(0.98 0.005 300)",
+      themeForeground: "oklch(0.17 0.02 300)",
+      themeMuted: "oklch(0.95 0.01 290)",
+      themeMutedForeground: "oklch(0.5 0.02 300)",
+      themeBorder: "oklch(0.89 0.015 290)",
+      themeRing: "oklch(0.48 0.12 300)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 300)",
+    },
+  },
+  {
+    name: "Sunset Orange",
+    description: "Warm sunset hues",
+    colors: {
+      themePrimary: "oklch(0.6 0.14 40)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.02 60)",
+      themeSecondaryForeground: "oklch(0.3 0.05 40)",
+      themeAccent: "oklch(0.92 0.04 30)",
+      themeAccentForeground: "oklch(0.3 0.06 30)",
+      themeBackground: "oklch(0.985 0.005 60)",
+      themeForeground: "oklch(0.17 0.02 40)",
+      themeMuted: "oklch(0.95 0.01 60)",
+      themeMutedForeground: "oklch(0.5 0.02 50)",
+      themeBorder: "oklch(0.9 0.015 50)",
+      themeRing: "oklch(0.6 0.14 40)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 40)",
+    },
+  },
+  {
+    name: "Rose Pink",
+    description: "Soft rose and pink tones",
+    colors: {
+      themePrimary: "oklch(0.55 0.12 350)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.02 340)",
+      themeSecondaryForeground: "oklch(0.3 0.05 350)",
+      themeAccent: "oklch(0.92 0.03 10)",
+      themeAccentForeground: "oklch(0.3 0.06 10)",
+      themeBackground: "oklch(0.985 0.005 350)",
+      themeForeground: "oklch(0.17 0.02 350)",
+      themeMuted: "oklch(0.95 0.01 340)",
+      themeMutedForeground: "oklch(0.5 0.02 350)",
+      themeBorder: "oklch(0.9 0.015 340)",
+      themeRing: "oklch(0.55 0.12 350)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 350)",
+    },
+  },
+  {
+    name: "Warm Gold",
+    description: "Elegant gold and amber",
+    colors: {
+      themePrimary: "oklch(0.6 0.13 75)",
+      themePrimaryForeground: "oklch(0.17 0.02 75)",
+      themeSecondary: "oklch(0.94 0.02 80)",
+      themeSecondaryForeground: "oklch(0.3 0.05 75)",
+      themeAccent: "oklch(0.92 0.04 65)",
+      themeAccentForeground: "oklch(0.3 0.06 65)",
+      themeBackground: "oklch(0.985 0.005 80)",
+      themeForeground: "oklch(0.17 0.02 75)",
+      themeMuted: "oklch(0.95 0.01 80)",
+      themeMutedForeground: "oklch(0.5 0.02 75)",
+      themeBorder: "oklch(0.9 0.015 80)",
+      themeRing: "oklch(0.6 0.13 75)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 75)",
+    },
+  },
+  {
+    name: "Slate Minimal",
+    description: "Clean neutral grays",
+    colors: {
+      themePrimary: "oklch(0.45 0.01 250)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.005 250)",
+      themeSecondaryForeground: "oklch(0.3 0.01 250)",
+      themeAccent: "oklch(0.92 0.01 250)",
+      themeAccentForeground: "oklch(0.3 0.01 250)",
+      themeBackground: "oklch(0.985 0.002 250)",
+      themeForeground: "oklch(0.17 0.01 250)",
+      themeMuted: "oklch(0.95 0.005 250)",
+      themeMutedForeground: "oklch(0.5 0.01 250)",
+      themeBorder: "oklch(0.89 0.008 250)",
+      themeRing: "oklch(0.45 0.01 250)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.01 250)",
+    },
+  },
+  {
+    name: "Crimson Red",
+    description: "Bold red accents",
+    colors: {
+      themePrimary: "oklch(0.55 0.2 25)",
+      themePrimaryForeground: "oklch(0.985 0 0)",
+      themeSecondary: "oklch(0.94 0.02 15)",
+      themeSecondaryForeground: "oklch(0.3 0.05 25)",
+      themeAccent: "oklch(0.92 0.03 350)",
+      themeAccentForeground: "oklch(0.3 0.06 350)",
+      themeBackground: "oklch(0.985 0.005 15)",
+      themeForeground: "oklch(0.17 0.02 25)",
+      themeMuted: "oklch(0.95 0.01 15)",
+      themeMutedForeground: "oklch(0.5 0.02 25)",
+      themeBorder: "oklch(0.9 0.015 15)",
+      themeRing: "oklch(0.55 0.2 25)",
+      themeDestructive: "oklch(0.577 0.245 27.325)",
+      themeCard: "oklch(1 0 0)",
+      themeCardForeground: "oklch(0.17 0.02 25)",
+    },
+  },
+];
+
+function PresetThemes() {
+  const [selected, setSelected] = React.useState<string | null>(null);
+
+  function applyPreset(preset: (typeof THEME_PRESETS)[number]) {
+    setSelected(preset.name);
+    // Set all hidden inputs and trigger form update
+    const form = document.querySelector("form");
+    if (!form) return;
+    for (const [key, value] of Object.entries(preset.colors)) {
+      const input = form.querySelector(`[name="${key}"]`) as HTMLInputElement | null;
+      if (input) {
+        input.value = value;
+        // Dispatch input event so React picks up the change
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {THEME_PRESETS.map((preset) => {
+        const p = preset.colors;
+        return (
+          <button
+            key={preset.name}
+            type="button"
+            onClick={() => applyPreset(preset)}
+            className={`group rounded-lg border-2 p-3 text-left transition-all hover:shadow-md ${
+              selected === preset.name
+                ? "border-primary ring-2 ring-primary/20"
+                : "border-transparent hover:border-border"
+            }`}
+          >
+            <div className="mb-2 flex gap-1">
+              <div className="size-6 rounded-full border" style={{ backgroundColor: oklchToHexSimple(p.themePrimary) }} />
+              <div className="size-6 rounded-full border" style={{ backgroundColor: oklchToHexSimple(p.themeSecondary) }} />
+              <div className="size-6 rounded-full border" style={{ backgroundColor: oklchToHexSimple(p.themeAccent) }} />
+              <div className="size-6 rounded-full border" style={{ backgroundColor: oklchToHexSimple(p.themeBackground) }} />
+            </div>
+            <p className="text-sm font-medium">{preset.name}</p>
+            <p className="text-xs text-muted-foreground">{preset.description}</p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function oklchToHexSimple(oklchStr: string): string {
+  try {
+    const match = oklchStr.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/);
+    if (!match) return "#888888";
+    const l = parseFloat(match[1]);
+    const c = parseFloat(match[2]);
+    const h = parseFloat(match[3]);
+    const hue = (h * Math.PI) / 180;
+    const a = c * Math.cos(hue);
+    const b = c * Math.sin(hue);
+    const lAdj = l + 0.3963 * a + 0.2158 * b;
+    const mAdj = l - 0.1055 * a - 0.0639 * b;
+    const sAdj = l - 0.0895 * a - 1.2914 * b;
+    const l_ = lAdj * lAdj * lAdj;
+    const m_ = mAdj * mAdj * mAdj;
+    const s_ = sAdj * sAdj * sAdj;
+    const r = Math.round(255 * Math.max(0, Math.min(1, +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_)));
+    const g = Math.round(255 * Math.max(0, Math.min(1, -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_)));
+    const b2 = Math.round(255 * Math.max(0, Math.min(1, -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_)));
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b2.toString(16).padStart(2, "0")}`;
+  } catch {
+    return "#888888";
+  }
 }
 
 function Loader2({ className }: { className?: string }) {

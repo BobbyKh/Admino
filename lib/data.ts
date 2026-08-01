@@ -26,7 +26,7 @@ async function getSettingsRows() {
 }
 
 /** Merges public DB settings over defaults (secrets excluded) and parses JSON fields. */
-export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
+export async function getSiteSettings(): Promise<SiteSettings> {
   const map = await getSettingsRows();
   // Build from scratch so credential keys never enter the public object.
   const merged: Record<string, string> = {};
@@ -39,7 +39,7 @@ export const getSiteSettings = cache(async (): Promise<SiteSettings> => {
     features: parseFeatures(merged.features),
     services: parseServices(merged.services),
   };
-});
+}
 
 export const getGallery = cache(async () => {
   return db
@@ -75,20 +75,20 @@ export const getFeaturedItems = cache(async () => {
     .all();
 });
 
-export const getNavLinks = cache(async () => {
+export async function getNavLinks() {
   return db
     .select()
     .from(navLinks)
     .where(eq(navLinks.visible, true))
     .orderBy(asc(navLinks.sortOrder))
     .all();
-});
+}
 
-export const getHomeSections = cache(async () => {
+export async function getHomeSections() {
   return db
     .select()
     .from(homeSections)
     .where(eq(homeSections.visible, true))
     .orderBy(asc(homeSections.sortOrder))
     .all();
-});
+}

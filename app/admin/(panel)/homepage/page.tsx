@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   ArrowDown,
   ArrowUp,
-  Blocks,
   Loader2,
   Plus,
   Trash2,
@@ -30,20 +29,46 @@ import {
 } from "@/lib/cms-actions";
 import type { HomeSection } from "@/lib/db/schema";
 
-const SECTION_TYPES = [
-  { value: "hero", label: "Hero Banner", description: "Main hero section with background image" },
-  { value: "features", label: "Features Grid", description: "Feature cards grid" },
-  { value: "about", label: "About Section", description: "About us with image" },
-  { value: "video", label: "Video Section", description: "Embedded video player" },
-  { value: "menuPreview", label: "Menu Preview", description: "Featured menu items" },
-  { value: "gallery", label: "Gallery Preview", description: "Gallery image grid" },
-  { value: "cta", label: "Call to Action", description: "CTA banner with buttons" },
-  { value: "banner", label: "Banner Image", description: "Full-width image banner" },
-  { value: "customHtml", label: "Custom HTML", description: "Custom content block" },
+const SECTION_GROUPS = [
+  {
+    label: "Content Sections",
+    items: [
+      { value: "hero", label: "Hero Banner", description: "Main hero section with background image", icon: "🖼️" },
+      { value: "about", label: "About Section", description: "About us with image and text", icon: "ℹ️" },
+      { value: "features", label: "Features Grid", description: "Feature cards with icons", icon: "✨" },
+      { value: "video", label: "Video Section", description: "Embedded video player (YouTube/Vimeo)", icon: "🎬" },
+    ],
+  },
+  {
+    label: "Commerce Sections",
+    items: [
+      { value: "menuPreview", label: "Menu Preview", description: "Featured menu items grid", icon: "🍽️" },
+      { value: "gallery", label: "Gallery Preview", description: "Gallery image grid", icon: "📷" },
+    ],
+  },
+  {
+    label: "Call-to-Action",
+    items: [
+      { value: "cta", label: "CTA Banner", description: "Call-to-action with buttons", icon: "🎯" },
+      { value: "banner", label: "Image Banner", description: "Full-width image with optional text overlay", icon: "🏞️" },
+    ],
+  },
+  {
+    label: "Advanced",
+    items: [
+      { value: "customHtml", label: "Custom HTML", description: "Embed any custom content or code", icon: "💻" },
+    ],
+  },
 ];
+
+const SECTION_TYPES = SECTION_GROUPS.flatMap((g) => g.items);
 
 function getTypeLabel(type: string) {
   return SECTION_TYPES.find((t) => t.value === type)?.label ?? type;
+}
+
+function getTypeIcon(type: string) {
+  return SECTION_TYPES.find((t) => t.value === type)?.icon ?? "📄";
 }
 
 export default function HomepageSectionsPage() {
@@ -172,10 +197,14 @@ export default function HomepageSectionsPage() {
                   className="rounded-md border bg-background px-3 py-2 text-sm"
                 >
                   <option value="">Select type...</option>
-                  {SECTION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label} — {t.description}
-                    </option>
+                  {SECTION_GROUPS.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.items.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.icon} {t.label} — {t.description}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -233,7 +262,7 @@ export default function HomepageSectionsPage() {
                   </Button>
                 </div>
 
-                <Blocks className="size-4 shrink-0 text-muted-foreground" />
+                <span className="text-lg leading-none">{getTypeIcon(section.type)}</span>
 
                 <div className="min-w-0 flex-1">
                   <span className="text-sm font-medium">
