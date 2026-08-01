@@ -11,8 +11,10 @@ import { DEFAULT_SETTINGS } from "../lib/settings";
 import {
   adminUsers,
   galleryImages,
+  homeSections,
   menuCategories,
   menuItems,
+  navLinks,
   settings,
 } from "../lib/db/schema";
 
@@ -128,6 +130,48 @@ async function main() {
     console.log(`✔ Seeded ${items.length} menu items`);
   } else {
     console.log(`✔ Menu already has ${cats.length} categories`);
+  }
+
+  // Seed navigation links
+  const existingLinks = await db.select().from(navLinks).all();
+  if (existingLinks.length === 0) {
+    const links = [
+      { label: "Home", href: "/", sortOrder: 0 },
+      { label: "Menu", href: "/menu", sortOrder: 1 },
+      { label: "Gallery", href: "/gallery", sortOrder: 2 },
+      { label: "Book a Table", href: "/book", sortOrder: 3 },
+      { label: "Contact", href: "/contact", sortOrder: 4 },
+    ];
+    for (const link of links) {
+      await db.insert(navLinks).values({ ...link, visible: true, external: false });
+    }
+    console.log(`✔ Seeded ${links.length} navigation links`);
+  } else {
+    console.log(`✔ Navigation already has ${existingLinks.length} links`);
+  }
+
+  // Seed homepage sections
+  const existingSections = await db.select().from(homeSections).all();
+  if (existingSections.length === 0) {
+    const sections = [
+      { type: "hero", title: null, sortOrder: 0 },
+      { type: "features", title: null, sortOrder: 1 },
+      { type: "about", title: null, sortOrder: 2 },
+      { type: "video", title: null, sortOrder: 3 },
+      { type: "menuPreview", title: null, sortOrder: 4 },
+      { type: "gallery", title: null, sortOrder: 5 },
+      { type: "cta", title: null, sortOrder: 6 },
+    ];
+    for (const section of sections) {
+      await db.insert(homeSections).values({
+        ...section,
+        visible: section.type !== "video",
+        config: null,
+      });
+    }
+    console.log(`✔ Seeded ${sections.length} homepage sections`);
+  } else {
+    console.log(`✔ Homepage already has ${existingSections.length} sections`);
   }
 
   console.log("✔ Seed complete.");

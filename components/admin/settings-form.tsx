@@ -74,6 +74,10 @@ export function SettingsForm({
             <Settings className="size-3.5" />
             Integrations
           </TabsTrigger>
+          <TabsTrigger value="theme" className="gap-1.5">
+            <Paintbrush className="size-3.5" />
+            Theme
+          </TabsTrigger>
         </TabsList>
 
         {/* ========================= HOMEPAGE TAB ========================= */}
@@ -313,6 +317,45 @@ export function SettingsForm({
             </div>
           </Section>
         </TabsContent>
+
+        {/* ========================= THEME TAB ========================= */}
+        <TabsContent value="theme" className="space-y-6 pt-4">
+          <Section
+            title="Theme Colors"
+            hint="Customize the site colors. Use oklch format (e.g. oklch(0.5 0.11 155)). Changes apply to the entire site."
+            icon={<Paintbrush className="size-4" />}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Primary" name="themePrimary" value={initial.themePrimary} />
+              <ColorField label="Primary Foreground" name="themePrimaryForeground" value={initial.themePrimaryForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Secondary" name="themeSecondary" value={initial.themeSecondary} />
+              <ColorField label="Secondary Foreground" name="themeSecondaryForeground" value={initial.themeSecondaryForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Accent" name="themeAccent" value={initial.themeAccent} />
+              <ColorField label="Accent Foreground" name="themeAccentForeground" value={initial.themeAccentForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Background" name="themeBackground" value={initial.themeBackground} />
+              <ColorField label="Foreground" name="themeForeground" value={initial.themeForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Muted" name="themeMuted" value={initial.themeMuted} />
+              <ColorField label="Muted Foreground" name="themeMutedForeground" value={initial.themeMutedForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ColorField label="Card" name="themeCard" value={initial.themeCard} />
+              <ColorField label="Card Foreground" name="themeCardForeground" value={initial.themeCardForeground} />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <ColorField label="Border" name="themeBorder" value={initial.themeBorder} />
+              <ColorField label="Ring" name="themeRing" value={initial.themeRing} />
+              <ColorField label="Destructive" name="themeDestructive" value={initial.themeDestructive} />
+            </div>
+          </Section>
+        </TabsContent>
       </Tabs>
 
       <div className="flex items-center gap-3">
@@ -470,6 +513,25 @@ function ToggleField({
         checked={isChecked}
         onCheckedChange={(val) => setIsChecked(val)}
       />
+    </div>
+  );
+}
+
+function ColorField({
+  label,
+  name,
+  value,
+}: {
+  label: string;
+  name: string;
+  value: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`s-${name}`}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Input id={`s-${name}`} name={name} defaultValue={value} className="flex-1 font-mono text-xs" />
+      </div>
     </div>
   );
 }

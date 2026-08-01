@@ -101,6 +101,30 @@ export const media = pgTable("media", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const navLinks = pgTable("nav_links", {
+  id: serial("id").primaryKey(),
+  label: text("label").notNull(),
+  href: text("href").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  visible: boolean("visible").notNull().default(true),
+  external: boolean("external").notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+export const homeSections = pgTable("home_sections", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(),
+  title: text("title"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  visible: boolean("visible").notNull().default(true),
+  config: text("config"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -118,5 +142,7 @@ export type Booking = typeof bookings.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Media = typeof media.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type NavLink = typeof navLinks.$inferSelect;
+export type HomeSection = typeof homeSections.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;

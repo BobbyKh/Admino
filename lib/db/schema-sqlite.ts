@@ -90,6 +90,30 @@ export const media = sqliteTable("media", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const navLinks = sqliteTable("nav_links", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  label: text("label").notNull(),
+  href: text("href").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(true),
+  external: integer("external", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+export const homeSections = sqliteTable("home_sections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type").notNull(),
+  title: text("title"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(true),
+  config: text("config"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export const adminUsers = sqliteTable("admin_users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -107,5 +131,7 @@ export type Booking = typeof bookings.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Media = typeof media.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type NavLink = typeof navLinks.$inferSelect;
+export type HomeSection = typeof homeSections.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;

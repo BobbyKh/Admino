@@ -42,6 +42,22 @@ export const SETTING_KEYS = [
   "features",
   "services",
   "footerNote",
+  // Theme colors
+  "themePrimary",
+  "themePrimaryForeground",
+  "themeSecondary",
+  "themeSecondaryForeground",
+  "themeAccent",
+  "themeAccentForeground",
+  "themeBackground",
+  "themeForeground",
+  "themeMuted",
+  "themeMutedForeground",
+  "themeBorder",
+  "themeRing",
+  "themeDestructive",
+  "themeCard",
+  "themeCardForeground",
   // Cloudinary
   "cloudinaryCloudName",
   "cloudinaryApiKey",
@@ -135,6 +151,22 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   ]),
   footerNote:
     "Maiti Resort — a dining and relaxation venue in Kirtipur, Nepal. Open daily 10:00 AM – 10:00 PM.",
+  // Theme colors
+  themePrimary: "oklch(0.5 0.11 155)",
+  themePrimaryForeground: "oklch(0.985 0 0)",
+  themeSecondary: "oklch(0.945 0.02 140)",
+  themeSecondaryForeground: "oklch(0.3 0.05 150)",
+  themeAccent: "oklch(0.93 0.03 90)",
+  themeAccentForeground: "oklch(0.3 0.06 90)",
+  themeBackground: "oklch(0.985 0.005 120)",
+  themeForeground: "oklch(0.16 0.02 145)",
+  themeMuted: "oklch(0.955 0.01 140)",
+  themeMutedForeground: "oklch(0.5 0.02 145)",
+  themeBorder: "oklch(0.9 0.015 140)",
+  themeRing: "oklch(0.5 0.11 155)",
+  themeDestructive: "oklch(0.577 0.245 27.325)",
+  themeCard: "oklch(1 0 0)",
+  themeCardForeground: "oklch(0.16 0.02 145)",
   // Integrations
   cloudinaryCloudName: "",
   cloudinaryApiKey: "",
@@ -193,6 +225,22 @@ export interface SiteSettings {
   features: Feature[];
   services: string[];
   footerNote: string;
+  // Theme colors
+  themePrimary: string;
+  themePrimaryForeground: string;
+  themeSecondary: string;
+  themeSecondaryForeground: string;
+  themeAccent: string;
+  themeAccentForeground: string;
+  themeBackground: string;
+  themeForeground: string;
+  themeMuted: string;
+  themeMutedForeground: string;
+  themeBorder: string;
+  themeRing: string;
+  themeDestructive: string;
+  themeCard: string;
+  themeCardForeground: string;
 }
 
 export function parseFeatures(raw: string): Feature[] {

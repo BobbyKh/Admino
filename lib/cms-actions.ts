@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   galleryImages,
+  homeSections,
   media,
   menuCategories,
   menuItems,
+  navLinks,
   settings,
 } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth";
@@ -388,4 +390,125 @@ export async function createMediaFolder(folderName: string) {
   const trimmed = folderName.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-");
   if (!trimmed) return { error: "Invalid folder name." };
   return { success: true, folder: trimmed };
+}
+
+// ------------------------------------------------------------------ nav links
+
+export async function getNavLinks() {
+  await requireAdmin();
+  const allLinks = await db.select().from(navLinks).orderBy(asc(navLinks.sortOrder));
+  return allLinks;
+}
+
+export async function addNavLink(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const label = String(formData.get("label") ?? "").trim();
+  const href = String(formData.get("href") ?? "").trim();
+  const external = formData.get("external") === "on";
+  if (!label || !href) return { message: "Label and URL are required." };
+  // Get max sortOrder
+  const all = await db.select().from(navLinks).orderBy(desc(navLinks.sortOrder));
+  const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
+  await db.insert(navLinks).values({ label, href, sortOrder: maxSort, visible: true, external });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/navigation");
+  return { success: true, message: "Link added." };
+}
+
+export async function updateNavLink(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  const label = String(formData.get("label") ?? "").trim();
+  const href = String(formData.get("href") ?? "").trim();
+  const visible = formData.get("visible") === "on";
+  const external = formData.get("external") === "on";
+  if (!id || !label || !href) return { message: "Label and URL are required." };
+  await db.update(navLinks).set({ label, href, visible, external }).where(eq(navLinks.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/navigation");
+  return { success: true, message: "Link updated." };
+}
+
+export async function deleteNavLink(id: number) {
+  await requireAdmin();
+  await db.delete(navLinks).where(eq(navLinks.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/navigation");
+}
+
+export async function reorderNavLinks(orderedIds: number[]) {
+  await requireAdmin();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(navLinks).set({ sortOrder: i }).where(eq(navLinks.id, orderedIds[i]));
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/navigation");
+}
+
+// ------------------------------------------------------------------ home sections
+
+export async function getHomeSections() {
+  await requireAdmin();
+  return db.select().from(homeSections).orderBy(asc(homeSections.sortOrder));
+}
+
+export async function addHomeSection(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const type = String(formData.get("type") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim() || null;
+  if (!type) return { message: "Section type is required." };
+  const all = await db.select().from(homeSections).orderBy(desc(homeSections.sortOrder));
+  const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
+  // Default config based on type
+  let config: string | null = null;
+  if (type === "banner") {
+    config = JSON.stringify({ imageUrl: "", buttonText: "", buttonLink: "" });
+  } else if (type === "customHtml") {
+    config = JSON.stringify({ html: "" });
+  }
+  await db.insert(homeSections).values({ type, title, sortOrder: maxSort, visible: true, config });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/homepage");
+  return { success: true, message: "Section added." };
+}
+
+export async function updateHomeSection(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  const title = String(formData.get("title") ?? "").trim() || null;
+  const visible = formData.get("visible") === "on";
+  const config = String(formData.get("config") ?? "").trim() || null;
+  if (!id) return { message: "Section ID is required." };
+  await db.update(homeSections).set({ title, visible, config }).where(eq(homeSections.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/homepage");
+  return { success: true, message: "Section updated." };
+}
+
+export async function deleteHomeSection(id: number) {
+  await requireAdmin();
+  await db.delete(homeSections).where(eq(homeSections.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/homepage");
+}
+
+export async function reorderHomeSections(orderedIds: number[]) {
+  await requireAdmin();
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(homeSections).set({ sortOrder: i }).where(eq(homeSections.id, orderedIds[i]));
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/homepage");
 }

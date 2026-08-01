@@ -5,8 +5,10 @@ import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   galleryImages,
+  homeSections,
   menuCategories,
   menuItems,
+  navLinks,
   settings,
 } from "@/lib/db/schema";
 import {
@@ -70,5 +72,23 @@ export const getFeaturedItems = cache(async () => {
     .from(menuItems)
     .where(eq(menuItems.featured, true))
     .orderBy(asc(menuItems.sortOrder))
+    .all();
+});
+
+export const getNavLinks = cache(async () => {
+  return db
+    .select()
+    .from(navLinks)
+    .where(eq(navLinks.visible, true))
+    .orderBy(asc(navLinks.sortOrder))
+    .all();
+});
+
+export const getHomeSections = cache(async () => {
+  return db
+    .select()
+    .from(homeSections)
+    .where(eq(homeSections.visible, true))
+    .orderBy(asc(homeSections.sortOrder))
     .all();
 });

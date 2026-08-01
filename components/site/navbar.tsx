@@ -8,18 +8,19 @@ import { Leaf, Menu, Phone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SiteSettings } from "@/lib/settings";
+import type { NavLink } from "@/lib/db/schema";
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/menu", label: "Menu" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/book", label: "Book a Table" },
-  { href: "/contact", label: "Contact" },
-];
-
-export function Navbar({ settings }: { settings: SiteSettings }) {
+export function Navbar({
+  settings,
+  navLinks,
+}: {
+  settings: SiteSettings;
+  navLinks: NavLink[];
+}) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+
+  const visibleLinks = navLinks.filter((l) => l.visible);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
@@ -45,10 +46,12 @@ export function Navbar({ settings }: { settings: SiteSettings }) {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
-              key={link.href}
+              key={link.id}
               href={link.href}
+              target={link.external ? "_blank" : undefined}
+              rel={link.external ? "noopener noreferrer" : undefined}
               className={cn(
                 "rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground",
                 pathname === link.href
@@ -87,10 +90,12 @@ export function Navbar({ settings }: { settings: SiteSettings }) {
       {open && (
         <div className="border-t bg-background md:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3">
-            {NAV_LINKS.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
-                key={link.href}
+                key={link.id}
                 href={link.href}
+                target={link.external ? "_blank" : undefined}
+                rel={link.external ? "noopener noreferrer" : undefined}
                 onClick={() => setOpen(false)}
                 className={cn(
                   "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted",

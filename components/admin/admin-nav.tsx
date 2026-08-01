@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Blocks,
   CalendarDays,
   ExternalLink,
   FolderInput,
   Images,
   LayoutDashboard,
+  Link as LinkIcon,
   LogOut,
   Mail,
   Settings,
@@ -22,6 +24,8 @@ const LINKS = [
   { href: "/admin/messages", label: "Messages", icon: Mail },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/gallery", label: "Gallery", icon: Images },
+  { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
+  { href: "/admin/homepage", label: "Homepage", icon: Blocks },
   { href: "/admin/media", label: "Media Library", icon: FolderInput },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

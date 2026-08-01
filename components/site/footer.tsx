@@ -2,8 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, Leaf, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/settings";
+import type { NavLink } from "@/lib/db/schema";
 
-export function Footer({ settings }: { settings: SiteSettings }) {
+export function Footer({
+  settings,
+  navLinks,
+}: {
+  settings: SiteSettings;
+  navLinks: NavLink[];
+}) {
+  const visibleLinks = navLinks.filter((l) => l.visible);
+
   return (
     <footer className="border-t bg-muted/40">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
@@ -33,11 +42,18 @@ export function Footer({ settings }: { settings: SiteSettings }) {
         <div>
           <h3 className="text-sm font-semibold">Explore</h3>
           <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-            <li><Link href="/" className="transition-colors hover:text-foreground">Home</Link></li>
-            <li><Link href="/menu" className="transition-colors hover:text-foreground">Menu</Link></li>
-            <li><Link href="/gallery" className="transition-colors hover:text-foreground">Gallery</Link></li>
-            <li><Link href="/book" className="transition-colors hover:text-foreground">Book a Table</Link></li>
-            <li><Link href="/contact" className="transition-colors hover:text-foreground">Contact</Link></li>
+            {visibleLinks.map((link) => (
+              <li key={link.id}>
+                <Link
+                  href={link.href}
+                  target={link.external ? "_blank" : undefined}
+                  rel={link.external ? "noopener noreferrer" : undefined}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
