@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CloudUpload,
   Film,
@@ -39,23 +40,80 @@ import type { SettingKey } from "@/lib/settings";
 
 const initialState: AdminActionState = {};
 
+const THEME_SETTING_TO_CSS: Record<string, string> = {
+  themePrimary: "--primary",
+  themePrimaryForeground: "--primary-foreground",
+  themeSecondary: "--secondary",
+  themeSecondaryForeground: "--secondary-foreground",
+  themeAccent: "--accent",
+  themeAccentForeground: "--accent-foreground",
+  themeBackground: "--background",
+  themeForeground: "--foreground",
+  themeMuted: "--muted",
+  themeMutedForeground: "--muted-foreground",
+  themeBorder: "--border",
+  themeRing: "--ring",
+  themeDestructive: "--destructive",
+  themeCard: "--card",
+  themeCardForeground: "--card-foreground",
+};
+
+function buildThemeCss(colors: Record<string, string>): string {
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(colors)) {
+    const cssVar = THEME_SETTING_TO_CSS[key];
+    if (cssVar && value) {
+      lines.push(`  ${cssVar}: ${value} !important;`);
+    }
+  }
+  if (lines.length === 0) return "";
+  return `:root {\n${lines.join("\n")}\n}`;
+}
+
+function getInitialThemeColors(initial: Record<string, string>): Record<string, string> {
+  const colors: Record<string, string> = {};
+  for (const key of Object.keys(THEME_SETTING_TO_CSS)) {
+    if (initial[key]) {
+      colors[key] = initial[key];
+    }
+  }
+  return colors;
+}
+
 export function SettingsForm({
   initial,
 }: {
   initial: Record<SettingKey, string>;
 }) {
   const [state, formAction, pending] = useActionState(updateSettings, initialState);
+  const router = useRouter();
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const [themeColors, setThemeColors] = React.useState<Record<string, string>>(() =>
+    getInitialThemeColors(initial)
+  );
+
+  const updateThemeColor = React.useCallback((key: string, value: string) => {
+    setThemeColors((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const applyFullPreset = React.useCallback((colors: Record<string, string>) => {
+    setThemeColors(colors);
+  }, []);
 
   React.useEffect(() => {
     if (state?.success) {
       toast.success(state.message ?? "Settings saved.");
+      router.refresh();
     } else if (state?.message && !state.success) {
       toast.error(state.message);
     }
-  }, [state]);
+  }, [state, router]);
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6">
+      {Object.keys(themeColors).length > 0 && (
+        <style dangerouslySetInnerHTML={{ __html: buildThemeCss(themeColors) }} />
+      )}
       <Tabs defaultValue="homepage">
         <TabsList variant="line" className="w-full justify-start gap-0 border-b px-1 pb-0">
           <TabsTrigger value="homepage" className="gap-1.5">
@@ -326,7 +384,7 @@ export function SettingsForm({
             hint="Choose a pre-made theme or customize individual colors below."
             icon={<Paintbrush className="size-4" />}
           >
-            <PresetThemes />
+            <PresetThemes onPresetApply={applyFullPreset} />
           </Section>
 
           {/* Custom Colors */}
@@ -336,33 +394,33 @@ export function SettingsForm({
           >
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Primary" name="themePrimary" defaultValue={initial.themePrimary} />
-                <ColorPickerField label="Primary Foreground" name="themePrimaryForeground" defaultValue={initial.themePrimaryForeground} />
+                <ColorPickerField label="Primary" name="themePrimary" defaultValue={initial.themePrimary} onColorChange={updateThemeColor} syncedValue={themeColors.themePrimary} />
+                <ColorPickerField label="Primary Foreground" name="themePrimaryForeground" defaultValue={initial.themePrimaryForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themePrimaryForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Secondary" name="themeSecondary" defaultValue={initial.themeSecondary} />
-                <ColorPickerField label="Secondary Foreground" name="themeSecondaryForeground" defaultValue={initial.themeSecondaryForeground} />
+                <ColorPickerField label="Secondary" name="themeSecondary" defaultValue={initial.themeSecondary} onColorChange={updateThemeColor} syncedValue={themeColors.themeSecondary} />
+                <ColorPickerField label="Secondary Foreground" name="themeSecondaryForeground" defaultValue={initial.themeSecondaryForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themeSecondaryForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Accent" name="themeAccent" defaultValue={initial.themeAccent} />
-                <ColorPickerField label="Accent Foreground" name="themeAccentForeground" defaultValue={initial.themeAccentForeground} />
+                <ColorPickerField label="Accent" name="themeAccent" defaultValue={initial.themeAccent} onColorChange={updateThemeColor} syncedValue={themeColors.themeAccent} />
+                <ColorPickerField label="Accent Foreground" name="themeAccentForeground" defaultValue={initial.themeAccentForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themeAccentForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Background" name="themeBackground" defaultValue={initial.themeBackground} />
-                <ColorPickerField label="Foreground" name="themeForeground" defaultValue={initial.themeForeground} />
+                <ColorPickerField label="Background" name="themeBackground" defaultValue={initial.themeBackground} onColorChange={updateThemeColor} syncedValue={themeColors.themeBackground} />
+                <ColorPickerField label="Foreground" name="themeForeground" defaultValue={initial.themeForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themeForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Muted" name="themeMuted" defaultValue={initial.themeMuted} />
-                <ColorPickerField label="Muted Foreground" name="themeMutedForeground" defaultValue={initial.themeMutedForeground} />
+                <ColorPickerField label="Muted" name="themeMuted" defaultValue={initial.themeMuted} onColorChange={updateThemeColor} syncedValue={themeColors.themeMuted} />
+                <ColorPickerField label="Muted Foreground" name="themeMutedForeground" defaultValue={initial.themeMutedForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themeMutedForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <ColorPickerField label="Card" name="themeCard" defaultValue={initial.themeCard} />
-                <ColorPickerField label="Card Foreground" name="themeCardForeground" defaultValue={initial.themeCardForeground} />
+                <ColorPickerField label="Card" name="themeCard" defaultValue={initial.themeCard} onColorChange={updateThemeColor} syncedValue={themeColors.themeCard} />
+                <ColorPickerField label="Card Foreground" name="themeCardForeground" defaultValue={initial.themeCardForeground} onColorChange={updateThemeColor} syncedValue={themeColors.themeCardForeground} />
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                <ColorPickerField label="Border" name="themeBorder" defaultValue={initial.themeBorder} />
-                <ColorPickerField label="Ring" name="themeRing" defaultValue={initial.themeRing} />
-                <ColorPickerField label="Destructive" name="themeDestructive" defaultValue={initial.themeDestructive} />
+                <ColorPickerField label="Border" name="themeBorder" defaultValue={initial.themeBorder} onColorChange={updateThemeColor} syncedValue={themeColors.themeBorder} />
+                <ColorPickerField label="Ring" name="themeRing" defaultValue={initial.themeRing} onColorChange={updateThemeColor} syncedValue={themeColors.themeRing} />
+                <ColorPickerField label="Destructive" name="themeDestructive" defaultValue={initial.themeDestructive} onColorChange={updateThemeColor} syncedValue={themeColors.themeDestructive} />
               </div>
             </div>
           </Section>
@@ -532,12 +590,20 @@ function ColorPickerField({
   label,
   name,
   defaultValue,
+  onColorChange,
+  syncedValue,
 }: {
   label: string;
   name: string;
   defaultValue: string;
+  onColorChange?: (key: string, value: string) => void;
+  syncedValue?: string;
 }) {
-  const [value, setValue] = React.useState(defaultValue);
+  const value = syncedValue ?? defaultValue;
+
+  function handleChange(newValue: string) {
+    onColorChange?.(name, newValue);
+  }
 
   // Convert oklch to hex for the color input
   function oklchToHex(oklchStr: string): string {
@@ -602,7 +668,7 @@ function ColorPickerField({
             value={hexValue.startsWith("#") ? hexValue : "#000000"}
             onChange={(e) => {
               const hex = e.target.value;
-              setValue(hexToOklch(hex));
+              handleChange(hexToOklch(hex));
             }}
             className="size-9 cursor-pointer rounded-md border bg-transparent p-0.5"
           />
@@ -611,7 +677,7 @@ function ColorPickerField({
           id={`s-${name}`}
           name={name}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           className="flex-1 font-mono text-xs"
           placeholder="oklch(0.5 0.11 155) or #hex or rgb()"
         />
@@ -792,23 +858,16 @@ const THEME_PRESETS = [
   },
 ];
 
-function PresetThemes() {
+function PresetThemes({
+  onPresetApply,
+}: {
+  onPresetApply: (colors: Record<string, string>) => void;
+}) {
   const [selected, setSelected] = React.useState<string | null>(null);
 
   function applyPreset(preset: (typeof THEME_PRESETS)[number]) {
     setSelected(preset.name);
-    // Set all hidden inputs and trigger form update
-    const form = document.querySelector("form");
-    if (!form) return;
-    for (const [key, value] of Object.entries(preset.colors)) {
-      const input = form.querySelector(`[name="${key}"]`) as HTMLInputElement | null;
-      if (input) {
-        input.value = value;
-        // Dispatch input event so React picks up the change
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-    }
+    onPresetApply(preset.colors);
   }
 
   return (
