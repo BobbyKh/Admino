@@ -7,27 +7,29 @@ export const SETTING_KEYS = [
   "tagline",
   "logo",
   "description",
+  // Hero
   "heroTitle",
   "heroSubtitle",
   "heroImage",
-  "heroBadge", // e.g. "Open daily · 10:00 AM – 10:00 PM"
+  "heroBadge",
   "heroCtaPrimary",
   "heroCtaSecondary",
-  // Cloudinary (image uploads) — admin-configurable, overrides env when set
-  "cloudinaryCloudName",
-  "cloudinaryApiKey",
-  "cloudinaryApiSecret",
-  // Email / SMTP — admin-configurable, overrides env when set
-  "smtpHost",
-  "smtpPort",
-  "smtpSecure",
-  "smtpUser",
-  "smtpPass",
-  "smtpFrom",
-  "adminNotifyEmail",
+  // Homepage section toggles
+  "showFeatures",
+  "showAbout",
+  "showVideo",
+  "showGallery",
+  "showCta",
+  // Video section
+  "videoUrl",
+  "videoTitle",
+  "videoDescription",
+  "videoPoster",
+  // About
   "aboutTitle",
   "aboutText",
   "aboutImage",
+  // Contact
   "address",
   "phone",
   "email",
@@ -36,9 +38,22 @@ export const SETTING_KEYS = [
   "priceRange",
   "rating",
   "reviewCount",
-  "features", // JSON [{title, text, icon}]
-  "services", // JSON string[]
+  // Homepage content
+  "features",
+  "services",
   "footerNote",
+  // Cloudinary
+  "cloudinaryCloudName",
+  "cloudinaryApiKey",
+  "cloudinaryApiSecret",
+  // SMTP
+  "smtpHost",
+  "smtpPort",
+  "smtpSecure",
+  "smtpUser",
+  "smtpPass",
+  "smtpFrom",
+  "adminNotifyEmail",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -74,18 +89,18 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   heroBadge: "Open daily · 10:00 AM – 10:00 PM",
   heroCtaPrimary: "Reserve a Table",
   heroCtaSecondary: "View Menu",
-  // Cloudinary defaults (empty → falls back to env vars)
-  cloudinaryCloudName: "",
-  cloudinaryApiKey: "",
-  cloudinaryApiSecret: "",
-  // SMTP defaults (empty → falls back to env vars)
-  smtpHost: "",
-  smtpPort: "587",
-  smtpSecure: "false",
-  smtpUser: "",
-  smtpPass: "",
-  smtpFrom: "",
-  adminNotifyEmail: "",
+  // Homepage section toggles (all visible by default)
+  showFeatures: "true",
+  showAbout: "true",
+  showVideo: "false",
+  showGallery: "true",
+  showCta: "true",
+  // Video section
+  videoUrl: "",
+  videoTitle: "Experience Maiti Resort",
+  videoDescription: "Take a virtual tour of our resort and see what makes us special.",
+  videoPoster: "",
+  // About
   aboutTitle: "A Peaceful, Scenic Getaway",
   aboutText:
     "Set within 5 km of Balkhu, Maiti Resort offers a spacious layout with outdoor seating and a romantic, casual atmosphere — perfect for groups, families with children, and quiet escapes. We serve breakfast, lunch, dinner, dessert, coffee, beer, and wine, with dine-in, takeout, and curbside pickup options. Enjoy free lot and street parking, wheelchair-accessible facilities, NFC payments, and clean restrooms throughout your visit.",
@@ -120,6 +135,17 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   ]),
   footerNote:
     "Maiti Resort — a dining and relaxation venue in Kirtipur, Nepal. Open daily 10:00 AM – 10:00 PM.",
+  // Integrations
+  cloudinaryCloudName: "",
+  cloudinaryApiKey: "",
+  cloudinaryApiSecret: "",
+  smtpHost: "",
+  smtpPort: "587",
+  smtpSecure: "false",
+  smtpUser: "",
+  smtpPass: "",
+  smtpFrom: "",
+  adminNotifyEmail: "",
 };
 
 export interface Feature {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, Leaf, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/settings";
 
@@ -8,9 +9,20 @@ export function Footer({ settings }: { settings: SiteSettings }) {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-1">
           <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Leaf className="size-4" />
-            </span>
+            {settings.logo ? (
+              <Image
+                src={settings.logo}
+                alt={settings.siteName}
+                width={36}
+                height={36}
+                className="size-9 rounded-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Leaf className="size-4" />
+              </span>
+            )}
             <span className="text-lg font-semibold">{settings.siteName}</span>
           </div>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">

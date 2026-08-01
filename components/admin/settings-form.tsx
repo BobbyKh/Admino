@@ -42,6 +42,7 @@ export function SettingsForm({
       <Section title="General">
         <Field label="Site name" name="siteName" value={initial.siteName} />
         <Field label="Tagline" name="tagline" value={initial.tagline} />
+        <ImageField label="Site logo" name="logo" value={initial.logo} />
         <TextareaField
           label="Description (SEO)"
           name="description"

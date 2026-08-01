@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Leaf, Menu, Phone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,20 @@ export function Navbar({ settings }: { settings: SiteSettings }) {
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Leaf className="size-4" />
-          </span>
+          {settings.logo ? (
+            <Image
+              src={settings.logo}
+              alt={settings.siteName}
+              width={36}
+              height={36}
+              className="size-9 rounded-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Leaf className="size-4" />
+            </span>
+          )}
           <span className="text-lg font-semibold tracking-tight">
             {settings.siteName}
           </span>

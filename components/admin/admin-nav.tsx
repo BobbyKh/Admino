@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ExternalLink,
+  FolderInput,
   Images,
   LayoutDashboard,
   LogOut,
@@ -21,6 +22,7 @@ const LINKS = [
   { href: "/admin/messages", label: "Messages", icon: Mail },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/gallery", label: "Gallery", icon: Images },
+  { href: "/admin/media", label: "Media Library", icon: FolderInput },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

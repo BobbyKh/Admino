@@ -1,17 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, UploadCloud } from "lucide-react";
+import { ImageIcon, Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { uploadImage } from "@/lib/cms-actions";
+import { MediaLibrary } from "./media-library";
+import type { Media } from "@/lib/db/schema";
 
 /**
  * File-upload field that pushes the chosen image to Cloudinary (credentials
  * come from env vars at runtime) and stores the returned secure URL in the
  * form's src/image field. The URL input remains as a manual fallback.
+ * Includes a Media Library button to pick from existing uploads.
  */
 export function ImageUploadField({
   name,
@@ -29,6 +33,7 @@ export function ImageUploadField({
   placeholder?: string;
 }) {
   const [uploading, setUploading] = React.useState(false);
+  const [mediaOpen, setMediaOpen] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File | undefined) {
@@ -52,10 +57,34 @@ export function ImageUploadField({
     }
   }
 
+  function handleMediaSelect(media: Media) {
+    onChange(media.url);
+    toast.success("Image selected from library");
+  }
+
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
-      <div className="flex items-center gap-3">
+
+      {value && (
+        <div className="relative size-24 overflow-hidden rounded-md border bg-muted">
+          {value.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)/i) ? (
+            <Image
+              src={value}
+              alt="Preview"
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <ImageIcon className="size-8 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           variant="outline"
@@ -71,11 +100,18 @@ export function ImageUploadField({
           )}
           {uploading ? "Uploading…" : "Upload image"}
         </Button>
-        {value && (
-          <span className="truncate text-xs text-muted-foreground">
-            ✓ {value.length > 48 ? `${value.slice(0, 48)}…` : value}
-          </span>
-        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setMediaOpen(true)}
+          className="gap-2"
+        >
+          <ImageIcon className="size-4" />
+          Media Library
+        </Button>
+
         <input
           ref={fileRef}
           type="file"
@@ -84,6 +120,7 @@ export function ImageUploadField({
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
       </div>
+
       <Input
         id={name}
         name={name}
@@ -92,6 +129,13 @@ export function ImageUploadField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
+      />
+
+      <MediaLibrary
+        open={mediaOpen}
+        onOpenChange={setMediaOpen}
+        onSelect={handleMediaSelect}
+        filter="image"
       />
     </div>
   );

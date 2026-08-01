@@ -3,25 +3,21 @@
 import * as React from "react";
 import {
   Check,
-  ChevronRight,
   Copy,
   Folder,
   FolderInput,
   FolderPlus,
   Grid3X3,
-  Image,
   List,
   Loader2,
   Search,
   Trash2,
   UploadCloud,
   Video,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -34,7 +30,6 @@ import {
 import {
   uploadMedia,
   deleteMediaItem,
-  updateMediaAlt,
   moveMediaToFolder,
   createMediaFolder,
   getMediaItems,
@@ -94,6 +89,7 @@ export function MediaLibrary({
 
   React.useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadMedia();
     }
   }, [open, loadMedia]);

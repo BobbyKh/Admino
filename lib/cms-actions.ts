@@ -324,7 +324,7 @@ export async function getMediaItems(options?: {
 }) {
   await requireAdmin();
 
-  let query = db.select().from(media);
+  const query = db.select().from(media);
 
   // Apply filters in code since drizzle-orm sqlite doesn't support all operators easily
   const allItems = await query.orderBy(desc(media.createdAt));

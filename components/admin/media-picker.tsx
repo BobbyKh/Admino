@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
+import { ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
