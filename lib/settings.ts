@@ -1,0 +1,176 @@
+/**
+ * CMS site settings — key/value store with typed defaults.
+ * Admin panel edits these through /admin/settings.
+ */
+export const SETTING_KEYS = [
+  "siteName",
+  "tagline",
+  "logo",
+  "description",
+  "heroTitle",
+  "heroSubtitle",
+  "heroImage",
+  "heroBadge", // e.g. "Open daily · 10:00 AM – 10:00 PM"
+  "heroCtaPrimary",
+  "heroCtaSecondary",
+  // Cloudinary (image uploads) — admin-configurable, overrides env when set
+  "cloudinaryCloudName",
+  "cloudinaryApiKey",
+  "cloudinaryApiSecret",
+  // Email / SMTP — admin-configurable, overrides env when set
+  "smtpHost",
+  "smtpPort",
+  "smtpSecure",
+  "smtpUser",
+  "smtpPass",
+  "smtpFrom",
+  "adminNotifyEmail",
+  "aboutTitle",
+  "aboutText",
+  "aboutImage",
+  "address",
+  "phone",
+  "email",
+  "mapQuery",
+  "hours",
+  "priceRange",
+  "rating",
+  "reviewCount",
+  "features", // JSON [{title, text, icon}]
+  "services", // JSON string[]
+  "footerNote",
+] as const;
+
+export type SettingKey = (typeof SETTING_KEYS)[number];
+
+/**
+ * Credential/sensitive keys that must NEVER be exposed to public pages.
+ * Kept next to SETTING_KEYS so new secret keys can't be forgotten here.
+ */
+export const SECRET_SETTING_KEYS = new Set<SettingKey>([
+  "cloudinaryCloudName",
+  "cloudinaryApiKey",
+  "cloudinaryApiSecret",
+  "smtpHost",
+  "smtpPort",
+  "smtpSecure",
+  "smtpUser",
+  "smtpPass",
+  "smtpFrom",
+  "adminNotifyEmail",
+]);
+
+export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
+  siteName: "Maiti Resort",
+  tagline: "A peaceful dining & relaxation getaway in Kirtipur",
+  logo: "",
+  description:
+    "Maiti Resort is a dining and relaxation venue located in Kirtipur 44600, Nepal. Set within 5 km of Balkhu, it offers a peaceful, scenic getaway away from city traffic and noise, featuring a spacious layout with outdoor seating and a romantic, casual atmosphere suitable for groups and families with children. The resort serves breakfast, lunch, dinner, dessert, coffee, beer, and wine, with options for dine-in, takeout, and curbside pickup, and provides amenities such as restrooms, wheelchair-accessible facilities, NFC payment acceptance, and free lot and street parking.",
+  heroTitle: "Dine, Relax & Unwind in Kirtipur",
+  heroSubtitle:
+    "A scenic dining and relaxation venue just 5 km from Balkhu — away from city noise, surrounded by greenery, open daily from 10:00 AM to 10:00 PM.",
+  heroImage:
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
+  heroBadge: "Open daily · 10:00 AM – 10:00 PM",
+  heroCtaPrimary: "Reserve a Table",
+  heroCtaSecondary: "View Menu",
+  // Cloudinary defaults (empty → falls back to env vars)
+  cloudinaryCloudName: "",
+  cloudinaryApiKey: "",
+  cloudinaryApiSecret: "",
+  // SMTP defaults (empty → falls back to env vars)
+  smtpHost: "",
+  smtpPort: "587",
+  smtpSecure: "false",
+  smtpUser: "",
+  smtpPass: "",
+  smtpFrom: "",
+  adminNotifyEmail: "",
+  aboutTitle: "A Peaceful, Scenic Getaway",
+  aboutText:
+    "Set within 5 km of Balkhu, Maiti Resort offers a spacious layout with outdoor seating and a romantic, casual atmosphere — perfect for groups, families with children, and quiet escapes. We serve breakfast, lunch, dinner, dessert, coffee, beer, and wine, with dine-in, takeout, and curbside pickup options. Enjoy free lot and street parking, wheelchair-accessible facilities, NFC payments, and clean restrooms throughout your visit.",
+  aboutImage:
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+  address: "Kirtipur 44600, Nepal",
+  phone: "+977 974-6510970",
+  email: "hello@maitiresort.com",
+  mapQuery: "Kirtipur 44600, Nepal",
+  hours: "Open daily · 10:00 AM – 10:00 PM",
+  priceRange: "NPR 500 – NPR 1,000",
+  rating: "4.2",
+  reviewCount: "120+",
+  features: JSON.stringify([
+    { title: "Scenic Location", text: "Peaceful getaway 5 km from Balkhu, away from city traffic and noise.", icon: "leaf" },
+    { title: "Outdoor Seating", text: "Spacious layout with al-fresco seating and a romantic, casual atmosphere.", icon: "sun" },
+    { title: "Family Friendly", text: "A welcoming spot for groups and families with children.", icon: "users" },
+    { title: "Convenient Amenities", text: "Free parking, wheelchair access, NFC payments, and restrooms.", icon: "parking" },
+  ]),
+  services: JSON.stringify([
+    "Dine-in",
+    "Takeout",
+    "Curbside pickup",
+    "Breakfast · Lunch · Dinner",
+    "Dessert · Coffee",
+    "Beer & Wine",
+    "Outdoor seating",
+    "Free lot & street parking",
+    "Wheelchair accessible",
+    "NFC payments",
+    "Restrooms",
+  ]),
+  footerNote:
+    "Maiti Resort — a dining and relaxation venue in Kirtipur, Nepal. Open daily 10:00 AM – 10:00 PM.",
+};
+
+export interface Feature {
+  title: string;
+  text: string;
+  icon: string;
+}
+
+export interface SiteSettings {
+  siteName: string;
+  tagline: string;
+  logo: string;
+  description: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroImage: string;
+  heroBadge: string;
+  heroCtaPrimary: string;
+  heroCtaSecondary: string;
+  aboutTitle: string;
+  aboutText: string;
+  aboutImage: string;
+  address: string;
+  phone: string;
+  email: string;
+  mapQuery: string;
+  hours: string;
+  priceRange: string;
+  rating: string;
+  reviewCount: string;
+  features: Feature[];
+  services: string[];
+  footerNote: string;
+}
+
+export function parseFeatures(raw: string): Feature[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as Feature[];
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+export function parseServices(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((s) => String(s));
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
