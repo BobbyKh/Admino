@@ -10,26 +10,40 @@ function getVimeoId(url: string): string | null {
 }
 
 export function VideoSection({ settings }: { settings: SiteSettings }) {
-  if (!settings.videoUrl) return null;
-  const ytId = getYouTubeId(settings.videoUrl);
-  const vimeoId = getVimeoId(settings.videoUrl);
+  const videoUrl = settings.videoUrl;
+  const ytId = videoUrl ? getYouTubeId(videoUrl) : null;
+  const vimeoId = videoUrl ? getVimeoId(videoUrl) : null;
+  const title = settings.videoTitle || "Experience Maiti Resort";
+  const description = settings.videoDescription;
+  const poster = settings.videoPoster;
+
   return (
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mb-12 text-center">
         <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">Take a Look</p>
-        <h2 className="font-heading text-3xl font-semibold sm:text-4xl">{settings.videoTitle || "Experience Maiti Resort"}</h2>
-        {settings.videoDescription && <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">{settings.videoDescription}</p>}
+        <h2 className="font-heading text-3xl font-semibold sm:text-4xl">{title}</h2>
+        {description && <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">{description}</p>}
       </div>
       <div className="mx-auto max-w-4xl">
-        <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-lg">
-          {ytId ? (
-            <iframe src={`https://www.youtube.com/embed/${ytId}?rel=0`} title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="size-full" />
-          ) : vimeoId ? (
-            <iframe src={`https://player.vimeo.com/video/${vimeoId}?badge=0&autopause=0&player_id=0`} title="Video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen className="size-full" />
-          ) : (
-            <video src={settings.videoUrl} poster={settings.videoPoster || undefined} controls className="size-full object-contain" />
-          )}
-        </div>
+        {videoUrl ? (
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-lg">
+            {ytId ? (
+              <iframe src={`https://www.youtube.com/embed/${ytId}?rel=0`} title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="size-full" />
+            ) : vimeoId ? (
+              <iframe src={`https://player.vimeo.com/video/${vimeoId}?badge=0&autopause=0&player_id=0`} title="Video" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen className="size-full" />
+            ) : (
+              <video src={videoUrl} poster={poster || undefined} controls className="size-full object-contain" />
+            )}
+          </div>
+        ) : (
+          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-muted/50 border-2 border-dashed flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <div className="text-center">
+              <p className="text-sm font-medium">No video set</p>
+              <p className="text-xs">Add a YouTube, Vimeo, or video URL in Settings → Homepage → Video section</p>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

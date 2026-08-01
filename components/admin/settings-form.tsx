@@ -4,6 +4,7 @@ import * as React from "react";
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Bot,
   CloudUpload,
   Film,
   Globe,
@@ -373,6 +374,51 @@ export function SettingsForm({
               <Field label="From address" name="smtpFrom" value={initial.smtpFrom} placeholder="Maiti Resort <no-reply@...>" />
               <Field label="Admin notify email" name="adminNotifyEmail" value={initial.adminNotifyEmail} placeholder="admin@maitiresort.com" />
             </div>
+          </Section>
+
+          <Section
+            title="AI Chatbot Assistant"
+            icon={<Bot className="size-4" />}
+            hint="Configure the AI-powered chat widget shown on the public site. Supports OpenAI, Anthropic, and Google Gemini."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Enable chatbot</Label>
+                <Select name="aiChatEnabled" defaultValue={initial.aiChatEnabled}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>AI Provider</Label>
+                <Select name="aiProvider" defaultValue={initial.aiProvider}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select provider..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                    <SelectItem value="google">Google (Gemini)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <PasswordField label="API Key" name="aiApiKey" value={initial.aiApiKey} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Model" name="aiModel" value={initial.aiModel} placeholder="gpt-4o-mini" />
+              <Field label="Custom base URL (optional)" name="aiBaseUrl" value={initial.aiBaseUrl} placeholder="Leave empty for default" />
+            </div>
+            <TextareaField
+              label="Custom system prompt (optional)"
+              name="aiSystemPrompt"
+              value={initial.aiSystemPrompt}
+              rows={4}
+            />
           </Section>
         </TabsContent>
 

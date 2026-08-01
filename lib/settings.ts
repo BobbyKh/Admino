@@ -70,6 +70,13 @@ export const SETTING_KEYS = [
   "smtpPass",
   "smtpFrom",
   "adminNotifyEmail",
+  // AI
+  "aiProvider",
+  "aiApiKey",
+  "aiModel",
+  "aiBaseUrl",
+  "aiSystemPrompt",
+  "aiChatEnabled",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -89,6 +96,7 @@ export const SECRET_SETTING_KEYS = new Set<SettingKey>([
   "smtpPass",
   "smtpFrom",
   "adminNotifyEmail",
+  "aiApiKey",
 ]);
 
 export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
@@ -178,6 +186,13 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   smtpPass: "",
   smtpFrom: "",
   adminNotifyEmail: "",
+  // AI
+  aiProvider: "openai",
+  aiApiKey: "",
+  aiModel: "gpt-4o-mini",
+  aiBaseUrl: "",
+  aiSystemPrompt: "",
+  aiChatEnabled: "false",
 };
 
 export interface Feature {
@@ -241,6 +256,13 @@ export interface SiteSettings {
   themeDestructive: string;
   themeCard: string;
   themeCardForeground: string;
+  // AI
+  aiProvider: string;
+  aiApiKey: string;
+  aiModel: string;
+  aiBaseUrl: string;
+  aiSystemPrompt: string;
+  aiChatEnabled: string;
 }
 
 export function parseFeatures(raw: string): Feature[] {

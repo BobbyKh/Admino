@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
+import { ChatWidget } from "@/components/site/chat-widget";
 import { getSiteSettings, getNavLinks } from "@/lib/data";
 
 export default async function SiteLayout({
@@ -16,6 +17,9 @@ export default async function SiteLayout({
       <Navbar settings={settings} navLinks={navLinks} />
       <main className="flex-1">{children}</main>
       <Footer settings={settings} navLinks={navLinks} />
+      {settings.aiChatEnabled === "true" && settings.aiApiKey && (
+        <ChatWidget siteName={settings.siteName} />
+      )}
     </>
   );
 }
