@@ -381,44 +381,7 @@ export function SettingsForm({
             icon={<Bot className="size-4" />}
             hint="Configure the AI-powered chat widget shown on the public site. Supports OpenAI, Anthropic, and Google Gemini."
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Enable chatbot</Label>
-                <Select name="aiChatEnabled" defaultValue={initial.aiChatEnabled}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Enabled</SelectItem>
-                    <SelectItem value="false">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>AI Provider</Label>
-                <Select name="aiProvider" defaultValue={initial.aiProvider}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select provider..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
-                    <SelectItem value="google">Google (Gemini)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <PasswordField label="API Key" name="aiApiKey" value={initial.aiApiKey} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Model" name="aiModel" value={initial.aiModel} placeholder="gpt-4o-mini" />
-              <Field label="Custom base URL (optional)" name="aiBaseUrl" value={initial.aiBaseUrl} placeholder="Leave empty for default" />
-            </div>
-            <TextareaField
-              label="Custom system prompt (optional)"
-              name="aiSystemPrompt"
-              value={initial.aiSystemPrompt}
-              rows={4}
-            />
+            <AiConfigSection initial={initial} />
           </Section>
         </TabsContent>
 
@@ -987,5 +950,267 @@ function Loader2({ className }: { className?: string }) {
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>
+  );
+}
+
+interface AiModel {
+  id: string;
+  name: string;
+  ownedBy?: string;
+  created?: number;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  description?: string;
+  capabilities?: string[];
+}
+
+function AiConfigSection({ initial }: { initial: Record<SettingKey, string> }) {
+  const [provider, setProvider] = React.useState(initial.aiProvider || "openai");
+  const [apiKey, setApiKey] = React.useState(initial.aiApiKey || "");
+  const [models, setModels] = React.useState<AiModel[]>([]);
+  const [modelsLoading, setModelsLoading] = React.useState(false);
+  const [modelsError, setModelsError] = React.useState<string | null>(null);
+  const [usage, setUsage] = React.useState<string | null>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchModelsAndUsage = React.useCallback(
+    async (prov: string, key: string, url: string) => {
+      if (!key) {
+        setModels([]);
+        setUsage(null);
+        setModelsError(null);
+        return;
+      }
+      setModelsLoading(true);
+      setModelsError(null);
+      try {
+        const [modelsRes, usageRes] = await Promise.allSettled([
+          fetch("/api/ai/models", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: prov, apiKey: key, baseUrl: url }),
+          }).then((r) => r.json()),
+          fetch("/api/ai/usage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: prov, apiKey: key }),
+          }).then((r) => r.json()),
+        ]);
+        if (modelsRes.status === "fulfilled") {
+          if (modelsRes.value.error) {
+            setModelsError(modelsRes.value.error);
+            setModels([]);
+          } else {
+            setModels(modelsRes.value.models || []);
+          }
+        }
+        if (usageRes.status === "fulfilled") {
+          if (usageRes.value.error) {
+            setUsage(`Error: ${usageRes.value.error}`);
+          } else {
+            setUsage(usageRes.value.billing || "Connected");
+          }
+        }
+      } catch {
+        setModelsError("Failed to connect");
+      } finally {
+        setModelsLoading(false);
+      }
+    },
+    []
+  );
+
+  const baseUrlValue = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchModelsAndUsage(provider, apiKey, baseUrlValue.current?.value ?? "");
+    }, 800);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [provider, apiKey, fetchModelsAndUsage]);
+
+  const providerHints: Record<string, string> = {
+    openai: "Works with OpenAI, OpenRouter, Together, Groq, DeepSeek, Fireworks, Novita, and any OpenAI-compatible API.",
+    anthropic: "Direct Anthropic API. For OpenRouter use OpenAI-compatible above.",
+    google: "Google AI Studio / Vertex AI (Gemini models).",
+    custom: "Any custom API endpoint. Uses OpenAI-compatible /v1/chat/completions format. Paste your full base URL above and enter the model name exactly as your provider expects.",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="s-aiChatEnabled">Enable chatbot</Label>
+          <Select name="aiChatEnabled" defaultValue={initial.aiChatEnabled}>
+            <SelectTrigger className="w-full" id="s-aiChatEnabled">
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Enabled</SelectItem>
+              <SelectItem value="false">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-aiProvider">Provider Type</Label>
+          <Select
+            name="aiProvider"
+            defaultValue={initial.aiProvider}
+            onValueChange={(v) => setProvider(v)}
+          >
+            <SelectTrigger className="w-full" id="s-aiProvider">
+              <SelectValue placeholder="Select provider..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="openai">OpenAI-compatible</SelectItem>
+              <SelectItem value="anthropic">Anthropic</SelectItem>
+              <SelectItem value="google">Google Gemini</SelectItem>
+              <SelectItem value="custom">Custom (any endpoint)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{providerHints[provider]}</p>
+        </div>
+      </div>
+
+      {/* Base URL */}
+      <div className="space-y-1.5">
+        <Label htmlFor="s-aiBaseUrl">Base URL</Label>
+        <input
+          type="text"
+          name="aiBaseUrl"
+          id="s-aiBaseUrl"
+          ref={baseUrlValue}
+          defaultValue={initial.aiBaseUrl}
+          placeholder={
+            provider === "custom"
+              ? "https://your-provider.com/api/v1"
+              : provider === "openai"
+                ? "https://openrouter.ai/api/v1"
+                : provider === "anthropic"
+                  ? "https://api.anthropic.com"
+                  : "https://generativelanguage.googleapis.com/v1beta"
+          }
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+        />
+        <p className="text-xs text-muted-defaults">
+          {provider === "openai" && "Default: OpenAI. Paste any OpenAI-compatible endpoint (OpenRouter, Together, Groq, DeepSeek, etc.)"}
+          {provider === "anthropic" && "Default: https://api.anthropic.com"}
+          {provider === "google" && "Default: Google AI Studio. Use Vertex AI endpoint for enterprise."}
+          {provider === "custom" && "Must accept POST /chat/completions in OpenAI format. Include the full path if needed."}
+        </p>
+      </div>
+
+      {/* API Key with live status */}
+      <div className="space-y-1.5">
+        <Label htmlFor="s-aiApiKey">API Key</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="password"
+            name="aiApiKey"
+            id="s-aiApiKey"
+            defaultValue={initial.aiApiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={
+              provider === "anthropic"
+                ? "sk-ant-..."
+                : provider === "custom"
+                  ? "API key from your provider"
+                  : provider === "google"
+                    ? "AIza..."
+                    : "sk-..."
+            }
+            className="flex-1 rounded-md border bg-background px-3 py-2 text-sm font-mono"
+          />
+          {apiKey && (
+            <span className="shrink-0">
+              {modelsLoading ? (
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : modelsError ? (
+                <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+                  Invalid
+                </span>
+              ) : models.length > 0 || usage ? (
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+                  Valid
+                </span>
+              ) : null}
+            </span>
+          )}
+        </div>
+        {usage && !modelsError && (
+          <p className="text-xs text-muted-foreground">{usage}</p>
+        )}
+        {modelsError && (
+          <p className="text-xs text-destructive">{modelsError}</p>
+        )}
+      </div>
+
+      {/* Model — dropdown when models fetched, text input otherwise */}
+      <div className="space-y-1.5">
+        <Label htmlFor="s-aiModel">Model</Label>
+        {models.length > 0 ? (
+          <select
+            name="aiModel"
+            id="s-aiModel"
+            defaultValue={initial.aiModel}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+          >
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+                {m.contextWindow ? ` · ${Math.round(m.contextWindow / 1000)}k ctx` : ""}
+                {m.maxOutputTokens ? ` · ${Math.round(m.maxOutputTokens / 1000)}k out` : ""}
+                {m.ownedBy ? ` (${m.ownedBy})` : ""}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            name="aiModel"
+            id="s-aiModel"
+            defaultValue={initial.aiModel}
+            placeholder={
+              provider === "openai" || provider === "custom"
+                ? "e.g. gpt-4o-mini"
+                : provider === "anthropic"
+                  ? "e.g. claude-sonnet-4-20250514"
+                  : "e.g. gemini-2.0-flash"
+            }
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+          />
+        )}
+        {modelsLoading && (
+          <p className="text-xs text-muted-foreground">Fetching models…</p>
+        )}
+        {models.length > 0 && (
+          <div className="rounded-md border bg-muted/50 p-3 text-xs space-y-2 max-h-48 overflow-y-auto">
+            {models.map((m) => {
+              const isSelected = m.id === initial.aiModel;
+              return (
+                <div key={m.id} className={`flex items-start justify-between gap-3 ${isSelected ? "font-semibold" : ""}`}>
+                  <span className="font-mono shrink-0">{m.name}</span>
+                  <span className="text-muted-foreground text-right shrink-0 flex gap-2">
+                    {m.contextWindow ? <span>{Math.round(m.contextWindow / 1000)}k ctx</span> : null}
+                    {m.maxOutputTokens ? <span>{Math.round(m.maxOutputTokens / 1000)}k out</span> : null}
+                    {m.ownedBy ? <span className="opacity-60">{m.ownedBy}</span> : null}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <TextareaField
+        label="Custom system prompt (optional)"
+        name="aiSystemPrompt"
+        value={initial.aiSystemPrompt}
+        rows={4}
+      />
+    </div>
   );
 }

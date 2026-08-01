@@ -32,7 +32,7 @@ async function callOpenAI(apiKey: string, model: string, baseUrl: string, messag
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI API error: ${res.status} ${err}`);
+    throw new Error(`Chat API error: ${res.status} ${err}`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
