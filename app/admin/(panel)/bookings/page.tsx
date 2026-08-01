@@ -32,8 +32,7 @@ export default async function AdminBookingsPage() {
   const rows = await db
     .select()
     .from(bookings)
-    .orderBy(desc(bookings.createdAt))
-    .all();
+    .orderBy(desc(bookings.createdAt));
 
   return (
     <div className="space-y-6">

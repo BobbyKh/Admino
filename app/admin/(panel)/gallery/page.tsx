@@ -17,8 +17,7 @@ export default async function AdminGalleryPage() {
   const rows = await db
     .select()
     .from(galleryImages)
-    .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt))
-    .all();
+    .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
 
   return (
     <div className="space-y-6">

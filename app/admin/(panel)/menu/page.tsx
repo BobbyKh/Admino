@@ -15,9 +15,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminMenuPage() {
   const [categories, menu, items] = await Promise.all([
-    db.select().from(menuCategories).orderBy(asc(menuCategories.sortOrder)).all(),
+    db.select().from(menuCategories).orderBy(asc(menuCategories.sortOrder)),
     getMenu(),
-    db.select().from(menuItems).orderBy(asc(menuItems.sortOrder)).all(),
+    db.select().from(menuItems).orderBy(asc(menuItems.sortOrder)),
   ]);
 
   return (

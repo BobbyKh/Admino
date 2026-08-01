@@ -35,10 +35,10 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function AdminDashboard() {
   const [allBookings, unread, gallery, featured] = await Promise.all([
-    db.select().from(bookings).orderBy(desc(bookings.createdAt)).all(),
-    db.select().from(messages).where(eq(messages.read, false)).all(),
-    db.select().from(galleryImages).all(),
-    db.select().from(galleryImages).where(eq(galleryImages.featured, true)).all(),
+    db.select().from(bookings).orderBy(desc(bookings.createdAt)),
+    db.select().from(messages).where(eq(messages.read, false)),
+    db.select().from(galleryImages),
+    db.select().from(galleryImages).where(eq(galleryImages.featured, true)),
   ]);
 
   const pending = allBookings.filter((b) => b.status === "pending");

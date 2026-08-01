@@ -13,8 +13,7 @@ export default async function AdminMessagesPage() {
   const rows = await db
     .select()
     .from(messages)
-    .orderBy(desc(messages.createdAt))
-    .all();
+    .orderBy(desc(messages.createdAt));
   const unread = rows.filter((m) => !m.read).length;
 
   return (
