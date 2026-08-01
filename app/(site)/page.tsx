@@ -57,6 +57,63 @@ function FeatureCard({ feature }: { feature: Feature }) {
   );
 }
 
+function getYouTubeId(url: string): string | null {
+  const match = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?#]+)/
+  );
+  return match ? match[1] : null;
+}
+
+function getVimeoId(url: string): string | null {
+  const match = url.match(/vimeo\.com\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+function VideoEmbed({ url, poster }: { url: string; poster?: string }) {
+  const ytId = getYouTubeId(url);
+  const vimeoId = getVimeoId(url);
+
+  if (ytId) {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-lg">
+        <iframe
+          src={`https://www.youtube.com/embed/${ytId}?rel=0`}
+          title="Video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="size-full"
+        />
+      </div>
+    );
+  }
+
+  if (vimeoId) {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-lg">
+        <iframe
+          src={`https://player.vimeo.com/video/${vimeoId}?badge=0&autopause=0&player_id=0`}
+          title="Video"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="size-full"
+        />
+      </div>
+    );
+  }
+
+  // Direct video file
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-lg">
+      <video
+        src={url}
+        poster={poster || undefined}
+        controls
+        className="size-full object-contain"
+      />
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const [settings, gallery, featured] = await Promise.all([
     getSiteSettings(),
@@ -78,6 +135,12 @@ export default async function HomePage() {
     openingHours: "Mo-Su 10:00-22:00",
     url: process.env.SITE_URL ?? "http://localhost:3000",
   };
+
+  const showFeatures = settings.showFeatures !== "false";
+  const showAbout = settings.showAbout !== "false";
+  const showVideo = settings.showVideo === "true";
+  const showGallery = settings.showGallery !== "false";
+  const showCta = settings.showCta !== "false";
 
   return (
     <>
@@ -149,116 +212,144 @@ export default async function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="mb-12 text-center">
-          <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
-            Why Maiti Resort
-          </p>
-          <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-            A getaway that has it all
-          </h2>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {settings.features.map((feature) => (
-            <FeatureCard key={feature.title} feature={feature} />
-          ))}
-        </div>
-      </section>
+      {showFeatures && settings.features.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="mb-12 text-center">
+            <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
+              Why Maiti Resort
+            </p>
+            <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
+              A getaway that has it all
+            </h2>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {settings.features.map((feature) => (
+              <FeatureCard key={feature.title} feature={feature} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* About */}
-      <section className="bg-muted/40">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2">
-          <div className="relative">
-            <Image
-              src={settings.aboutImage}
-              alt={settings.aboutTitle}
-              width={1200}
-              height={900}
-              className="aspect-[4/3] w-full rounded-2xl object-cover shadow-lg"
-            />
-            <div className="absolute -bottom-5 -right-4 hidden rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg sm:block">
-              <p className="font-heading text-3xl font-semibold">{settings.rating}★</p>
-              <p className="text-sm opacity-90">{settings.reviewCount} reviews</p>
+      {showAbout && (
+        <section className="bg-muted/40">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2">
+            <div className="relative">
+              <Image
+                src={settings.aboutImage}
+                alt={settings.aboutTitle}
+                width={1200}
+                height={900}
+                className="aspect-[4/3] w-full rounded-2xl object-cover shadow-lg"
+              />
+              <div className="absolute -bottom-5 -right-4 hidden rounded-2xl bg-primary p-5 text-primary-foreground shadow-lg sm:block">
+                <p className="font-heading text-3xl font-semibold">{settings.rating}★</p>
+                <p className="text-sm opacity-90">{settings.reviewCount} reviews</p>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
+                About Us
+              </p>
+              <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
+                {settings.aboutTitle}
+              </h2>
+              <p className="mt-5 leading-relaxed text-muted-foreground">
+                {settings.aboutText}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {settings.services.slice(0, 8).map((service) => (
+                  <Badge key={service} variant="secondary" className="gap-1.5">
+                    <Leaf className="size-3" />
+                    {service}
+                  </Badge>
+                ))}
+              </div>
+              <Link href="/book" className="mt-8 inline-block">
+                <Button size="lg" className="gap-2">
+                  Book Your Visit
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
             </div>
           </div>
-          <div>
+        </section>
+      )}
+
+      {/* Video Section */}
+      {showVideo && settings.videoUrl && (
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="mb-12 text-center">
             <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
-              About Us
+              Take a Look
             </p>
             <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-              {settings.aboutTitle}
+              {settings.videoTitle || "Experience Maiti Resort"}
             </h2>
-            <p className="mt-5 leading-relaxed text-muted-foreground">
-              {settings.aboutText}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {settings.services.slice(0, 8).map((service) => (
-                <Badge key={service} variant="secondary" className="gap-1.5">
-                  <Leaf className="size-3" />
-                  {service}
-                </Badge>
-              ))}
-            </div>
-            <Link href="/book" className="mt-8 inline-block">
-              <Button size="lg" className="gap-2">
-                Book Your Visit
-                <ArrowRight className="size-4" />
-              </Button>
-            </Link>
+            {settings.videoDescription && (
+              <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
+                {settings.videoDescription}
+              </p>
+            )}
           </div>
-        </div>
-      </section>
+          <div className="mx-auto max-w-4xl">
+            <VideoEmbed url={settings.videoUrl} poster={settings.videoPoster || undefined} />
+          </div>
+        </section>
+      )}
 
       {/* Menu preview */}
-      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-        <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
-              Our Menu
-            </p>
-            <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-              Guest favourites
-            </h2>
+      {featured.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">
+                Our Menu
+              </p>
+              <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
+                Guest favourites
+              </h2>
+            </div>
+            <Link href="/menu" className="group flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+              Full menu
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
-          <Link href="/menu" className="group flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-            Full menu
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.slice(0, 4).map((item) => (
-            <Card key={item.id} className="overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
-              {item.image && (
-                <div className="relative h-40">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 25vw"
-                  />
-                </div>
-              )}
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-heading font-semibold">{item.name}</h3>
-                  <span className="shrink-0 font-semibold text-primary">
-                    NPR {item.price}
-                  </span>
-                </div>
-                {item.description && (
-                  <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
-                    {item.description}
-                  </p>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {featured.slice(0, 4).map((item) => (
+              <Card key={item.id} className="overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
+                {item.image && (
+                  <div className="relative h-40">
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 25vw"
+                    />
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-heading font-semibold">{item.name}</h3>
+                    <span className="shrink-0 font-semibold text-primary">
+                      NPR {item.price}
+                    </span>
+                  </div>
+                  {item.description && (
+                    <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                      {item.description}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Gallery preview */}
-      {heroImages.length > 0 && (
+      {showGallery && heroImages.length > 0 && (
         <section className="bg-muted/40">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
             <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
@@ -301,42 +392,44 @@ export default async function HomePage() {
       )}
 
       {/* CTA */}
-      <section className="relative isolate overflow-hidden">
-        <Image
-          src={settings.heroImage}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-primary/85" />
-        <div className="relative mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
-          <h2 className="font-heading text-3xl font-semibold text-primary-foreground sm:text-4xl">
-            Plan your visit today
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-primary-foreground/90">
-            {settings.priceRange} per person · {settings.hours}
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/book">
-              <Button size="lg" className="gap-2 bg-white text-primary hover:bg-white/90">
-                <CalendarDays className="size-4" />
-                Reserve a Table
-              </Button>
-            </Link>
-            <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2 border-white/40 bg-transparent text-white hover:bg-white/10"
-              >
-                <Phone className="size-4" />
-                {settings.phone}
-              </Button>
-            </a>
+      {showCta && (
+        <section className="relative isolate overflow-hidden">
+          <Image
+            src={settings.heroImage}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-primary/85" />
+          <div className="relative mx-auto max-w-6xl px-4 py-20 text-center sm:px-6">
+            <h2 className="font-heading text-3xl font-semibold text-primary-foreground sm:text-4xl">
+              Plan your visit today
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-primary-foreground/90">
+              {settings.priceRange} per person · {settings.hours}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <Link href="/book">
+                <Button size="lg" className="gap-2 bg-white text-primary hover:bg-white/90">
+                  <CalendarDays className="size-4" />
+                  Reserve a Table
+                </Button>
+              </Link>
+              <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 border-white/40 bg-transparent text-white hover:bg-white/10"
+                >
+                  <Phone className="size-4" />
+                  {settings.phone}
+                </Button>
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </>
   );
 }
