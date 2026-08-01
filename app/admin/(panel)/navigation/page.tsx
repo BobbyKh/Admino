@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowDown, ArrowUp, ExternalLink, Link, Loader2, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, GripVertical, Link, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,30 +23,23 @@ export default function NavigationPage() {
   const [pending, startTransition] = React.useTransition();
   const [showAdd, setShowAdd] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [dragIdx, setDragIdx] = React.useState<number | null>(null);
+  const [overIdx, setOverIdx] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     getNavLinks().then(setLinks).finally(() => setLoading(false));
   }, []);
 
-  function moveUp(index: number) {
-    if (index === 0) return;
-    const newLinks = [...links];
-    [newLinks[index - 1], newLinks[index]] = [newLinks[index], newLinks[index - 1]];
-    const orderedIds = newLinks.map((l) => l.id);
-    setLinks(newLinks);
+  function reorder(from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return;
+    const updated = [...links];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    setLinks(updated);
+    setDragIdx(null);
+    setOverIdx(null);
     startTransition(async () => {
-      await reorderNavLinks(orderedIds);
-    });
-  }
-
-  function moveDown(index: number) {
-    if (index === links.length - 1) return;
-    const newLinks = [...links];
-    [newLinks[index], newLinks[index + 1]] = [newLinks[index + 1], newLinks[index]];
-    const orderedIds = newLinks.map((l) => l.id);
-    setLinks(newLinks);
-    startTransition(async () => {
-      await reorderNavLinks(orderedIds);
+      await reorderNavLinks(updated.map((l) => l.id));
     });
   }
 
@@ -172,28 +165,41 @@ export default function NavigationPage() {
           {links.map((link, i) => (
             <div
               key={link.id}
-              className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i));
+                setDragIdx(i);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setOverIdx(i);
+              }}
+              onDragLeave={() => setOverIdx(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = Number(e.dataTransfer.getData("text/plain"));
+                reorder(from, i);
+              }}
+              onDragEnd={() => {
+                setDragIdx(null);
+                setOverIdx(null);
+              }}
+              className={`flex items-center gap-2 rounded-lg border p-3 transition-all ${
+                dragIdx === i
+                  ? "opacity-40 scale-95"
+                  : overIdx === i && dragIdx !== null
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                    : "hover:bg-muted/50"
+              }`}
             >
-              <div className="flex flex-col gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  disabled={i === 0}
-                  onClick={() => moveUp(i)}
-                >
-                  <ArrowUp className="size-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  disabled={i === links.length - 1}
-                  onClick={() => moveDown(i)}
-                >
-                  <ArrowDown className="size-3" />
-                </Button>
-              </div>
+              <span
+                className="cursor-grab text-muted-foreground/50 active:cursor-grabbing hover:text-muted-foreground"
+                title="Drag to reorder"
+              >
+                <GripVertical className="size-4" />
+              </span>
 
               <Link className="size-4 shrink-0 text-muted-foreground" />
 

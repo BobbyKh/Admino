@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import {
-  ArrowDown,
-  ArrowUp,
+  GripVertical,
   Loader2,
   Plus,
   Trash2,
@@ -77,6 +76,8 @@ export default function HomepageSectionsPage() {
   const [pending, startTransition] = React.useTransition();
   const [showAdd, setShowAdd] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [dragIdx, setDragIdx] = React.useState<number | null>(null);
+  const [overIdx, setOverIdx] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     getHomeSections()
@@ -84,21 +85,14 @@ export default function HomepageSectionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  function moveUp(index: number) {
-    if (index === 0) return;
+  function reorder(from: number, to: number) {
+    if (from === to || from < 0 || to < 0) return;
     const updated = [...sections];
-    [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
     setSections(updated);
-    startTransition(async () => {
-      await reorderHomeSections(updated.map((s) => s.id));
-    });
-  }
-
-  function moveDown(index: number) {
-    if (index === sections.length - 1) return;
-    const updated = [...sections];
-    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
-    setSections(updated);
+    setDragIdx(null);
+    setOverIdx(null);
     startTransition(async () => {
       await reorderHomeSections(updated.map((s) => s.id));
     });
@@ -238,29 +232,42 @@ export default function HomepageSectionsPage() {
           {sections.map((section, i) => (
             <div
               key={section.id}
-              className="rounded-lg border p-3 transition-colors hover:bg-muted/50"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i));
+                setDragIdx(i);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setOverIdx(i);
+              }}
+              onDragLeave={() => setOverIdx(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                const from = Number(e.dataTransfer.getData("text/plain"));
+                reorder(from, i);
+              }}
+              onDragEnd={() => {
+                setDragIdx(null);
+                setOverIdx(null);
+              }}
+              className={`rounded-lg border p-3 transition-all ${
+                dragIdx === i
+                  ? "opacity-40 scale-95"
+                  : overIdx === i && dragIdx !== null
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                    : "hover:bg-muted/50"
+              }`}
             >
               <div className="flex items-center gap-2">
-                <div className="flex flex-col gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    disabled={i === 0}
-                    onClick={() => moveUp(i)}
-                  >
-                    <ArrowUp className="size-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    disabled={i === sections.length - 1}
-                    onClick={() => moveDown(i)}
-                  >
-                    <ArrowDown className="size-3" />
-                  </Button>
-                </div>
+                <span
+                  className="cursor-grab text-muted-foreground/50 active:cursor-grabbing hover:text-muted-foreground"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="size-4" />
+                </span>
 
                 <span className="text-lg leading-none">{getTypeIcon(section.type)}</span>
 
