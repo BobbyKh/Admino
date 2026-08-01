@@ -36,11 +36,10 @@ async function main() {
 
   // Seed admin user (idempotent)
   const email = (process.env.ADMIN_EMAIL ?? "admin@maitiresort.com").toLowerCase();
-  const existing = await db
+  const [existing] = await db
     .select()
     .from(adminUsers)
-    .where(eq(adminUsers.email, email))
-    .get();
+    .where(eq(adminUsers.email, email));
   if (!existing) {
     const password = process.env.ADMIN_PASSWORD ?? "maiti2024";
     await db.insert(adminUsers).values({
@@ -54,7 +53,7 @@ async function main() {
   }
 
   // Seed gallery
-  const gallery = await db.select().from(galleryImages).all();
+  const gallery = await db.select().from(galleryImages);
   if (gallery.length === 0) {
     const photos = [
       { title: "Our Dining Hall", category: "Resort", src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80" },
@@ -84,7 +83,7 @@ async function main() {
   }
 
   // Seed menu
-  const cats = await db.select().from(menuCategories).all();
+  const cats = await db.select().from(menuCategories);
   if (cats.length === 0) {
     const categories = [
       { name: "Breakfast", slug: "breakfast", description: "Start your day right", sortOrder: 1 },
@@ -96,11 +95,10 @@ async function main() {
       await db.insert(menuCategories).values(c);
     }
     const idFor = async (slug: string) => {
-      const row = await db
+      const [row] = await db
         .select()
         .from(menuCategories)
-        .where(eq(menuCategories.slug, slug))
-        .get();
+        .where(eq(menuCategories.slug, slug));
       if (!row) throw new Error(`Category not found: ${slug}`);
       return row.id;
     };
@@ -133,7 +131,7 @@ async function main() {
   }
 
   // Seed navigation links
-  const existingLinks = await db.select().from(navLinks).all();
+  const existingLinks = await db.select().from(navLinks);
   if (existingLinks.length === 0) {
     const links = [
       { label: "Home", href: "/", sortOrder: 0 },
@@ -151,7 +149,7 @@ async function main() {
   }
 
   // Seed homepage sections
-  const existingSections = await db.select().from(homeSections).all();
+  const existingSections = await db.select().from(homeSections);
   if (existingSections.length === 0) {
     const sections = [
       { type: "hero", title: null, sortOrder: 0 },
