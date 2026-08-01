@@ -18,8 +18,6 @@ export type AdminActionState = { success?: boolean; message?: string };
 
 // ------------------------------------------------------------------ uploads
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-
 export type UploadState = { url?: string; error?: string };
 
 /** Uploads an image file to Cloudinary and returns its secure URL. */
@@ -29,9 +27,6 @@ export async function uploadImage(formData: FormData): Promise<UploadState> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Please choose an image file." };
-  }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: "Image must be 10 MB or smaller." };
   }
   if (!file.type.startsWith("image/")) {
     return { error: "Only image files are allowed." };
@@ -252,8 +247,6 @@ export async function deleteMenuItem(itemId: number) {
 
 // ------------------------------------------------------------------ media
 
-const MEDIA_MAX_BYTES = 20 * 1024 * 1024; // 20 MB for videos/images
-
 export type MediaUploadState = { url?: string; publicId?: string; width?: number; height?: number; error?: string };
 
 /** Uploads a file (image or video) to Cloudinary and saves it to the media library. */
@@ -266,9 +259,6 @@ export async function uploadMedia(
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Please choose a file." };
-  }
-  if (file.size > MEDIA_MAX_BYTES) {
-    return { error: "File must be 20 MB or smaller." };
   }
 
   const isImage = file.type.startsWith("image/");
