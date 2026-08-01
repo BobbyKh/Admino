@@ -28,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  uploadMedia,
   deleteMediaItem,
   moveMediaToFolder,
   createMediaFolder,
@@ -102,9 +101,11 @@ export function MediaLibrary({
     for (const file of fileArray) {
       const formData = new FormData();
       formData.append("file", file);
+      if (selectedFolder !== "all") formData.append("folder", selectedFolder);
       try {
-        const result = await uploadMedia(formData, selectedFolder === "all" ? undefined : selectedFolder);
-        if (result?.url) {
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const result = await res.json();
+        if (res.ok && result.url) {
           successCount++;
         } else {
           toast.error(result?.error ?? `Failed to upload ${file.name}`);
@@ -202,7 +203,7 @@ export function MediaLibrary({
           </DialogHeader>
 
           <div className="flex min-h-[500px]">
-            {/* Sidebar - Folders */}
+            {/* Sidebar - Folders (desktop) */}
             <div className="hidden w-56 shrink-0 border-r bg-muted/30 p-3 sm:block">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase text-muted-foreground">
@@ -274,6 +275,27 @@ export function MediaLibrary({
             <div className="flex min-w-0 flex-1 flex-col">
               {/* Toolbar */}
               <div className="flex items-center gap-2 border-b px-4 py-2">
+                {/* Mobile folder dropdown */}
+                <div className="flex items-center gap-1 sm:hidden">
+                  <select
+                    value={selectedFolder}
+                    onChange={(e) => setSelectedFolder(e.target.value)}
+                    className="h-8 rounded-md border bg-background px-2 text-xs"
+                  >
+                    <option value="all">All Media</option>
+                    {folders.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() => setShowNewFolder(true)}
+                  >
+                    <FolderPlus className="size-3.5" />
+                  </Button>
+                </div>
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input

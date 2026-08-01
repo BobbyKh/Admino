@@ -31,10 +31,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  uploadMedia,
   deleteMediaItem,
   moveMediaToFolder,
   createMediaFolder,
+  deleteMediaFolder,
   getMediaItems,
   getMediaFolders,
   updateMediaAlt,
@@ -88,9 +88,11 @@ export default function MediaPage() {
     for (const file of fileArray) {
       const formData = new FormData();
       formData.append("file", file);
+      if (selectedFolder !== "all") formData.append("folder", selectedFolder);
       try {
-        const result = await uploadMedia(formData, selectedFolder === "all" ? undefined : selectedFolder);
-        if (result?.url) {
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
+        const result = await res.json();
+        if (res.ok && result.url) {
           successCount++;
         } else {
           toast.error(result?.error ?? `Failed to upload ${file.name}`);
@@ -150,6 +152,18 @@ export default function MediaPage() {
     }
   }
 
+  async function handleDeleteFolder(folder: string) {
+    if (!confirm(`Delete folder "${folder}" and all its files?`)) return;
+    try {
+      await deleteMediaFolder(folder);
+      setFolders((prev) => prev.filter((f) => f !== folder));
+      if (selectedFolder === folder) setSelectedFolder("all");
+      toast.success(`Folder "${folder}" deleted`);
+    } catch {
+      toast.error("Failed to delete folder");
+    }
+  }
+
   async function handleMoveToFolder() {
     if (!selected || !moveTargetFolder) return;
     try {
@@ -204,7 +218,7 @@ export default function MediaPage() {
       </div>
 
       <div className="flex gap-6">
-        {/* Sidebar - Folders */}
+        {/* Sidebar - Folders (desktop) */}
         <div className="hidden w-52 shrink-0 md:block">
           <Card>
             <CardHeader className="pb-2">
@@ -239,14 +253,23 @@ export default function MediaPage() {
                 <button
                   key={folder}
                   onClick={() => setSelectedFolder(folder)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                  className={`group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
                     selectedFolder === folder
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   <Folder className="size-3.5" />
-                  <span className="truncate">{folder}</span>
+                  <span className="truncate flex-1 text-left">{folder}</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleDeleteFolder(folder); } }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                  >
+                    <Trash2 className="size-3" />
+                  </span>
                 </button>
               ))}
 
@@ -280,6 +303,28 @@ export default function MediaPage() {
         <div className="min-w-0 flex-1">
           {/* Toolbar */}
           <div className="mb-4 flex items-center gap-2">
+            {/* Mobile folder dropdown */}
+            <div className="flex items-center gap-1 md:hidden">
+              <select
+                value={selectedFolder}
+                onChange={(e) => setSelectedFolder(e.target.value)}
+                className="h-9 rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="all">All Media</option>
+                {folders.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0"
+                onClick={() => setShowNewFolder(true)}
+              >
+                <FolderPlus className="size-4" />
+              </Button>
+            </div>
+
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input

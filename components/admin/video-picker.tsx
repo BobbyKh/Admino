@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadMedia } from "@/lib/cms-actions";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
 
@@ -69,8 +68,9 @@ export function VideoPicker({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await uploadMedia(formData);
-      if (result?.url) {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const result = await res.json();
+      if (res.ok && result.url) {
         setVideoSrc(result.url);
         toast.success("Video uploaded to Cloudinary");
       } else {

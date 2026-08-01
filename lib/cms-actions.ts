@@ -14,7 +14,8 @@ import {
 } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
-import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
+import { v2 as cloudinary } from "cloudinary";
 
 export type AdminActionState = { success?: boolean; message?: string };
 
@@ -321,7 +322,7 @@ export async function getMediaItems(options?: {
   // Apply filters in code since drizzle-orm sqlite doesn't support all operators easily
   const allItems = await query.orderBy(desc(media.createdAt));
 
-  let filtered = allItems;
+  let filtered = allItems.filter((item) => !item.filename.startsWith(".keep-"));
 
   if (options?.folder && options.folder !== "all") {
     filtered = filtered.filter((item) => item.folder === options.folder);
@@ -382,14 +383,44 @@ export async function moveMediaToFolder(mediaId: number, folder: string) {
   revalidatePath("/admin/media");
 }
 
-/** Create a new empty folder. */
+/** Create a new empty folder by inserting a placeholder record. */
 export async function createMediaFolder(folderName: string) {
   await requireAdmin();
-  // We just need to ensure the folder name is valid; actual folders don't exist on Cloudinary
-  // The folder is just a metadata tag. We insert a placeholder if needed.
   const trimmed = folderName.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-");
   if (!trimmed) return { error: "Invalid folder name." };
+
+  // Insert a placeholder so the folder persists in getMediaFolders
+  await db.insert(media).values({
+    filename: `.keep-${trimmed}`,
+    originalName: `.keep`,
+    url: "data:text/plain,keep",
+    mimeType: "text/plain",
+    size: 0,
+    folder: trimmed,
+  });
+
   return { success: true, folder: trimmed };
+}
+
+/** Delete a folder and all its items from media + Cloudinary. */
+export async function deleteMediaFolder(folder: string) {
+  await requireAdmin();
+  const items = await db.select().from(media).where(eq(media.folder, folder));
+  const config = await getCloudinaryConfig();
+  if (config) {
+    cloudinary.config(config);
+    for (const item of items) {
+      if (item.publicId) {
+        try {
+          await cloudinary.uploader.destroy(item.publicId, {
+            resource_type: item.mimeType.startsWith("video/") ? "video" : "image",
+          });
+        } catch { /* best effort */ }
+      }
+    }
+  }
+  await db.delete(media).where(eq(media.folder, folder));
+  revalidatePath("/admin/media");
 }
 
 // ------------------------------------------------------------------ nav links
