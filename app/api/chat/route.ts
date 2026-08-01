@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSiteSettings } from "@/lib/data";
+import { getAllServerSettings } from "@/lib/data";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages required" }, { status: 400 });
     }
 
-    const settings = await getSiteSettings();
+    const settings = await getAllServerSettings();
 
     if (settings.aiChatEnabled !== "true") {
       return NextResponse.json({ error: "AI chat is disabled" }, { status: 403 });
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
     }
 
-    const systemPrompt = buildSystemPrompt(settings as unknown as Record<string, string>, settings.aiSystemPrompt);
+    const systemPrompt = buildSystemPrompt(settings, settings.aiSystemPrompt);
     const fullMessages: ChatMessage[] = [
       { role: "system", content: systemPrompt },
       ...messages,

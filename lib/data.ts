@@ -25,6 +25,16 @@ async function getSettingsRows() {
   return new Map(rows.map((r) => [r.key, r.value]));
 }
 
+/** Returns ALL settings including secrets — server-side API routes only. Never expose to client. */
+export async function getAllServerSettings() {
+  const map = await getSettingsRows();
+  const all: Record<string, string> = {};
+  for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
+    all[key] = map.get(key) ?? DEFAULT_SETTINGS[key];
+  }
+  return all;
+}
+
 /** Merges public DB settings over defaults (secrets excluded) and parses JSON fields. */
 export async function getSiteSettings(): Promise<SiteSettings> {
   const map = await getSettingsRows();
@@ -36,6 +46,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   }
   return {
     ...(merged as unknown as SiteSettings),
+    hasAiApiKey: map.get("aiApiKey") ? "true" : "false",
     features: parseFeatures(merged.features),
     services: parseServices(merged.services),
   };

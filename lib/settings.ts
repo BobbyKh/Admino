@@ -258,7 +258,7 @@ export interface SiteSettings {
   themeCardForeground: string;
   // AI
   aiProvider: string;
-  aiApiKey: string;
+  hasAiApiKey: string;
   aiModel: string;
   aiBaseUrl: string;
   aiSystemPrompt: string;

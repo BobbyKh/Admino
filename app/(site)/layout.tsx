@@ -17,7 +17,7 @@ export default async function SiteLayout({
       <Navbar settings={settings} navLinks={navLinks} />
       <main className="flex-1">{children}</main>
       <Footer settings={settings} navLinks={navLinks} />
-      {settings.aiChatEnabled === "true" && settings.aiApiKey && (
+      {settings.aiChatEnabled === "true" && settings.hasAiApiKey === "true" && (
         <ChatWidget siteName={settings.siteName} />
       )}
     </>
