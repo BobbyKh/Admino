@@ -1,4 +1,4 @@
-import type { HomeSection, GalleryImage, MenuItem } from "@/lib/db/schema";
+import type { GalleryImage, MenuItem } from "@/lib/db/schema";
 import type { SiteSettings } from "@/lib/settings";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
@@ -21,12 +21,12 @@ export function SectionRenderer({
   galleryImages,
   featuredItems,
 }: {
-  section: HomeSection;
+  section: { id: number; type: string; title?: string | null; sortOrder: number; visible: boolean; config?: string | null; createdAt?: string; siteId?: number | null };
   settings: SiteSettings;
   galleryImages: GalleryImage[];
   featuredItems: MenuItem[];
 }) {
-  const config = parseConfig(section.config);
+  const config = parseConfig(section.config ?? null);
 
   switch (section.type) {
     case "hero":

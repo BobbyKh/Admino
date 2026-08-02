@@ -65,15 +65,19 @@ export function Navbar({
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
-            <Button variant="outline" className="gap-2">
-              <Phone className="size-4" />
-              {settings.phone}
-            </Button>
-          </a>
-          <Link href="/book">
-            <Button>Reserve</Button>
-          </Link>
+          {settings.phone && (
+            <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
+              <Button variant="outline" className="gap-2">
+                <Phone className="size-4" />
+                {settings.phone}
+              </Button>
+            </a>
+          )}
+          {settings.heroCtaPrimary && (
+            <Link href={settings.heroCtaPrimaryLink || "/"}>
+              <Button>{settings.heroCtaPrimary}</Button>
+            </Link>
+          )}
         </div>
 
         <Button
@@ -108,15 +112,19 @@ export function Navbar({
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t pt-3">
-              <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
-                <Button variant="outline" className="w-full gap-2">
-                  <Phone className="size-4" />
-                  {settings.phone}
-                </Button>
-              </a>
-              <Link href="/book" onClick={() => setOpen(false)}>
-                <Button className="w-full">Reserve a Table</Button>
-              </Link>
+              {settings.phone && (
+                <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
+                  <Button variant="outline" className="w-full gap-2">
+                    <Phone className="size-4" />
+                    {settings.phone}
+                  </Button>
+                </a>
+              )}
+              {settings.heroCtaPrimary && (
+                <Link href={settings.heroCtaPrimaryLink || "/"} onClick={() => setOpen(false)}>
+                  <Button className="w-full">{settings.heroCtaPrimary}</Button>
+                </Link>
+              )}
             </div>
           </nav>
         </div>
