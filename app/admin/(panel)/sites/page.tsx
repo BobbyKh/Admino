@@ -62,6 +62,20 @@ export default function SitesPage() {
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createSite, {});
   const [updateState, updateFormAction] = useActionState<AdminActionState, FormData>(updateSite, {});
 
+  useEffect(() => {
+    if (createState?.success) {
+      getSites().then(setSites);
+      setCreateOpen(false);
+    }
+  }, [createState]);
+
+  useEffect(() => {
+    if (updateState?.success) {
+      getSites().then(setSites);
+      setEditingSite(null);
+    }
+  }, [updateState]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -87,7 +101,6 @@ export default function SitesPage() {
                 startTransition(() => {
                   createFormAction(fd);
                 });
-                if (createState?.success) setCreateOpen(false);
               }}
               className="space-y-4"
             >
@@ -239,7 +252,6 @@ export default function SitesPage() {
                 startTransition(() => {
                   updateFormAction(fd);
                 });
-                if (updateState?.success) setEditingSite(null);
               }}
               className="space-y-4"
             >
