@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, and, ilike, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   galleryImages,
@@ -17,8 +17,43 @@ import { SETTING_KEYS } from "@/lib/settings";
 import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
 import { v2 as cloudinary } from "cloudinary";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { logActivity, type ActivityEntity, type ActivityAction } from "@/lib/activity";
+import { sendActivityNotification } from "@/lib/email";
+import { getSessionUser, type Role } from "@/lib/auth";
 
 export type AdminActionState = { success?: boolean; message?: string };
+
+/**
+ * Helper: log activity + send email notification to super admins and tenant admins.
+ */
+async function trackActivity(
+  action: ActivityAction,
+  entity: ActivityEntity,
+  opts: {
+    siteId?: number | null;
+    siteName?: string | null;
+    entityId?: number | null;
+    entityName?: string | null;
+    details?: Record<string, unknown> | null;
+  } = {}
+) {
+  const user = await getSessionUser();
+  const userName = user?.name ?? "Unknown";
+  const userRole = (user?.role as Role) ?? "unknown";
+
+  await logActivity({ action, entity, ...opts });
+  await sendActivityNotification({
+    action,
+    entity,
+    siteId: opts.siteId ?? null,
+    siteName: opts.siteName ?? null,
+    entityId: opts.entityId ?? null,
+    entityName: opts.entityName ?? null,
+    details: opts.details ?? null,
+    userName,
+    userRole,
+  });
+}
 
 // ------------------------------------------------------------------ uploads
 
@@ -71,6 +106,7 @@ export async function updateSettings(
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
+  await trackActivity("update", "settings", { siteId, entityName: "Site Settings" });
   return { success: true, message: "Settings saved." };
 }
 
@@ -102,6 +138,7 @@ export async function addGalleryImage(
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");
+  await trackActivity("create", "gallery", { siteId, entityName: title });
   return { success: true, message: "Image added to gallery." };
 }
 
@@ -126,6 +163,7 @@ export async function updateGalleryImage(
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");
+  await trackActivity("update", "gallery", { siteId: null, entityId: id, entityName: title });
   return { success: true, message: "Image updated." };
 }
 
@@ -135,6 +173,7 @@ export async function deleteGalleryImage(imageId: number) {
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");
+  await trackActivity("delete", "gallery", { entityId: imageId });
 }
 
 export async function toggleFeatured(imageId: number, featured: boolean) {
@@ -174,6 +213,7 @@ export async function addMenuCategory(
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
+  await trackActivity("create", "menu_category", { siteId, entityName: name });
   return { success: true, message: "Category added." };
 }
 
@@ -182,6 +222,7 @@ export async function deleteMenuCategory(categoryId: number) {
   await db.delete(menuCategories).where(eq(menuCategories.id, categoryId));
   revalidatePath("/menu");
   revalidatePath("/admin/menu");
+  await trackActivity("delete", "menu_category", { entityId: categoryId });
 }
 
 export async function addMenuItem(
@@ -213,6 +254,7 @@ export async function addMenuItem(
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
+  await trackActivity("create", "menu_item", { siteId, entityName: name });
   return { success: true, message: "Menu item added." };
 }
 
@@ -247,6 +289,7 @@ export async function updateMenuItem(
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
+  await trackActivity("update", "menu_item", { entityId: id, entityName: name });
   return { success: true, message: "Menu item updated." };
 }
 
@@ -256,6 +299,7 @@ export async function deleteMenuItem(itemId: number) {
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
+  await trackActivity("delete", "menu_item", { entityId: itemId });
 }
 
 // ------------------------------------------------------------------ media
@@ -287,7 +331,6 @@ export async function uploadMedia(
   try {
     const result = await uploadImageToCloudinary(buffer, uploadFolder, resourceType);
 
-    // Save to media table
     const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     await db.insert(media).values({
       filename,
@@ -302,6 +345,7 @@ export async function uploadMedia(
     });
 
     revalidatePath("/admin/media");
+    await trackActivity("create", "media", { entityName: file.name });
     return {
       url: result.secure_url,
       publicId: result.public_id,
@@ -327,39 +371,38 @@ export async function getMediaItems(options?: {
 }) {
   await requireAdmin();
 
-  const query = db.select().from(media);
-
-  // Apply filters in code since drizzle-orm sqlite doesn't support all operators easily
-  const allItems = await query.orderBy(desc(media.createdAt));
-
-  let filtered = allItems.filter((item) => !item.filename.startsWith(".keep-"));
+  const conditions = [ne(media.filename, sql`'%' || '.keep-%'`)];
 
   if (options?.folder && options.folder !== "all") {
-    filtered = filtered.filter((item) => item.folder === options.folder);
+    conditions.push(eq(media.folder, options.folder));
   }
 
   if (options?.type) {
-    filtered = filtered.filter((item) =>
-      options.type === "image" ? item.mimeType.startsWith("image/") : item.mimeType.startsWith("video/")
-    );
+    if (options.type === "image") {
+      conditions.push(ilike(media.mimeType, "image/%"));
+    } else {
+      conditions.push(ilike(media.mimeType, "video/%"));
+    }
   }
 
   if (options?.search) {
-    const q = options.search.toLowerCase();
-    filtered = filtered.filter(
-      (item) =>
-        item.originalName.toLowerCase().includes(q) ||
-        (item.alt && item.alt.toLowerCase().includes(q)) ||
-        item.filename.toLowerCase().includes(q)
-    );
+    const q = `%${options.search}%`;
+    conditions.push(ilike(media.originalName, q));
   }
 
+  const where = and(...conditions);
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
 
+  const allItems = await db
+    .select()
+    .from(media)
+    .where(where)
+    .orderBy(desc(media.createdAt));
+
   return {
-    items: filtered.slice(offset, offset + limit),
-    total: filtered.length,
+    items: allItems.filter((item) => !item.filename.startsWith(".keep-")),
+    total: allItems.length,
   };
 }
 
@@ -377,6 +420,7 @@ export async function deleteMediaItem(mediaId: number) {
   await requireAdmin();
   await db.delete(media).where(eq(media.id, mediaId));
   revalidatePath("/admin/media");
+  await trackActivity("delete", "media", { entityId: mediaId });
 }
 
 /** Update media alt text. */
@@ -384,6 +428,7 @@ export async function updateMediaAlt(mediaId: number, alt: string) {
   await requireAdmin();
   await db.update(media).set({ alt }).where(eq(media.id, mediaId));
   revalidatePath("/admin/media");
+  await trackActivity("update", "media", { entityId: mediaId, details: { alt } });
 }
 
 /** Update media folder (move to another folder). */
@@ -391,6 +436,7 @@ export async function moveMediaToFolder(mediaId: number, folder: string) {
   await requireAdmin();
   await db.update(media).set({ folder }).where(eq(media.id, mediaId));
   revalidatePath("/admin/media");
+  await trackActivity("update", "media", { entityId: mediaId, details: { folder } });
 }
 
 /** Create a new empty folder by inserting a placeholder record. */
@@ -399,7 +445,6 @@ export async function createMediaFolder(folderName: string) {
   const trimmed = folderName.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-");
   if (!trimmed) return { error: "Invalid folder name." };
 
-  // Insert a placeholder so the folder persists in getMediaFolders
   await db.insert(media).values({
     filename: `.keep-${trimmed}`,
     originalName: `.keep`,
@@ -409,6 +454,7 @@ export async function createMediaFolder(folderName: string) {
     folder: trimmed,
   });
 
+  await trackActivity("create", "media", { entityName: trimmed, details: { type: "folder" } });
   return { success: true, folder: trimmed };
 }
 
@@ -431,6 +477,7 @@ export async function deleteMediaFolder(folder: string) {
   }
   await db.delete(media).where(eq(media.folder, folder));
   revalidatePath("/admin/media");
+  await trackActivity("delete", "media", { entityName: folder, details: { type: "folder", itemCount: items.length } });
 }
 
 // ------------------------------------------------------------------ nav links
@@ -452,12 +499,12 @@ export async function addNavLink(
   const href = String(formData.get("href") ?? "").trim();
   const external = formData.get("external") === "on";
   if (!label || !href) return { message: "Label and URL are required." };
-  // Get max sortOrder for this site
   const all = await db.select().from(navLinks).where(eq(navLinks.siteId, siteId)).orderBy(desc(navLinks.sortOrder));
   const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
   await db.insert(navLinks).values({ siteId, label, href, sortOrder: maxSort, visible: true, external });
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
+  await trackActivity("create", "navigation", { siteId, entityName: label });
   return { success: true, message: "Link added." };
 }
 
@@ -475,6 +522,7 @@ export async function updateNavLink(
   await db.update(navLinks).set({ label, href, visible, external }).where(eq(navLinks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
+  await trackActivity("update", "navigation", { entityId: id, entityName: label });
   return { success: true, message: "Link updated." };
 }
 
@@ -483,6 +531,7 @@ export async function deleteNavLink(id: number) {
   await db.delete(navLinks).where(eq(navLinks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
+  await trackActivity("delete", "navigation", { entityId: id });
 }
 
 export async function reorderNavLinks(orderedIds: number[]) {
@@ -492,6 +541,7 @@ export async function reorderNavLinks(orderedIds: number[]) {
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
+  await trackActivity("update", "navigation", { entityName: "Reordered" });
 }
 
 // ------------------------------------------------------------------ home sections
@@ -513,7 +563,6 @@ export async function addHomeSection(
   if (!type) return { message: "Section type is required." };
   const all = await db.select().from(homeSections).where(eq(homeSections.siteId, siteId)).orderBy(desc(homeSections.sortOrder));
   const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
-  // Default config based on type
   let config: string | null = null;
   if (type === "banner") {
     config = JSON.stringify({ imageUrl: "", buttonText: "", buttonLink: "" });
@@ -523,6 +572,7 @@ export async function addHomeSection(
   await db.insert(homeSections).values({ siteId, type, title, sortOrder: maxSort, visible: true, config });
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
+  await trackActivity("create", "home_section", { siteId, entityName: title ?? type });
   return { success: true, message: "Section added." };
 }
 
@@ -539,6 +589,7 @@ export async function updateHomeSection(
   await db.update(homeSections).set({ title, visible, config }).where(eq(homeSections.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
+  await trackActivity("update", "home_section", { entityId: id, entityName: title });
   return { success: true, message: "Section updated." };
 }
 
@@ -547,6 +598,7 @@ export async function deleteHomeSection(id: number) {
   await db.delete(homeSections).where(eq(homeSections.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
+  await trackActivity("delete", "home_section", { entityId: id });
 }
 
 export async function reorderHomeSections(orderedIds: number[]) {
@@ -556,6 +608,7 @@ export async function reorderHomeSections(orderedIds: number[]) {
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
+  await trackActivity("update", "home_section", { entityName: "Reordered" });
 }
 
 // ------------------------------------------------------------------ sites
@@ -587,6 +640,7 @@ export async function createSite(
     published: false,
   });
   revalidatePath("/admin/sites");
+  await trackActivity("create", "site", { entityName: name });
   return { success: true, message: "Site created." };
 }
 
@@ -608,6 +662,7 @@ export async function updateSite(
     .set({ name, description, published, updatedAt: new Date().toISOString() })
     .where(eq(sites.id, id));
   revalidatePath("/admin/sites");
+  await trackActivity("update", "site", { siteId: id, entityName: name });
   return { success: true, message: "Site updated." };
 }
 
@@ -616,6 +671,7 @@ export async function deleteSite(id: number) {
   const { sites } = await import("@/lib/db/schema");
   await db.delete(sites).where(eq(sites.id, id));
   revalidatePath("/admin/sites");
+  await trackActivity("delete", "site", { siteId: id });
 }
 
 export async function getSites() {
@@ -659,7 +715,6 @@ export async function createPage(
 
   if (!siteId || !title) return { message: "Site ID and title are required." };
 
-  // Check for duplicate slug within the site
   const [existing] = await db
     .select()
     .from(pages)
@@ -689,6 +744,7 @@ export async function createPage(
     .returning();
 
   revalidatePath("/admin/pages");
+  await trackActivity("create", "page", { siteId, entityName: title });
   return { success: true, message: `Page "${title}" created.` };
 }
 
@@ -713,6 +769,7 @@ export async function updatePage(
     .where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("update", "page", { entityId: id, entityName: title });
   return { success: true, message: "Page updated." };
 }
 
@@ -722,6 +779,7 @@ export async function deletePage(id: number) {
   await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("delete", "page", { entityId: id });
 }
 
 export async function reorderPages(orderedIds: number[]) {
@@ -731,6 +789,7 @@ export async function reorderPages(orderedIds: number[]) {
     await db.update(pages).set({ sortOrder: i }).where(eq(pages.id, orderedIds[i]));
   }
   revalidatePath("/admin/pages");
+  await trackActivity("update", "page", { entityName: "Reordered" });
 }
 
 // ------------------------------------------------------------------ page blocks
@@ -773,6 +832,7 @@ export async function addPageBlock(
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("create", "page_block", { entityId: pageId, entityName: title ?? type });
   return { success: true, message: "Block added." };
 }
 
@@ -796,6 +856,7 @@ export async function updatePageBlock(
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("update", "page_block", { entityId: id, entityName: title });
   return { success: true, message: "Block updated." };
 }
 
@@ -805,6 +866,7 @@ export async function deletePageBlock(id: number) {
   await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("delete", "page_block", { entityId: id });
 }
 
 export async function reorderPageBlocks(orderedIds: number[]) {
@@ -815,6 +877,7 @@ export async function reorderPageBlocks(orderedIds: number[]) {
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
+  await trackActivity("update", "page_block", { entityName: "Reordered" });
 }
 
 // ------------------------------------------------------------------ admin users
@@ -889,6 +952,7 @@ export async function createAdminUser(
   });
 
   revalidatePath("/admin/users");
+  await trackActivity("create", "user", { siteId, entityName: name, details: { email, role } });
   return { success: true, message: "User created." };
 }
 
@@ -951,6 +1015,7 @@ export async function updateAdminUser(
     .where(eq(adminUsers.id, id));
 
   revalidatePath("/admin/users");
+  await trackActivity("update", "user", { siteId, entityId: id, entityName: name, details: { email, role } });
   return { success: true, message: "User updated." };
 }
 
@@ -971,4 +1036,5 @@ export async function deleteAdminUser(id: number) {
 
   await db.delete(adminUsers).where(eq(adminUsers.id, id));
   revalidatePath("/admin/users");
+  await trackActivity("delete", "user", { entityId: id });
 }

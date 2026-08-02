@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq, count, sql } from "drizzle-orm";
+import { desc, eq, count, and, gte, sql, countDistinct } from "drizzle-orm";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -37,73 +37,70 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default async function AdminDashboard() {
-  const [allBookings, unread, gallery, featured, totalSites, totalPages] =
-    await Promise.all([
-      db.select().from(bookings).orderBy(desc(bookings.createdAt)),
-      db.select().from(messages).where(eq(messages.read, false)),
-      db.select().from(galleryImages),
-      db.select().from(galleryImages).where(eq(galleryImages.featured, true)),
-      db.select({ value: count() }).from(sites),
-      db.select({ value: count() }).from(pages),
-    ]);
-
-  const pending = allBookings.filter((b) => b.status === "pending");
-  const confirmed = allBookings.filter((b) => b.status === "confirmed");
-  const recent = allBookings.slice(0, 8);
-
-  // Analytics data: bookings by status
-  const statusCounts = allBookings.reduce(
-    (acc, b) => {
-      acc[b.status] = (acc[b.status] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-  const bookingsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
-    status,
-    count,
-  }));
-
-  // Analytics data: bookings by month (last 6 months)
   const now = new Date();
-  const bookingsByMonth = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    const monthStr = d.toLocaleString("default", { month: "short", year: "2-digit" });
-    const count = allBookings.filter((b) => {
-      const bd = new Date(b.date);
-      return (
-        bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear()
-      );
-    }).length;
-    return { month: monthStr, count };
-  });
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-  // Analytics data: messages by day (last 30 days)
-  const allMessages = await db.select().from(messages).orderBy(desc(messages.createdAt));
-  const messagesByDay = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    const dayStr = d.toLocaleString("default", { month: "short", day: "numeric" });
-    const count = allMessages.filter((m) => {
-      const md = new Date(m.createdAt);
-      return (
-        md.getDate() === d.getDate() &&
-        md.getMonth() === d.getMonth() &&
-        md.getFullYear() === d.getFullYear()
-      );
-    }).length;
-    return { day: dayStr, count };
-  });
+  const [
+    totalBookings,
+    pendingBookings,
+    confirmedBookings,
+    unreadMessages,
+    recentBookings,
+    bookingsByStatus,
+    bookingsByMonth,
+    galleryCount,
+    featuredCount,
+    categoryCount,
+    totalSites,
+    totalPages,
+    messagesByDay,
+  ] = await Promise.all([
+    db.select({ value: count() }).from(bookings),
+    db.select({ value: count() }).from(bookings).where(eq(bookings.status, "pending")),
+    db.select({ value: count() }).from(bookings).where(eq(bookings.status, "confirmed")),
+    db.select({ value: count() }).from(messages).where(eq(messages.read, false)),
+    db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(8),
+    db
+      .select({ status: bookings.status, count: count() })
+      .from(bookings)
+      .groupBy(bookings.status),
+    db
+      .select({
+        month: sql<string>`TO_CHAR(${bookings.date}, 'Mon YY')`,
+        count: count(),
+      })
+      .from(bookings)
+      .where(gte(bookings.date, sixMonthsAgo.toISOString().split("T")[0]))
+      .groupBy(sql`TO_CHAR(${bookings.date}, 'Mon YY'), DATE_TRUNC('month', ${bookings.date})`)
+      .orderBy(sql`DATE_TRUNC('month', ${bookings.date})`),
+    db.select({ value: count() }).from(galleryImages),
+    db.select({ value: count() }).from(galleryImages).where(eq(galleryImages.featured, true)),
+    db.select({ value: countDistinct(galleryImages.category) }).from(galleryImages),
+    db.select({ value: count() }).from(sites),
+    db.select({ value: count() }).from(pages),
+    db
+      .select({
+        day: sql<string>`TO_CHAR(${messages.createdAt}::date, 'Mon DD')`,
+        count: count(),
+      })
+      .from(messages)
+      .where(sql`${messages.createdAt}::date >= ${thirtyDaysAgoStr}`)
+      .groupBy(sql`TO_CHAR(${messages.createdAt}::date, 'Mon DD'), DATE_TRUNC('day', ${messages.createdAt}::date)`)
+      .orderBy(sql`DATE_TRUNC('day', ${messages.createdAt}::date)`),
+  ]);
 
   const stats = [
-    { label: "Total bookings", value: allBookings.length, icon: CalendarDays },
-    { label: "Pending requests", value: pending.length, icon: Clock },
-    { label: "Confirmed tables", value: confirmed.length, icon: CheckCircle2 },
-    { label: "Unread messages", value: unread.length, icon: Mail },
+    { label: "Total bookings", value: totalBookings[0]?.value ?? 0, icon: CalendarDays },
+    { label: "Pending requests", value: pendingBookings[0]?.value ?? 0, icon: Clock },
+    { label: "Confirmed tables", value: confirmedBookings[0]?.value ?? 0, icon: CheckCircle2 },
+    { label: "Unread messages", value: unreadMessages[0]?.value ?? 0, icon: Mail },
     { label: "Sites", value: totalSites[0]?.value ?? 0, icon: Globe },
     { label: "Pages", value: totalPages[0]?.value ?? 0, icon: FileText },
-    { label: "Gallery images", value: gallery.length, icon: Images },
-    { label: "Featured images", value: featured.length, icon: Star },
+    { label: "Gallery images", value: galleryCount[0]?.value ?? 0, icon: Images },
+    { label: "Featured images", value: featuredCount[0]?.value ?? 0, icon: Star },
   ];
 
   return (
@@ -161,7 +158,7 @@ export default async function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {recent.length === 0 ? (
+            {recentBookings.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
                 No bookings yet. Share the site to start receiving requests!
               </p>
@@ -176,7 +173,7 @@ export default async function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recent.map((b) => (
+                  {recentBookings.map((b) => (
                     <TableRow key={b.id}>
                       <TableCell>
                         <p className="font-medium">{b.name}</p>
@@ -208,17 +205,15 @@ export default async function AdminDashboard() {
             <CardContent className="space-y-2 text-sm">
               <p className="flex justify-between">
                 <span className="text-muted-foreground">Gallery images</span>
-                <span className="font-medium">{gallery.length}</span>
+                <span className="font-medium">{galleryCount[0]?.value ?? 0}</span>
               </p>
               <p className="flex justify-between">
                 <span className="text-muted-foreground">Featured</span>
-                <span className="font-medium">{featured.length}</span>
+                <span className="font-medium">{featuredCount[0]?.value ?? 0}</span>
               </p>
               <p className="flex justify-between">
                 <span className="text-muted-foreground">Categories</span>
-                <span className="font-medium">
-                  {new Set(gallery.map((g) => g.category)).size}
-                </span>
+                <span className="font-medium">{categoryCount[0]?.value ?? 0}</span>
               </p>
             </CardContent>
           </Card>

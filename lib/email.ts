@@ -1,10 +1,14 @@
 import "server-only";
 
 import { cache } from "react";
+import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
 import type { Booking } from "@/lib/db/schema";
 import { formatBookingDate } from "@/lib/format";
 import { getSettingsRows } from "@/lib/settings-admin";
+import { escapeHtml } from "@/lib/sanitize";
 
 /**
  * SMTP config resolved in this order:
@@ -65,13 +69,13 @@ export async function sendBookingConfirmation(booking: Booking) {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">Booking Received — Maiti Resort</h2>
-    <p>Dear <strong>${booking.name}</strong>,</p>
+    <p>Dear <strong>${escapeHtml(booking.name)}</strong>,</p>
     <p>Thank you for choosing Maiti Resort! Your booking request has been received and we will confirm it shortly.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
-      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${when}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${escapeHtml(when)}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Guests</strong></td><td style="border:1px solid #ddd">${booking.guests}</td></tr>
-      ${booking.occasion ? `<tr><td style="border:1px solid #ddd"><strong>Occasion</strong></td><td style="border:1px solid #ddd">${booking.occasion}</td></tr>` : ""}
-      ${booking.notes ? `<tr><td style="border:1px solid #ddd"><strong>Special requests</strong></td><td style="border:1px solid #ddd">${booking.notes}</td></tr>` : ""}
+      ${booking.occasion ? `<tr><td style="border:1px solid #ddd"><strong>Occasion</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.occasion)}</td></tr>` : ""}
+      ${booking.notes ? `<tr><td style="border:1px solid #ddd"><strong>Special requests</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.notes)}</td></tr>` : ""}
       <tr><td style="border:1px solid #ddd"><strong>Booking ID</strong></td><td style="border:1px solid #ddd">#${booking.id}</td></tr>
     </table>
     <p>Maiti Resort · Kirtipur 44600, Nepal · +977 974-6510970</p>
@@ -86,12 +90,12 @@ export async function sendBookingAdminAlert(booking: Booking) {
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">New Booking Request #${booking.id}</h2>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
-      <tr><td style="border:1px solid #ddd"><strong>Name</strong></td><td style="border:1px solid #ddd">${booking.name}</td></tr>
-      <tr><td style="border:1px solid #ddd"><strong>Email</strong></td><td style="border:1px solid #ddd">${booking.email}</td></tr>
-      <tr><td style="border:1px solid #ddd"><strong>Phone</strong></td><td style="border:1px solid #ddd">${booking.phone}</td></tr>
-      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${when}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Name</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.name)}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Email</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.email)}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Phone</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.phone)}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${escapeHtml(when)}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Guests</strong></td><td style="border:1px solid #ddd">${booking.guests}</td></tr>
-      ${booking.occasion ? `<tr><td style="border:1px solid #ddd"><strong>Occasion</strong></td><td style="border:1px solid #ddd">${booking.occasion}</td></tr>` : ""}
+      ${booking.occasion ? `<tr><td style="border:1px solid #ddd"><strong>Occasion</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.occasion)}</td></tr>` : ""}
     </table>
     <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/bookings">Open admin panel</a></p>
   </div>`;
@@ -112,10 +116,10 @@ export async function sendBookingStatusEmail(booking: Booking, status: string) {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">Booking Update — Maiti Resort</h2>
-    <p>Dear <strong>${booking.name}</strong>,</p>
+    <p>Dear <strong>${escapeHtml(booking.name)}</strong>,</p>
     <p>${message}</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
-      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${when}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${escapeHtml(when)}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Guests</strong></td><td style="border:1px solid #ddd">${booking.guests}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Booking ID</strong></td><td style="border:1px solid #ddd">#${booking.id}</td></tr>
     </table>
@@ -135,14 +139,122 @@ export async function sendContactAdminAlert(message: {
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">New Contact Message</h2>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
-      <tr><td style="border:1px solid #ddd"><strong>Name</strong></td><td style="border:1px solid #ddd">${message.name}</td></tr>
-      <tr><td style="border:1px solid #ddd"><strong>Email</strong></td><td style="border:1px solid #ddd">${message.email}</td></tr>
-      ${message.phone ? `<tr><td style="border:1px solid #ddd"><strong>Phone</strong></td><td style="border:1px solid #ddd">${message.phone}</td></tr>` : ""}
-      <tr><td style="border:1px solid #ddd"><strong>Subject</strong></td><td style="border:1px solid #ddd">${message.subject}</td></tr>
-      <tr><td style="border:1px solid #ddd" colspan="2"><strong>Message</strong><br/>${message.message.replace(/\n/g, "<br/>")}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Name</strong></td><td style="border:1px solid #ddd">${escapeHtml(message.name)}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Email</strong></td><td style="border:1px solid #ddd">${escapeHtml(message.email)}</td></tr>
+      ${message.phone ? `<tr><td style="border:1px solid #ddd"><strong>Phone</strong></td><td style="border:1px solid #ddd">${escapeHtml(message.phone)}</td></tr>` : ""}
+      <tr><td style="border:1px solid #ddd"><strong>Subject</strong></td><td style="border:1px solid #ddd">${escapeHtml(message.subject)}</td></tr>
+      <tr><td style="border:1px solid #ddd" colspan="2"><strong>Message</strong><br/>${escapeHtml(message.message).replace(/\n/g, "<br/>")}</td></tr>
     </table>
     <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/messages">Open admin panel</a></p>
   </div>`;
   const { notifyTo } = await getSmtpConfig();
   return sendMail(notifyTo, `New contact message: ${message.subject}`, html);
+}
+
+// ─── Activity Notifications ──────────────────────────────────────────────────
+
+const ENTITY_LABELS: Record<string, string> = {
+  settings: "Settings",
+  gallery: "Gallery Image",
+  menu_category: "Menu Category",
+  menu_item: "Menu Item",
+  booking: "Booking",
+  message: "Message",
+  page: "Page",
+  page_block: "Page Block",
+  site: "Site",
+  user: "User",
+  media: "Media",
+  navigation: "Navigation Link",
+  home_section: "Homepage Section",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  create: "Created",
+  update: "Updated",
+  delete: "Deleted",
+  status_change: "Status Changed",
+  login: "Logged In",
+  logout: "Logged Out",
+};
+
+/**
+ * Get all super admin emails.
+ */
+async function getSuperAdminEmails(): Promise<string[]> {
+  const admins = await db
+    .select({ email: adminUsers.email })
+    .from(adminUsers)
+    .where(eq(adminUsers.role, "super_admin"));
+  return admins.map((a) => a.email);
+}
+
+/**
+ * Get all tenant admin emails for a given site.
+ */
+async function getTenantAdminEmails(siteId: number | null): Promise<string[]> {
+  if (!siteId) return [];
+  const admins = await db
+    .select({ email: adminUsers.email })
+    .from(adminUsers)
+    .where(eq(adminUsers.siteId, siteId));
+  return admins.map((a) => a.email);
+}
+
+/**
+ * Send activity notification email to super admins and tenant admins.
+ */
+export async function sendActivityNotification(options: {
+  siteId: number | null;
+  siteName?: string | null;
+  userName: string;
+  userRole: string;
+  action: string;
+  entity: string;
+  entityId?: number | null;
+  entityName?: string | null;
+  details?: Record<string, unknown> | null;
+}): Promise<void> {
+  try {
+    const entityLabel = ENTITY_LABELS[options.entity] || options.entity;
+    const actionLabel = ACTION_LABELS[options.action] || options.action;
+
+    // Collect recipients: super admins + tenant admins
+    const [superAdmins, tenantAdmins] = await Promise.all([
+      getSuperAdminEmails(),
+      getTenantAdminEmails(options.siteId),
+    ]);
+
+    // Deduplicate emails
+    const allEmails = [...new Set([...superAdmins, ...tenantAdmins])];
+    if (allEmails.length === 0) return;
+
+    const siteInfo = options.siteName ? ` on site "${escapeHtml(options.siteName)}"` : "";
+    const entityInfo = options.entityName
+      ? `: <strong>${escapeHtml(options.entityName)}</strong>`
+      : options.entityId
+        ? ` #${options.entityId}`
+        : "";
+
+    const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+      <h2 style="color:#166534">Activity Alert${siteInfo}</h2>
+      <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
+        <tr><td style="border:1px solid #ddd"><strong>Action</strong></td><td style="border:1px solid #ddd">${actionLabel} ${entityLabel}${entityInfo}</td></tr>
+        <tr><td style="border:1px solid #ddd"><strong>Performed by</strong></td><td style="border:1px solid #ddd">${escapeHtml(options.userName)} (${escapeHtml(options.userRole)})</td></tr>
+        <tr><td style="border:1px solid #ddd"><strong>Time</strong></td><td style="border:1px solid #ddd">${new Date().toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}</td></tr>
+      </table>
+      <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/activity">View Activity Log</a></p>
+    </div>`;
+
+    const subject = `[Activity] ${actionLabel} ${entityLabel}${options.siteName ? ` — ${options.siteName}` : ""}`;
+
+    // Send to all recipients in parallel
+    await Promise.allSettled(
+      allEmails.map((email) => sendMail(email, subject, html))
+    );
+  } catch (err) {
+    // Activity notification should never break the main action
+    console.error("Failed to send activity notification:", err);
+  }
 }

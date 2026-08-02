@@ -24,20 +24,20 @@ export function ContactForm() {
   }, [state]);
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5" aria-label="Contact form">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="c-name">Name *</Label>
-          <Input id="c-name" name="name" placeholder="Your name" required />
+          <Input id="c-name" name="name" placeholder="Your name" required aria-describedby={state?.errors?.name ? "c-name-error" : undefined} />
           {state?.errors?.name && (
-            <p className="text-sm text-destructive">{state.errors.name[0]}</p>
+            <p id="c-name-error" className="text-sm text-destructive" role="alert">{state.errors.name[0]}</p>
           )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="c-email">Email *</Label>
-          <Input id="c-email" name="email" type="email" placeholder="you@example.com" required />
+          <Input id="c-email" name="email" type="email" placeholder="you@example.com" required aria-describedby={state?.errors?.email ? "c-email-error" : undefined} />
           {state?.errors?.email && (
-            <p className="text-sm text-destructive">{state.errors.email[0]}</p>
+            <p id="c-email-error" className="text-sm text-destructive" role="alert">{state.errors.email[0]}</p>
           )}
         </div>
       </div>
@@ -49,9 +49,9 @@ export function ContactForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="c-subject">Subject *</Label>
-          <Input id="c-subject" name="subject" placeholder="How can we help?" required />
+          <Input id="c-subject" name="subject" placeholder="How can we help?" required aria-describedby={state?.errors?.subject ? "c-subject-error" : undefined} />
           {state?.errors?.subject && (
-            <p className="text-sm text-destructive">{state.errors.subject[0]}</p>
+            <p id="c-subject-error" className="text-sm text-destructive" role="alert">{state.errors.subject[0]}</p>
           )}
         </div>
       </div>
@@ -64,9 +64,10 @@ export function ContactForm() {
           rows={5}
           placeholder="Write your message…"
           required
+          aria-describedby={state?.errors?.message ? "c-message-error" : undefined}
         />
         {state?.errors?.message && (
-          <p className="text-sm text-destructive">{state.errors.message[0]}</p>
+          <p id="c-message-error" className="text-sm text-destructive" role="alert">{state.errors.message[0]}</p>
         )}
       </div>
 

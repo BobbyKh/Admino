@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 function parseConfig(raw: string | null): Record<string, string> {
   if (!raw) return {};
@@ -66,7 +67,7 @@ export function TabsBlock({ config }: { config: string | null }) {
       <div className="py-6">
         <div
           className="prose prose-neutral dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: tabs[active]?.content || "" }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(tabs[active]?.content || "") }}
         />
       </div>
     </section>

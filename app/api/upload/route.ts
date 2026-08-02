@@ -2,17 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
+import { getSessionUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const folder = (formData.get("folder") as string) || "maiti/media";
 
     if (!file || file.size === 0) {
       return NextResponse.json({ error: "Please choose a file." }, { status: 400 });
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.` },
+        { status: 400 }
+      );
     }
 
     const isImage = file.type.startsWith("image/");

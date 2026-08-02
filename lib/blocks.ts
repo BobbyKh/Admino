@@ -9,7 +9,6 @@ import {
   LayoutGrid,
   MousePointerClick,
   Newspaper,
-  Quote,
   MapPin,
   Code2,
   FormInput,
@@ -27,7 +26,6 @@ import {
   ChevronRight,
   CreditCard,
   CheckCircle,
-  Timer,
   FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";

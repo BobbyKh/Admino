@@ -2,7 +2,7 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { cache } from "react";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sites } from "@/lib/db/schema";
 import type { Site } from "@/lib/db/schema";

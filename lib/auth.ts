@@ -10,17 +10,14 @@ import { verifyPassword } from "@/lib/password";
 
 const SESSION_COOKIE = "maiti_admin_session";
 
-// In production AUTH_SECRET MUST be set — the fallback is a dev-only convenience.
-// The check is lazy (inside the guards below) so public pages/actions never break
-// when admin auth isn't configured.
-const AUTH_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET ?? "maiti-resort-dev-secret-change-me"
-);
-
-function assertAuthSecret() {
-  if (process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET) {
-    throw new Error("AUTH_SECRET environment variable is required in production.");
+function getAuthSecret(): Uint8Array {
+  if (!process.env.AUTH_SECRET) {
+    throw new Error(
+      "AUTH_SECRET environment variable is required. " +
+      "Set it in your .env.local file (development) or environment variables (production)."
+    );
   }
+  return new TextEncoder().encode(process.env.AUTH_SECRET);
 }
 
 // ─── Roles ───────────────────────────────────────────────────────────────────
@@ -55,12 +52,12 @@ export function hasMinRole(userRole: Role, requiredRole: Role): boolean {
 // ─── Session Management ──────────────────────────────────────────────────────
 
 export async function createSession(userId: number) {
-  assertAuthSecret();
+  const secret = getAuthSecret();
   const token = await new SignJWT({ sub: String(userId) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(AUTH_SECRET);
+    .sign(secret);
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
@@ -78,13 +75,13 @@ export async function destroySession() {
 }
 
 export async function getSessionUser() {
-  assertAuthSecret();
+  const secret = getAuthSecret();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, AUTH_SECRET);
+    const { payload } = await jwtVerify(token, secret);
     const userId = Number(payload.sub);
     if (!userId) return null;
     const [user] = await db

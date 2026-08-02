@@ -4,11 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactForm } from "@/components/site/contact-form";
 import { getResolvedSiteSettings } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Contact Us",
-  description:
-    "Contact Maiti Resort in Kirtipur 44600, Nepal — +977 974-6510970. Open daily 10 AM–10 PM. Send us a message or book your table.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getResolvedSiteSettings();
+  return {
+    title: "Contact Us",
+    description: `Contact ${settings.siteName} at ${settings.address} — ${settings.phone}. Open ${settings.hours}. Send us a message or book your table.`,
+    openGraph: {
+      title: `Contact Us | ${settings.siteName}`,
+      description: `Reach out to ${settings.siteName}. We'd love to hear from you.`,
+      type: "website",
+    },
+  };
+}
 
 export default async function ContactPage() {
   const settings = await getResolvedSiteSettings();

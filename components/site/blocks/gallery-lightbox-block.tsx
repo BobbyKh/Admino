@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function parseConfig(raw: string | null): Record<string, string> {
@@ -31,6 +31,30 @@ export function GalleryLightboxBlock({ config }: { config: string | null }) {
   const c = parseConfig(config);
   const items = parseItems(c.items);
   const [selected, setSelected] = React.useState<number | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (selected === null) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSelected(null);
+      } else if (selected !== null && e.key === "ArrowLeft" && selected > 0) {
+        setSelected(selected - 1);
+      } else if (selected !== null && e.key === "ArrowRight" && selected < items.length - 1) {
+        setSelected(selected + 1);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    closeButtonRef.current?.focus();
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [selected, items.length]);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -47,6 +71,7 @@ export function GalleryLightboxBlock({ config }: { config: string | null }) {
               key={i}
               onClick={() => setSelected(i)}
               className="group relative aspect-square overflow-hidden rounded-xl"
+              aria-label={`View ${item.alt || item.caption || `image ${i + 1}`}`}
             >
               <Image
                 src={item.src}
@@ -67,15 +92,41 @@ export function GalleryLightboxBlock({ config }: { config: string | null }) {
 
       {selected !== null && (
         <div
-          className="fixed inset- z-50 flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image lightbox"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setSelected(null)}
         >
           <button
+            ref={closeButtonRef}
             onClick={() => setSelected(null)}
             className="absolute right-4 top-4 text-white/80 hover:text-white"
+            aria-label="Close lightbox"
           >
             <X className="size-8" />
           </button>
+
+          {selected > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setSelected(selected - 1); }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="size-10" />
+            </button>
+          )}
+
+          {selected < items.length - 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setSelected(selected + 1); }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white"
+              aria-label="Next image"
+            >
+              <ChevronRight className="size-10" />
+            </button>
+          )}
+
           <div className="relative max-h-[85vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
             <Image
               src={items[selected].src}
@@ -89,6 +140,9 @@ export function GalleryLightboxBlock({ config }: { config: string | null }) {
                 {items[selected].caption}
               </p>
             )}
+            <p className="mt-1 text-center text-xs text-white/50">
+              {selected + 1} / {items.length}
+            </p>
           </div>
         </div>
       )}

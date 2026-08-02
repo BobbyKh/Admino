@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllServerSettings } from "@/lib/data";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -93,6 +94,16 @@ async function callGoogle(apiKey: string, model: string, baseUrl: string, messag
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting
+    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const { allowed } = checkRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "X-RateLimit-Remaining": "0" } }
+      );
+    }
+
     const { messages } = (await req.json()) as { messages: ChatMessage[] };
     if (!messages?.length) {
       return NextResponse.json({ error: "Messages required" }, { status: 400 });

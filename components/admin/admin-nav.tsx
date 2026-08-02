@@ -14,6 +14,7 @@ import {
   LogOut,
   Mail,
   FileText,
+  ScrollText,
   Settings,
   Users,
   UtensilsCrossed,
@@ -60,6 +61,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/admin/settings", label: "Settings", icon: Settings },
       { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/activity", label: "Activity Log", icon: ScrollText },
     ],
   },
 ];

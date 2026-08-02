@@ -171,16 +171,6 @@ export async function getSitePages(siteId: number) {
 
 // ─── Auto-resolving versions (use site from request context) ─────────────────
 
-/**
- * Returns siteId from the current request context.
- * Throws if no site is resolved (callers should handle gracefully).
- */
-async function requireSiteId(): Promise<number> {
-  const siteId = await getResolvedSiteId();
-  if (!siteId) throw new Error("No site resolved from request context");
-  return siteId;
-}
-
 export const getResolvedSiteSettings = cache(async (): Promise<SiteSettings> => {
   const siteId = await getResolvedSiteId();
   return getSiteSettings(siteId);

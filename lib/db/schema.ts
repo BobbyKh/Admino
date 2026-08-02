@@ -16,6 +16,7 @@ export const media = pg.media;
 export const adminUsers = pg.adminUsers;
 export const navLinks = pg.navLinks;
 export const homeSections = pg.homeSections;
+export const activityLogs = pg.activityLogs;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
@@ -29,6 +30,7 @@ export type Media = pg.Media;
 export type AdminUser = pg.AdminUser;
 export type NavLink = pg.NavLink;
 export type HomeSection = pg.HomeSection;
+export type ActivityLog = pg.ActivityLog;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

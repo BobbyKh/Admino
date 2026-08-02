@@ -4,11 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingForm } from "@/components/site/booking-form";
 import { getResolvedSiteSettings } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Book a Table",
-  description:
-    "Reserve your table at Maiti Resort, Kirtipur. Open daily 10 AM–10 PM, NPR 500–1,000 per person. Family friendly with outdoor seating.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getResolvedSiteSettings();
+  return {
+    title: "Book a Table",
+    description: `Reserve your table at ${settings.siteName}. Open ${settings.hours}, ${settings.priceRange} per person. Family friendly with outdoor seating.`,
+    openGraph: {
+      title: `Book a Table | ${settings.siteName}`,
+      description: `Reserve your table at ${settings.siteName}. ${settings.priceRange} per person.`,
+      type: "website",
+    },
+  };
+}
 
 export default async function BookPage() {
   const settings = await getResolvedSiteSettings();

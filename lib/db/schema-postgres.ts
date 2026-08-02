@@ -4,6 +4,8 @@ import {
   integer,
   boolean,
   serial,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -46,7 +48,11 @@ export const pages = pgTable("pages", {
   updatedAt: text("updated_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("pages_site_id_idx").on(t.siteId),
+  slugIdx: index("pages_slug_idx").on(t.slug),
+  siteSlugUnique: uniqueIndex("pages_site_slug_idx").on(t.siteId, t.slug),
+}));
 
 // ─── Page Blocks (replaces homeSections) ─────────────────────────────────────
 
@@ -64,7 +70,9 @@ export const pageBlocks = pgTable("page_blocks", {
   updatedAt: text("updated_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  pageIdIdx: index("page_blocks_page_id_idx").on(t.pageId),
+}));
 
 // ─── Existing Tables (with siteId FK added) ──────────────────────────────────
 
@@ -78,6 +86,7 @@ export const settings = pgTable("settings", {
     .$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   keySiteUnique: { unique: true, columns: [t.key, t.siteId] },
+  siteIdIdx: index("settings_site_id_idx").on(t.siteId),
 }));
 
 export const galleryImages = pgTable("gallery_images", {
@@ -92,16 +101,21 @@ export const galleryImages = pgTable("gallery_images", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("gallery_images_site_id_idx").on(t.siteId),
+}));
 
 export const menuCategories = pgTable("menu_categories", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
+  slug: text("slug").notNull(),
   description: text("description"),
   sortOrder: integer("sort_order").notNull().default(0),
-});
+}, (t) => ({
+  siteIdIdx: index("menu_categories_site_id_idx").on(t.siteId),
+  siteSlugUnique: uniqueIndex("menu_categories_site_slug_idx").on(t.siteId, t.slug),
+}));
 
 export const menuItems = pgTable("menu_items", {
   id: serial("id").primaryKey(),
@@ -116,7 +130,10 @@ export const menuItems = pgTable("menu_items", {
   available: boolean("available").notNull().default(true),
   featured: boolean("featured").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
-});
+}, (t) => ({
+  siteIdIdx: index("menu_items_site_id_idx").on(t.siteId),
+  categoryIdIdx: index("menu_items_category_id_idx").on(t.categoryId),
+}));
 
 export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
@@ -133,7 +150,11 @@ export const bookings = pgTable("bookings", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("bookings_site_id_idx").on(t.siteId),
+  statusIdx: index("bookings_status_idx").on(t.status),
+  createdAtIdx: index("bookings_created_at_idx").on(t.createdAt),
+}));
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -147,7 +168,10 @@ export const messages = pgTable("messages", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("messages_site_id_idx").on(t.siteId),
+  readIdx: index("messages_read_idx").on(t.read),
+}));
 
 export const media = pgTable("media", {
   id: serial("id").primaryKey(),
@@ -165,7 +189,10 @@ export const media = pgTable("media", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("media_site_id_idx").on(t.siteId),
+  folderIdx: index("media_folder_idx").on(t.folder),
+}));
 
 export const navLinks = pgTable("nav_links", {
   id: serial("id").primaryKey(),
@@ -178,7 +205,9 @@ export const navLinks = pgTable("nav_links", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("nav_links_site_id_idx").on(t.siteId),
+}));
 
 export const homeSections = pgTable("home_sections", {
   id: serial("id").primaryKey(),
@@ -191,7 +220,9 @@ export const homeSections = pgTable("home_sections", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (t) => ({
+  siteIdIdx: index("home_sections_site_id_idx").on(t.siteId),
+}));
 
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
@@ -205,6 +236,31 @@ export const adminUsers = pgTable("admin_users", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Activity Logs (multi-tenant) ────────────────────────────────────────────
+
+export const activityLogs = pgTable("activity_logs", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  userId: integer("user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  userName: text("user_name").notNull(),
+  userRole: text("user_role").notNull(),
+  action: text("action").notNull(), // create | update | delete | status_change | login | logout
+  entity: text("entity").notNull(), // settings | gallery | menu | booking | page | site | user | media | navigation | home_section | page_block
+  entityId: integer("entity_id"),
+  entityName: text("entity_name"),
+  details: text("details"), // JSON string with old/new values or description
+  ipAddress: text("ip_address"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("activity_logs_site_id_idx").on(t.siteId),
+  userIdIdx: index("activity_logs_user_id_idx").on(t.userId),
+  actionIdx: index("activity_logs_action_idx").on(t.action),
+  entityIdx: index("activity_logs_entity_idx").on(t.entity),
+  createdAtIdx: index("activity_logs_created_at_idx").on(t.createdAt),
+}));
+
 export type GalleryImage = typeof galleryImages.$inferSelect;
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type MenuItem = typeof menuItems.$inferSelect;
@@ -217,6 +273,7 @@ export type HomeSection = typeof homeSections.$inferSelect;
 export type Site = typeof sites.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type PageBlock = typeof pageBlocks.$inferSelect;
+export type ActivityLog = typeof activityLogs.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

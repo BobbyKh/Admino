@@ -1,16 +1,8 @@
+import { sanitizeHtml } from "@/lib/sanitize";
+
 function parseConfig(raw: string | null): Record<string, string> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
-}
-
-function parseHtml(raw: string | null): string {
-  if (!raw) return "";
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed.html || "";
-  } catch {
-    return "";
-  }
 }
 
 export function RichTextBlock({ config }: { config: string | null }) {
@@ -31,7 +23,7 @@ export function RichTextBlock({ config }: { config: string | null }) {
     <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div
         className="prose prose-neutral dark:prose-invert max-w-none"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
       />
     </section>
   );

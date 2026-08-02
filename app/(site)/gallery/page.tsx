@@ -4,11 +4,18 @@ import { GalleryFilter } from "@/components/site/gallery-filter";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Gallery",
-  description:
-    "Browse photos of Maiti Resort in Kirtipur — our dining spaces, outdoor seating, food and events.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getResolvedSiteSettings();
+  return {
+    title: "Gallery",
+    description: `Browse photos of ${settings.siteName} — our dining spaces, outdoor seating, food and events.`,
+    openGraph: {
+      title: `Gallery | ${settings.siteName}`,
+      description: `A glimpse of ${settings.siteName} — scenic outdoor seating, delicious food and unforgettable moments.`,
+      type: "website",
+    },
+  };
+}
 
 export default async function GalleryPage() {
   const [gallery, settings] = await Promise.all([getResolvedGallery(), getResolvedSiteSettings()]);

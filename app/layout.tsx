@@ -23,23 +23,25 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: {
-    default: "Admino — Build Your Website in Minutes",
-    template: "%s · Admino",
+    default: "Maiti Resort — Dining & Relaxation in Kirtipur",
+    template: "%s · Maiti Resort",
   },
   description:
-    "Admino is a drag-and-drop website builder. Create beautiful, professional websites without writing code. Custom domains, SEO, e-commerce — all built in.",
+    "Maiti Resort is a premier dining and relaxation venue in Kirtipur, Nepal. Enjoy authentic cuisine, cozy ambiance, and exceptional service.",
   keywords: [
-    "website builder",
-    "no code",
-    "drag and drop",
-    "website creator",
-    "online store builder",
-    "Admino",
+    "restaurant",
+    "dining",
+    "resort",
+    "Kirtipur",
+    "Nepal",
+    "Maiti Resort",
+    "food",
+    "cafe",
   ],
   openGraph: {
-    title: "Admino — Build Your Website in Minutes",
+    title: "Maiti Resort — Dining & Relaxation in Kirtipur",
     description:
-      "Create beautiful, professional websites without writing code. Custom domains, SEO, e-commerce — all built in.",
+      "Enjoy authentic cuisine, cozy ambiance, and exceptional service at Maiti Resort.",
     type: "website",
     locale: "en_US",
   },

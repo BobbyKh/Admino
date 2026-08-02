@@ -72,20 +72,20 @@ export function BookingForm() {
   }
 
   return (
-    <form key={formKey} onSubmit={handleSubmit} className="space-y-5">
+    <form key={formKey} onSubmit={handleSubmit} className="space-y-5" aria-label="Booking form">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">Full name *</Label>
-          <Input id="name" name="name" placeholder="Your name" required />
+          <Input id="name" name="name" placeholder="Your name" required aria-describedby={errors?.name ? "name-error" : undefined} />
           {errors?.name && (
-            <p className="text-sm text-destructive">{errors.name[0]}</p>
+            <p id="name-error" className="text-sm text-destructive" role="alert">{errors.name[0]}</p>
           )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email *</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <Input id="email" name="email" type="email" placeholder="you@example.com" required aria-describedby={errors?.email ? "email-error" : undefined} />
           {errors?.email && (
-            <p className="text-sm text-destructive">{errors.email[0]}</p>
+            <p id="email-error" className="text-sm text-destructive" role="alert">{errors.email[0]}</p>
           )}
         </div>
       </div>
@@ -93,9 +93,9 @@ export function BookingForm() {
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="phone">Phone *</Label>
-          <Input id="phone" name="phone" type="tel" placeholder="+977 98XXXXXXXX" required />
+          <Input id="phone" name="phone" type="tel" placeholder="+977 98XXXXXXXX" required aria-describedby={errors?.phone ? "phone-error" : undefined} />
           {errors?.phone && (
-            <p className="text-sm text-destructive">{errors.phone[0]}</p>
+            <p id="phone-error" className="text-sm text-destructive" role="alert">{errors.phone[0]}</p>
           )}
         </div>
         <div className="space-y-2">
@@ -110,6 +110,7 @@ export function BookingForm() {
                   "w-full justify-start gap-2 text-left font-normal",
                   !date && "text-muted-foreground"
                 )}
+                aria-describedby={errors?.date ? "date-error" : undefined}
               >
                 <CalendarDays className="size-4" />
                 {date ? format(date, "PPP") : "Pick a date"}
@@ -126,7 +127,7 @@ export function BookingForm() {
             </PopoverContent>
           </Popover>
           {errors?.date && (
-            <p className="text-sm text-destructive">{errors.date[0]}</p>
+            <p id="date-error" className="text-sm text-destructive" role="alert">{errors.date[0]}</p>
           )}
         </div>
       </div>
@@ -136,7 +137,7 @@ export function BookingForm() {
           <Label>Time *</Label>
           <input type="hidden" name="time" value={time} />
           <Select value={time} onValueChange={setTime} required>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-describedby={errors?.time ? "time-error" : undefined}>
               <SelectValue placeholder="Select a time" />
             </SelectTrigger>
             <SelectContent className="max-h-64">
@@ -148,7 +149,7 @@ export function BookingForm() {
             </SelectContent>
           </Select>
           {errors?.time && (
-            <p className="text-sm text-destructive">{errors.time[0]}</p>
+            <p id="time-error" className="text-sm text-destructive" role="alert">{errors.time[0]}</p>
           )}
         </div>
         <div className="space-y-2">
@@ -156,7 +157,7 @@ export function BookingForm() {
           <div className="relative">
             <Users className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Select value={guests} onValueChange={setGuests} required>
-              <SelectTrigger className="w-full pl-8">
+              <SelectTrigger className="w-full pl-8" aria-describedby={errors?.guests ? "guests-error" : undefined}>
                 <SelectValue placeholder="Guests" />
               </SelectTrigger>
               <SelectContent>
@@ -170,7 +171,7 @@ export function BookingForm() {
           </div>
           <input type="hidden" name="guests" value={guests} />
           {errors?.guests && (
-            <p className="text-sm text-destructive">{errors.guests[0]}</p>
+            <p id="guests-error" className="text-sm text-destructive" role="alert">{errors.guests[0]}</p>
           )}
         </div>
       </div>

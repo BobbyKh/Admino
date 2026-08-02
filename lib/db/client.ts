@@ -22,7 +22,12 @@ export type Db = NodePgDatabase<typeof pgSchema>;
 const globalForDb = globalThis as unknown as { db?: Db };
 
 export function createDb(): Db {
-  const pool = new Pool({ connectionString: DATABASE_URL });
+  const pool = new Pool({
+    connectionString: DATABASE_URL,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  });
   return pgDrizzle(pool, { schema: pgSchema });
 }
 
