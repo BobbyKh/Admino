@@ -7,12 +7,15 @@ import {
   CalendarDays,
   ExternalLink,
   FolderInput,
+  Globe,
   Images,
   LayoutDashboard,
   Link as LinkIcon,
   LogOut,
   Mail,
+  FileText,
   Settings,
+  Users,
   UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,19 +29,21 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: "Builder",
+    items: [
+      { href: "/admin/sites", label: "Sites", icon: Globe },
+      { href: "/admin/pages", label: "Pages", icon: FileText },
+      { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
+      { href: "/admin/homepage", label: "Legacy Sections", icon: Blocks },
+    ],
+  },
+  {
     label: "Content",
     items: [
       { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
       { href: "/admin/messages", label: "Messages", icon: Mail },
       { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/admin/gallery", label: "Gallery", icon: Images },
-    ],
-  },
-  {
-    label: "Builder",
-    items: [
-      { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
-      { href: "/admin/homepage", label: "Homepage Sections", icon: Blocks },
     ],
   },
   {
@@ -51,6 +56,7 @@ const NAV_GROUPS = [
     label: "Configuration",
     items: [
       { href: "/admin/settings", label: "Settings", icon: Settings },
+      { href: "/admin/users", label: "Users", icon: Users },
     ],
   },
 ];
@@ -108,14 +114,16 @@ export function AdminNav({ adminName }: { adminName: string }) {
           Signed in as <span className="font-medium text-foreground">{adminName}</span>
         </div>
         <div className="grid gap-1.5">
-          <Link
-            href="/"
-            target="_blank"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <ExternalLink className="size-4" />
-            View site
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              target="_blank"
+              className="flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ExternalLink className="size-4" />
+              View site
+            </Link>
+          </div>
           <form action={adminLogout}>
             <button
               type="submit"

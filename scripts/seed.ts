@@ -1,11 +1,10 @@
 /**
- * Seed script — creates tables (via drizzle-kit push first), admin user,
- * default settings, gallery and menu. Works on both SQLite (local) and
- * PostgreSQL (production), matching the driver selected by DATABASE_URL.
+ * Seed script — creates admin user, default site, default settings, gallery and menu.
+ * Requires PostgreSQL with DATABASE_URL set.
  * Usage: bun run db:seed
  */
 import { eq } from "drizzle-orm";
-import { db, closeDb, isPostgres } from "../lib/db/client";
+import { db, closeDb } from "../lib/db/client";
 import { hashPassword } from "../lib/password";
 import { DEFAULT_SETTINGS } from "../lib/settings";
 import {
@@ -15,18 +14,35 @@ import {
   menuCategories,
   menuItems,
   navLinks,
+  pages,
+  pageBlocks,
   settings,
+  sites,
 } from "../lib/db/schema";
 
 async function main() {
-  console.log(`Seeding database (${isPostgres ? "PostgreSQL" : "SQLite"})…`);
+  console.log("Seeding PostgreSQL database…");
+
+  // Seed default site
+  const [existingSite] = await db.select().from(sites).where(eq(sites.slug, "default"));
+  let siteId = existingSite?.id;
+  if (!siteId) {
+    const [newSite] = await db.insert(sites).values({
+      name: process.env.SITE_NAME ?? "Maiti Resort",
+      slug: "default",
+      template: "restaurant",
+      published: true,
+    }).returning();
+    siteId = newSite.id;
+  }
+  console.log(`✔ Site ready (id: ${siteId})`);
 
   // Seed settings
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const now = new Date().toISOString();
     await db
       .insert(settings)
-      .values({ key, value, updatedAt: now })
+      .values({ key, siteId, value, updatedAt: now })
       .onConflictDoUpdate({
         target: settings.key,
         set: { value, updatedAt: now },
@@ -69,6 +85,7 @@ async function main() {
     ];
     for (const [i, p] of photos.entries()) {
       await db.insert(galleryImages).values({
+        siteId,
         title: p.title,
         alt: p.title,
         src: p.src,
@@ -92,7 +109,7 @@ async function main() {
       { name: "Coffee & Bar", slug: "coffee-bar", description: "Coffee, beer & wine", sortOrder: 4 },
     ];
     for (const c of categories) {
-      await db.insert(menuCategories).values(c);
+      await db.insert(menuCategories).values({ ...c, siteId });
     }
     const idFor = async (slug: string) => {
       const [row] = await db
@@ -123,7 +140,7 @@ async function main() {
       { categoryId: await idFor("coffee-bar"), name: "House Wine (Glass)", description: "Red or white, served by the glass.", price: 500, featured: false, sortOrder: 4 },
     ];
     for (const item of items) {
-      await db.insert(menuItems).values(item);
+      await db.insert(menuItems).values({ ...item, siteId });
     }
     console.log(`✔ Seeded ${items.length} menu items`);
   } else {
@@ -141,7 +158,7 @@ async function main() {
       { label: "Contact", href: "/contact", sortOrder: 4 },
     ];
     for (const link of links) {
-      await db.insert(navLinks).values({ ...link, visible: true, external: false });
+      await db.insert(navLinks).values({ ...link, siteId, visible: true, external: false });
     }
     console.log(`✔ Seeded ${links.length} navigation links`);
   } else {
@@ -163,6 +180,7 @@ async function main() {
     for (const section of sections) {
       await db.insert(homeSections).values({
         ...section,
+        siteId,
         visible: section.type !== "video",
         config: null,
       });
@@ -170,6 +188,46 @@ async function main() {
     console.log(`✔ Seeded ${sections.length} homepage sections`);
   } else {
     console.log(`✔ Homepage already has ${existingSections.length} sections`);
+  }
+
+  // Seed default homepage for the new page builder system
+  const [existingPage] = await db
+    .select()
+    .from(pages)
+    .where(eq(pages.slug, "home"));
+  if (!existingPage) {
+    const [homePage] = await db
+      .insert(pages)
+      .values({
+        siteId,
+        title: "Home",
+        slug: "home",
+        description: "Homepage",
+        template: "default",
+        published: true,
+        sortOrder: 0,
+      })
+      .returning();
+    console.log(`✔ Seeded homepage (id: ${homePage.id})`);
+
+    const pageSections = [
+      { type: "hero", title: null, sortOrder: 0, config: null },
+      { type: "features", title: null, sortOrder: 1, config: null },
+      { type: "about", title: null, sortOrder: 2, config: null },
+      { type: "menuPreview", title: null, sortOrder: 3, config: null },
+      { type: "gallery", title: null, sortOrder: 4, config: null },
+      { type: "cta", title: null, sortOrder: 5, config: null },
+    ];
+    for (const block of pageSections) {
+      await db.insert(pageBlocks).values({
+        pageId: homePage.id,
+        ...block,
+        visible: true,
+      });
+    }
+    console.log(`✔ Seeded ${pageSections.length} page blocks for homepage`);
+  } else {
+    console.log(`✔ Homepage already exists`);
   }
 
   console.log("✔ Seed complete.");

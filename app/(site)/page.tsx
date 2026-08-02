@@ -67,43 +67,43 @@ export default async function HomePage() {
       {sections.length === 0 && (
         <>
           <SectionRenderer
-            section={{ id: 0, type: "hero", title: null, sortOrder: 0, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "hero", title: null, sortOrder: 0, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "features", title: null, sortOrder: 1, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "features", title: null, sortOrder: 1, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "about", title: null, sortOrder: 2, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "about", title: null, sortOrder: 2, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "video", title: null, sortOrder: 3, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "video", title: null, sortOrder: 3, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "menuPreview", title: null, sortOrder: 4, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "menuPreview", title: null, sortOrder: 4, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "gallery", title: null, sortOrder: 5, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "gallery", title: null, sortOrder: 5, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
           />
           <SectionRenderer
-            section={{ id: 0, type: "cta", title: null, sortOrder: 6, visible: true, config: null, createdAt: "" }}
+            section={{ id: 0, type: "cta", title: null, sortOrder: 6, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}

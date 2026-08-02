@@ -23,6 +23,37 @@ function assertAuthSecret() {
   }
 }
 
+// ─── Roles ───────────────────────────────────────────────────────────────────
+
+export const ROLES = ["super_admin", "admin", "editor", "viewer"] as const;
+export type Role = (typeof ROLES)[number];
+
+/** Permission matrix — higher roles inherit lower permissions. */
+const ROLE_HIERARCHY: Record<Role, number> = {
+  viewer: 0,
+  editor: 1,
+  admin: 2,
+  super_admin: 3,
+};
+
+/** Permissions per role. */
+const ROLE_PERMISSIONS: Record<Role, string[]> = {
+  viewer: ["read"],
+  editor: ["read", "write"],
+  admin: ["read", "write", "manage_content", "manage_users"],
+  super_admin: ["read", "write", "manage_content", "manage_users", "manage_site", "delete"],
+};
+
+export function hasPermission(role: Role, permission: string): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+export function hasMinRole(userRole: Role, requiredRole: Role): boolean {
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+}
+
+// ─── Session Management ──────────────────────────────────────────────────────
+
 export async function createSession(userId: number) {
   assertAuthSecret();
   const token = await new SignJWT({ sub: String(userId) })
@@ -70,6 +101,16 @@ export async function getSessionUser() {
 export async function requireAdmin() {
   const user = await getSessionUser();
   if (!user) redirect("/admin/login");
+  return user;
+}
+
+/** Guard requiring minimum role. Redirects to /admin if insufficient permissions. */
+export async function requireRole(minRole: Role) {
+  const user = await requireAdmin();
+  const userRole = (user.role as Role) ?? "viewer";
+  if (!hasMinRole(userRole, minRole)) {
+    redirect("/admin");
+  }
   return user;
 }
 

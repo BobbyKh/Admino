@@ -543,3 +543,393 @@ export async function reorderHomeSections(orderedIds: number[]) {
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
 }
+
+// ------------------------------------------------------------------ sites
+
+export async function createSite(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const name = String(formData.get("name") ?? "").trim();
+  let slug = String(formData.get("slug") ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  if (!slug) slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!slug) slug = `site-${Date.now()}`;
+  const template = String(formData.get("template") ?? "blank").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+
+  if (!name) return { message: "Site name is required." };
+
+  const { sites } = await import("@/lib/db/schema");
+  await db.insert(sites).values({
+    name,
+    slug,
+    template,
+    description,
+    published: false,
+  });
+  revalidatePath("/admin/sites");
+  return { success: true, message: "Site created." };
+}
+
+export async function updateSite(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const published = formData.get("published") === "on";
+
+  if (!id || !name) return { message: "Site ID and name are required." };
+
+  const { sites } = await import("@/lib/db/schema");
+  await db
+    .update(sites)
+    .set({ name, description, published, updatedAt: new Date().toISOString() })
+    .where(eq(sites.id, id));
+  revalidatePath("/admin/sites");
+  return { success: true, message: "Site updated." };
+}
+
+export async function deleteSite(id: number) {
+  await requireAdmin();
+  const { sites } = await import("@/lib/db/schema");
+  await db.delete(sites).where(eq(sites.id, id));
+  revalidatePath("/admin/sites");
+}
+
+export async function getSites() {
+  await requireAdmin();
+  const { sites } = await import("@/lib/db/schema");
+  return db.select().from(sites);
+}
+
+// ------------------------------------------------------------------ pages (new builder)
+
+export async function getPages(siteId: number) {
+  await requireAdmin();
+  const { pages } = await import("@/lib/db/schema");
+  return db.select().from(pages).where(eq(pages.siteId, siteId)).orderBy(asc(pages.sortOrder));
+}
+
+export async function getPage(id: number) {
+  await requireAdmin();
+  const { pages } = await import("@/lib/db/schema");
+  const [page] = await db.select().from(pages).where(eq(pages.id, id));
+  return page ?? null;
+}
+
+export async function createPage(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const { pages, pageBlocks } = await import("@/lib/db/schema");
+  const siteId = Number(formData.get("siteId"));
+  const title = String(formData.get("title") ?? "").trim();
+  let slug = String(formData.get("slug") ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  if (!slug) slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!slug) slug = `page-${Date.now()}`;
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const template = String(formData.get("template") ?? "default").trim();
+
+  if (!siteId || !title) return { message: "Site ID and title are required." };
+
+  // Check for duplicate slug within the site
+  const [existing] = await db
+    .select()
+    .from(pages)
+    .where(eq(pages.siteId, siteId));
+  if (existing && existing.slug === slug) {
+    return { message: "A page with this slug already exists." };
+  }
+
+  const maxSort = await db
+    .select({ sortOrder: pages.sortOrder })
+    .from(pages)
+    .where(eq(pages.siteId, siteId));
+
+  const sortOrder = maxSort.length > 0 ? Math.max(...maxSort.map((r) => r.sortOrder)) + 1 : 0;
+
+  const [newPage] = await db
+    .insert(pages)
+    .values({
+      siteId,
+      title,
+      slug,
+      description,
+      template,
+      published: false,
+      sortOrder,
+    })
+    .returning();
+
+  revalidatePath("/admin/pages");
+  return { success: true, message: `Page "${title}" created.` };
+}
+
+export async function updatePage(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const { pages } = await import("@/lib/db/schema");
+  const id = Number(formData.get("id"));
+  const title = String(formData.get("title") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const template = String(formData.get("template") ?? "default").trim();
+  const published = formData.get("published") === "on";
+
+  if (!id || !title) return { message: "Page ID and title are required." };
+
+  await db
+    .update(pages)
+    .set({ title, slug, description, template, published, updatedAt: new Date().toISOString() })
+    .where(eq(pages.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+  return { success: true, message: "Page updated." };
+}
+
+export async function deletePage(id: number) {
+  await requireAdmin();
+  const { pages } = await import("@/lib/db/schema");
+  await db.delete(pages).where(eq(pages.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+}
+
+export async function reorderPages(orderedIds: number[]) {
+  await requireAdmin();
+  const { pages } = await import("@/lib/db/schema");
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(pages).set({ sortOrder: i }).where(eq(pages.id, orderedIds[i]));
+  }
+  revalidatePath("/admin/pages");
+}
+
+// ------------------------------------------------------------------ page blocks
+
+export async function getPageBlocks(pageId: number) {
+  await requireAdmin();
+  const { pageBlocks } = await import("@/lib/db/schema");
+  return db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
+}
+
+export async function addPageBlock(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const { pageBlocks } = await import("@/lib/db/schema");
+  const { getDefaultConfig } = await import("@/lib/blocks");
+  const pageId = Number(formData.get("pageId"));
+  const type = String(formData.get("type") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim() || null;
+
+  if (!pageId || !type) return { message: "Page ID and block type are required." };
+
+  const maxSort = await db
+    .select({ sortOrder: pageBlocks.sortOrder })
+    .from(pageBlocks)
+    .where(eq(pageBlocks.pageId, pageId));
+  const sortOrder = maxSort.length > 0 ? Math.max(...maxSort.map((r) => r.sortOrder)) + 1 : 0;
+
+  const defaultConfig = getDefaultConfig(type);
+
+  await db.insert(pageBlocks).values({
+    pageId,
+    type,
+    title,
+    sortOrder,
+    visible: true,
+    config: Object.keys(defaultConfig).length > 0 ? JSON.stringify(defaultConfig) : null,
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+  return { success: true, message: "Block added." };
+}
+
+export async function updatePageBlock(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  await requireAdmin();
+  const { pageBlocks } = await import("@/lib/db/schema");
+  const id = Number(formData.get("id"));
+  const title = String(formData.get("title") ?? "").trim() || null;
+  const visible = formData.get("visible") === "on";
+  const config = String(formData.get("config") ?? "").trim() || null;
+
+  if (!id) return { message: "Block ID is required." };
+
+  await db
+    .update(pageBlocks)
+    .set({ title, visible, config, updatedAt: new Date().toISOString() })
+    .where(eq(pageBlocks.id, id));
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+  return { success: true, message: "Block updated." };
+}
+
+export async function deletePageBlock(id: number) {
+  await requireAdmin();
+  const { pageBlocks } = await import("@/lib/db/schema");
+  await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+}
+
+export async function reorderPageBlocks(orderedIds: number[]) {
+  await requireAdmin();
+  const { pageBlocks } = await import("@/lib/db/schema");
+  for (let i = 0; i < orderedIds.length; i++) {
+    await db.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));
+  }
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
+}
+
+// ------------------------------------------------------------------ admin users
+
+export async function getAdminUsers() {
+  await requireAdmin();
+  const { adminUsers } = await import("@/lib/db/schema");
+  return db.select().from(adminUsers);
+}
+
+export async function createAdminUser(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const user = await requireAdmin();
+  const { adminUsers } = await import("@/lib/db/schema");
+  const { hashPassword } = await import("@/lib/password");
+  const { hasMinRole } = await import("@/lib/auth");
+
+  // Only admin+ can create users
+  const userRole = (user.role as string) ?? "viewer";
+  if (!hasMinRole(userRole as "admin" | "super_admin" | "editor" | "viewer", "admin")) {
+    return { message: "You don't have permission to create users." };
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "").trim();
+  const role = String(formData.get("role") ?? "viewer").trim();
+
+  if (!name || !email || !password) {
+    return { message: "Name, email, and password are required." };
+  }
+  if (password.length < 6) {
+    return { message: "Password must be at least 6 characters." };
+  }
+
+  // Only super_admin can create other super_admins
+  if (role === "super_admin" && userRole !== "super_admin") {
+    return { message: "Only super admins can create super admin accounts." };
+  }
+
+  const [existing] = await db
+    .select()
+    .from(adminUsers)
+    .where(eq(adminUsers.email, email));
+  if (existing) {
+    return { message: "A user with this email already exists." };
+  }
+
+  await db.insert(adminUsers).values({
+    name,
+    email,
+    passwordHash: await hashPassword(password),
+    role,
+  });
+
+  revalidatePath("/admin/users");
+  return { success: true, message: "User created." };
+}
+
+export async function updateAdminUser(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState> {
+  const currentUser = await requireAdmin();
+  const { adminUsers } = await import("@/lib/db/schema");
+  const { hasMinRole } = await import("@/lib/auth");
+
+  const userRole = (currentUser.role as string) ?? "viewer";
+  if (!hasMinRole(userRole as "admin" | "super_admin" | "editor" | "viewer", "admin")) {
+    return { message: "You don't have permission to edit users." };
+  }
+
+  const id = Number(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = String(formData.get("role") ?? "viewer").trim();
+  const newPassword = String(formData.get("password") ?? "").trim();
+
+  if (!id || !name || !email) {
+    return { message: "ID, name, and email are required." };
+  }
+
+  // Only super_admin can change roles to super_admin
+  if (role === "super_admin" && userRole !== "super_admin") {
+    return { message: "Only super admins can assign super admin role." };
+  }
+
+  // Cannot change your own role
+  if (id === currentUser.id && role !== currentUser.role) {
+    return { message: "You cannot change your own role." };
+  }
+
+  const updateData: Record<string, unknown> = { name, email, role };
+
+  // Only update password if provided
+  if (newPassword) {
+    if (newPassword.length < 6) {
+      return { message: "Password must be at least 6 characters." };
+    }
+    const { hashPassword } = await import("@/lib/password");
+    updateData.passwordHash = await hashPassword(newPassword);
+  }
+
+  await db
+    .update(adminUsers)
+    .set(updateData)
+    .where(eq(adminUsers.id, id));
+
+  revalidatePath("/admin/users");
+  return { success: true, message: "User updated." };
+}
+
+export async function deleteAdminUser(id: number) {
+  const currentUser = await requireAdmin();
+  const { adminUsers } = await import("@/lib/db/schema");
+  const { hasMinRole } = await import("@/lib/auth");
+
+  const userRole = (currentUser.role as string) ?? "viewer";
+  if (!hasMinRole(userRole as "admin" | "super_admin" | "editor" | "viewer", "admin")) {
+    return { message: "You don't have permission to delete users." };
+  }
+
+  // Cannot delete yourself
+  if (id === currentUser.id) {
+    return { message: "You cannot delete your own account." };
+  }
+
+  await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  revalidatePath("/admin/users");
+}

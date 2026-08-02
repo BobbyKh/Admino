@@ -1,35 +1,36 @@
-import { isPostgres } from "./client";
-import * as sqlite from "./schema-sqlite";
-import * as postgres from "./schema-postgres";
+import * as pg from "./schema-postgres";
 
 /**
- * Dialect facade — the app imports tables from "@/lib/db/schema" and gets the
- * runtime-selected dialect's table objects (SQLite locally, Postgres in prod),
- * typed through the SQLite schema so row shapes stay consistent everywhere.
+ * PostgreSQL-only schema — app imports tables from "@/lib/db/schema".
  */
-export const settings = (isPostgres ? postgres.settings : sqlite.settings) as typeof sqlite.settings;
-export const galleryImages = (isPostgres
-  ? postgres.galleryImages
-  : sqlite.galleryImages) as typeof sqlite.galleryImages;
-export const menuCategories = (isPostgres
-  ? postgres.menuCategories
-  : sqlite.menuCategories) as typeof sqlite.menuCategories;
-export const menuItems = (isPostgres ? postgres.menuItems : sqlite.menuItems) as typeof sqlite.menuItems;
-export const bookings = (isPostgres ? postgres.bookings : sqlite.bookings) as typeof sqlite.bookings;
-export const messages = (isPostgres ? postgres.messages : sqlite.messages) as typeof sqlite.messages;
-export const media = (isPostgres ? postgres.media : sqlite.media) as typeof sqlite.media;
-export const adminUsers = (isPostgres ? postgres.adminUsers : sqlite.adminUsers) as typeof sqlite.adminUsers;
-export const navLinks = (isPostgres ? postgres.navLinks : sqlite.navLinks) as typeof sqlite.navLinks;
-export const homeSections = (isPostgres ? postgres.homeSections : sqlite.homeSections) as typeof sqlite.homeSections;
+export const sites = pg.sites;
+export const pages = pg.pages;
+export const pageBlocks = pg.pageBlocks;
+export const settings = pg.settings;
+export const galleryImages = pg.galleryImages;
+export const menuCategories = pg.menuCategories;
+export const menuItems = pg.menuItems;
+export const bookings = pg.bookings;
+export const messages = pg.messages;
+export const media = pg.media;
+export const adminUsers = pg.adminUsers;
+export const navLinks = pg.navLinks;
+export const homeSections = pg.homeSections;
 
-export type GalleryImage = typeof sqlite.galleryImages.$inferSelect;
-export type MenuCategory = typeof sqlite.menuCategories.$inferSelect;
-export type MenuItem = typeof sqlite.menuItems.$inferSelect;
-export type Booking = typeof sqlite.bookings.$inferSelect;
-export type Message = typeof sqlite.messages.$inferSelect;
-export type Media = typeof sqlite.media.$inferSelect;
-export type AdminUser = typeof sqlite.adminUsers.$inferSelect;
-export type NavLink = typeof sqlite.navLinks.$inferSelect;
-export type HomeSection = typeof sqlite.homeSections.$inferSelect;
+export type Site = pg.Site;
+export type Page = pg.Page;
+export type PageBlock = pg.PageBlock;
+export type GalleryImage = pg.GalleryImage;
+export type MenuCategory = pg.MenuCategory;
+export type MenuItem = pg.MenuItem;
+export type Booking = pg.Booking;
+export type Message = pg.Message;
+export type Media = pg.Media;
+export type AdminUser = pg.AdminUser;
+export type NavLink = pg.NavLink;
+export type HomeSection = pg.HomeSection;
 
-export type NewBooking = typeof sqlite.bookings.$inferInsert;
+export type NewBooking = pg.NewBooking;
+export type NewSite = pg.NewSite;
+export type NewPage = pg.NewPage;
+export type NewPageBlock = pg.NewPageBlock;
