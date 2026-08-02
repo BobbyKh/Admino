@@ -74,8 +74,8 @@ export function AdminNav({ adminName, sites, currentSiteId }: { adminName: strin
           <UtensilsCrossed className="size-4" />
         </span>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">Maiti Resort</p>
-          <p className="text-xs text-muted-foreground">Admin panel</p>
+          <p className="text-sm font-semibold">Admino</p>
+          <p className="text-xs text-muted-foreground">Web Builder</p>
         </div>
       </div>
 

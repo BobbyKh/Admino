@@ -32,7 +32,7 @@ export const getResolvedSite = cache(async (): Promise<Site | null> => {
 
   // 2. Check hostname-based resolution
   const host = hdrs.get("x-request-host") ?? "";
-  if (host && host !== "localhost") {
+  if (host) {
     const [site] = await db
       .select()
       .from(sites)
