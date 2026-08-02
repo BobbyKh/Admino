@@ -160,6 +160,10 @@ export function SettingsForm({
               <Field label="Primary button text" name="heroCtaPrimary" value={initial.heroCtaPrimary} />
               <Field label="Secondary button text" name="heroCtaSecondary" value={initial.heroCtaSecondary} />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Primary button link" name="heroCtaPrimaryLink" value={initial.heroCtaPrimaryLink} placeholder="/contact" />
+              <Field label="Secondary button link" name="heroCtaSecondaryLink" value={initial.heroCtaSecondaryLink} placeholder="/gallery" />
+            </div>
           </Section>
 
           {/* Section Visibility */}
@@ -173,7 +177,7 @@ export function SettingsForm({
                 label="Features section"
                 name="showFeatures"
                 checked={initial.showFeatures === "true"}
-                description="The 'Why Maiti Resort' feature cards section"
+                description="The feature cards section on the homepage"
               />
               <ToggleField
                 label="About section"
@@ -197,7 +201,7 @@ export function SettingsForm({
                 label="Call-to-action banner"
                 name="showCta"
                 checked={initial.showCta === "true"}
-                description="The bottom CTA banner with reserve button"
+                description="The bottom CTA banner with call-to-action buttons"
               />
             </div>
           </Section>
@@ -371,8 +375,8 @@ export function SettingsForm({
               <PasswordField label="Password / app password" name="smtpPass" value={initial.smtpPass} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="From address" name="smtpFrom" value={initial.smtpFrom} placeholder="Maiti Resort <no-reply@...>" />
-              <Field label="Admin notify email" name="adminNotifyEmail" value={initial.adminNotifyEmail} placeholder="admin@maitiresort.com" />
+              <Field label="From address" name="smtpFrom" value={initial.smtpFrom} placeholder="Your Site <no-reply@...>" />
+              <Field label="Admin notify email" name="adminNotifyEmail" value={initial.adminNotifyEmail} placeholder="admin@yoursite.com" />
             </div>
           </Section>
 

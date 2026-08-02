@@ -1,8 +1,12 @@
-import { Coffee, Heart, Leaf, SquareParking, Sun, Users } from "lucide-react";
+import { Coffee, Heart, Leaf, SquareParking, Sun, Users, Globe, ShoppingCart, Zap, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Feature } from "@/lib/settings";
 
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = { leaf: Leaf, sun: Sun, users: Users, parking: SquareParking, coffee: Coffee, heart: Heart, star: Leaf, home: Leaf };
+const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  leaf: Leaf, sun: Sun, users: Users, parking: SquareParking,
+  coffee: Coffee, heart: Heart, star: Leaf, home: Leaf,
+  globe: Globe, cart: ShoppingCart, zap: Zap, shield: Shield,
+};
 
 function FeatureCard({ feature }: { feature: Feature }) {
   const Icon = ICONS[feature.icon] ?? Leaf;
@@ -17,13 +21,13 @@ function FeatureCard({ feature }: { feature: Feature }) {
   );
 }
 
-export function FeaturesSection({ features }: { features: Feature[] }) {
+export function FeaturesSection({ features, title, subtitle }: { features: Feature[]; title?: string; subtitle?: string }) {
   if (features.length === 0) return null;
   return (
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mb-12 text-center">
-        <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">Why Maiti Resort</p>
-        <h2 className="font-heading text-3xl font-semibold sm:text-4xl">A getaway that has it all</h2>
+        {subtitle && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{subtitle}</p>}
+        <h2 className="font-heading text-3xl font-semibold sm:text-4xl">{title || "Features"}</h2>
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {features.map((f) => <FeatureCard key={f.title} feature={f} />)}

@@ -32,7 +32,7 @@ export function SectionRenderer({
     case "hero":
       return <HeroSection settings={settings} />;
     case "features":
-      return <FeaturesSection features={settings.features} />;
+      return <FeaturesSection features={settings.features} title={config.title} subtitle={config.subtitle} />;
     case "about":
       return <AboutSection settings={settings} />;
     case "video":

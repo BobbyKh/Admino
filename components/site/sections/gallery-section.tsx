@@ -12,7 +12,7 @@ export function GallerySection({ images }: { images: GalleryImage[] }) {
         <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">Gallery</p>
-            <h2 className="font-heading text-3xl font-semibold sm:text-4xl">Moments at Maiti Resort</h2>
+            <h2 className="font-heading text-3xl font-semibold sm:text-4xl">Gallery</h2>
           </div>
           <Link href="/gallery" className="group flex items-center gap-2 text-sm font-medium text-primary hover:underline">View all photos<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>
         </div>

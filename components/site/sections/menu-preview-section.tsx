@@ -10,8 +10,8 @@ export function MenuPreviewSection({ items }: { items: MenuItem[] }) {
     <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="mb-12 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">Our Menu</p>
-          <h2 className="font-heading text-3xl font-semibold sm:text-4xl">Guest favourites</h2>
+          <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">Menu</p>
+          <h2 className="font-heading text-3xl font-semibold sm:text-4xl">Featured Items</h2>
         </div>
         <Link href="/menu" className="group flex items-center gap-2 text-sm font-medium text-primary hover:underline">Full menu<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>
       </div>
@@ -22,7 +22,7 @@ export function MenuPreviewSection({ items }: { items: MenuItem[] }) {
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-heading font-semibold">{item.name}</h3>
-                <span className="shrink-0 font-semibold text-primary">NPR {item.price}</span>
+                <span className="shrink-0 font-semibold text-primary">{item.price}</span>
               </div>
               {item.description && <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{item.description}</p>}
             </CardContent>

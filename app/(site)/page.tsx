@@ -9,11 +9,13 @@ import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: "Maiti Resort — Dining & Relaxation in Kirtipur, Nepal",
-  description:
-    "A peaceful, scenic dining getaway just 5 km from Balkhu. Open daily 10 AM–10 PM. Breakfast, lunch, dinner, dessert, coffee, beer & wine. ★ 4.2 rated resort in Kirtipur 44600, Nepal.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getResolvedSiteSettings();
+  return {
+    title: settings.siteName ? `${settings.siteName} — ${settings.tagline || "Welcome"}` : undefined,
+    description: settings.description?.slice(0, 160) || undefined,
+  };
+}
 
 export default async function HomePage() {
   const [settings, gallery, featured, sections] = await Promise.all([
@@ -23,28 +25,26 @@ export default async function HomePage() {
     getResolvedHomeSections(),
   ]);
 
-  const jsonLd = {
+  const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
-    "@type": "Restaurant",
+    "@type": "Organization",
     name: settings.siteName,
-    image: settings.heroImage,
-    telephone: settings.phone,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Kirtipur",
-      postalCode: "44600",
-      addressCountry: "NP",
-    },
-    priceRange: settings.priceRange,
-    servesCuisine: ["Fast Food", "Nepali", "Continental"],
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: settings.rating,
-      reviewCount: settings.reviewCount,
-    },
-    openingHours: "Mo-Su 10:00-22:00",
     url: process.env.SITE_URL ?? "http://localhost:3000",
   };
+
+  if (settings.heroImage) Object.assign(jsonLd, { logo: settings.heroImage });
+  if (settings.description) Object.assign(jsonLd, { description: settings.description.slice(0, 300) });
+  if (settings.phone) Object.assign(jsonLd, { telephone: settings.phone });
+  if (settings.address) Object.assign(jsonLd, { address: settings.address });
+  if (settings.rating) {
+    Object.assign(jsonLd, {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: settings.rating,
+        reviewCount: settings.reviewCount || "0",
+      },
+    });
+  }
 
   return (
     <>

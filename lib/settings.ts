@@ -14,6 +14,8 @@ export const SETTING_KEYS = [
   "heroBadge",
   "heroCtaPrimary",
   "heroCtaSecondary",
+  "heroCtaPrimaryLink",
+  "heroCtaSecondaryLink",
   // Homepage section toggles
   "showFeatures",
   "showAbout",
@@ -113,6 +115,8 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   heroBadge: "Open daily · 10:00 AM – 10:00 PM",
   heroCtaPrimary: "Reserve a Table",
   heroCtaSecondary: "View Menu",
+  heroCtaPrimaryLink: "/book",
+  heroCtaSecondaryLink: "/menu",
   // Homepage section toggles (all visible by default)
   showFeatures: "true",
   showAbout: "true",
@@ -212,6 +216,8 @@ export interface SiteSettings {
   heroBadge: string;
   heroCtaPrimary: string;
   heroCtaSecondary: string;
+  heroCtaPrimaryLink: string;
+  heroCtaSecondaryLink: string;
   // Homepage section toggles
   showFeatures: string;
   showAbout: string;
