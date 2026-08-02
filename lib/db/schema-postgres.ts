@@ -69,14 +69,16 @@ export const pageBlocks = pgTable("page_blocks", {
 // ─── Existing Tables (with siteId FK added) ──────────────────────────────────
 
 export const settings = pgTable("settings", {
-  key: text("key").primaryKey(),
+  id: serial("id").primaryKey(),
+  key: text("key").notNull(),
   siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
   value: text("value").notNull(),
   updatedAt: text("updated_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-    
-});
+}, (t) => ({
+  keySiteUnique: { unique: true, columns: [t.key, t.siteId] },
+}));
 
 export const galleryImages = pgTable("gallery_images", {
   id: serial("id").primaryKey(),
@@ -197,6 +199,7 @@ export const adminUsers = pgTable("admin_users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("admin"), // super_admin | admin | editor | viewer
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "set null" }),
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),

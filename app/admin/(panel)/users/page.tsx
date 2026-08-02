@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Eye,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ import {
 import type { AdminUser } from "@/lib/db/schema";
 import {
   getAdminUsers,
+  getSitesForCurrentUser,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
@@ -52,6 +54,7 @@ import {
 import { useActionState } from "react";
 
 type AdminActionState = { success?: boolean; message?: string };
+type Site = { id: number; name: string; slug: string };
 
 const ROLES = [
   { value: "super_admin", label: "Super Admin", icon: ShieldAlert, color: "text-red-600" },
@@ -69,6 +72,7 @@ const ROLE_BADGE: Record<string, string> = {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -78,8 +82,9 @@ export default function UsersPage() {
   const [updateState, updateFormAction] = useActionState<AdminActionState, FormData>(updateAdminUser, {});
 
   useEffect(() => {
-    getAdminUsers().then((u) => {
+    Promise.all([getAdminUsers(), getSitesForCurrentUser()]).then(([u, s]) => {
       setUsers(u);
+      setSites(s);
       setLoading(false);
     });
   }, []);
@@ -159,6 +164,23 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
+              {sites.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="siteId">Assign to Site</Label>
+                  <select
+                    id="siteId"
+                    name="siteId"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">No site (global)</option>
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Creating..." : "Create User"}
               </Button>
@@ -184,6 +206,7 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Site</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -191,6 +214,7 @@ export default function UsersPage() {
                 <TableBody>
                   {users.map((user) => {
                     const RoleIcon = getRoleIcon(user.role);
+                    const userSite = sites.find((s) => s.id === user.siteId);
                     return (
                       <TableRow key={user.id}>
                         <TableCell>
@@ -208,6 +232,16 @@ export default function UsersPage() {
                           <Badge className={ROLE_BADGE[user.role] ?? ""} variant="outline">
                             {ROLES.find((r) => r.value === user.role)?.label ?? user.role}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {userSite ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Globe className="size-3" />
+                              {userSite.name}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Global</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(user.createdAt).toLocaleDateString()}
@@ -305,6 +339,23 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
+              {sites.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Assign to Site</Label>
+                  <select
+                    name="siteId"
+                    defaultValue={editingUser.siteId ?? ""}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">No site (global)</option>
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}
               </Button>

@@ -1,4 +1,4 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { UtensilsCrossed } from "lucide-react";
 import { db } from "@/lib/db";
 import { menuCategories, menuItems } from "@/lib/db/schema";
@@ -10,14 +10,16 @@ import { getMenu } from "@/lib/data";
 import { deleteMenuCategory, deleteMenuItem } from "@/lib/cms-actions";
 import { AddMenuItemForm } from "@/components/admin/menu-item-form";
 import { AddCategoryForm } from "@/components/admin/add-category-form";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMenuPage() {
+  const siteId = await getAdminSiteId();
   const [categories, menu, items] = await Promise.all([
-    db.select().from(menuCategories).orderBy(asc(menuCategories.sortOrder)),
-    getMenu(),
-    db.select().from(menuItems).orderBy(asc(menuItems.sortOrder)),
+    db.select().from(menuCategories).where(eq(menuCategories.siteId, siteId)).orderBy(asc(menuCategories.sortOrder)),
+    getMenu(siteId),
+    db.select().from(menuItems).where(eq(menuItems.siteId, siteId)).orderBy(asc(menuItems.sortOrder)),
   ]);
 
   return (

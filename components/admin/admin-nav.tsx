@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
+import { SiteSelector } from "@/components/admin/site-selector";
+
+type Site = { id: number; name: string; slug: string };
 
 const NAV_GROUPS = [
   {
@@ -61,7 +64,7 @@ const NAV_GROUPS = [
   },
 ];
 
-export function AdminNav({ adminName }: { adminName: string }) {
+export function AdminNav({ adminName, sites, currentSiteId }: { adminName: string; sites: Site[]; currentSiteId: number }) {
   const pathname = usePathname();
 
   return (
@@ -109,6 +112,7 @@ export function AdminNav({ adminName }: { adminName: string }) {
         ))}
       </nav>
 
+      <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       <div className="border-t p-3">
         <div className="mb-2 px-3 py-1.5 text-xs text-muted-foreground">
           Signed in as <span className="font-medium text-foreground">{adminName}</span>

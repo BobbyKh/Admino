@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { asc, desc, count } from "drizzle-orm";
+import { asc, desc, count, eq } from "drizzle-orm";
 import { Images, Plus, Star } from "lucide-react";
 import { db } from "@/lib/db";
 import { galleryImages } from "@/lib/db/schema";
@@ -12,6 +12,7 @@ import { ToggleFeaturedButton } from "@/components/admin/toggle-featured-button"
 import { GalleryImageForm } from "@/components/admin/gallery-image-form";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,17 @@ export default async function AdminGalleryPage({
 }) {
   const params = await searchParams;
   const { page, pageSize, offset } = getPaginationParams(params);
+  const siteId = await getAdminSiteId();
 
-  const [totalResult] = await db.select({ value: count() }).from(galleryImages);
+  const siteFilter = eq(galleryImages.siteId, siteId);
+  const [totalResult] = await db.select({ value: count() }).from(galleryImages).where(siteFilter);
   const total = totalResult.value;
   const meta = paginationMeta(total, page, pageSize);
 
   const rows = await db
     .select()
     .from(galleryImages)
+    .where(siteFilter)
     .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt))
     .limit(pageSize)
     .offset(offset);

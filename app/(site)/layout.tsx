@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { ChatWidget } from "@/components/site/chat-widget";
-import { getSiteSettings, getNavLinks } from "@/lib/data";
+import { getResolvedSiteSettings, getResolvedNavLinks } from "@/lib/data";
 
 export default async function SiteLayout({
   children,
@@ -9,8 +9,8 @@ export default async function SiteLayout({
   children: React.ReactNode;
 }) {
   const [settings, navLinks] = await Promise.all([
-    getSiteSettings(),
-    getNavLinks(),
+    getResolvedSiteSettings(),
+    getResolvedNavLinks(),
   ]);
   return (
     <>

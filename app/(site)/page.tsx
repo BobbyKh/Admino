@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import {
-  getFeaturedItems,
-  getGallery,
-  getHomeSections,
-  getSiteSettings,
+  getResolvedFeaturedItems,
+  getResolvedGallery,
+  getResolvedHomeSections,
+  getResolvedSiteSettings,
 } from "@/lib/data";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
@@ -17,10 +17,10 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const [settings, gallery, featured, sections] = await Promise.all([
-    getSiteSettings(),
-    getGallery(),
-    getFeaturedItems(),
-    getHomeSections(),
+    getResolvedSiteSettings(),
+    getResolvedGallery(),
+    getResolvedFeaturedItems(),
+    getResolvedHomeSections(),
   ]);
 
   const jsonLd = {

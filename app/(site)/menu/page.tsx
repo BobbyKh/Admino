@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { getMenu, getSiteSettings } from "@/lib/data";
+import { getResolvedMenu, getResolvedSiteSettings } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MenuPage() {
-  const [menu, settings] = await Promise.all([getMenu(), getSiteSettings()]);
+  const [menu, settings] = await Promise.all([getResolvedMenu(), getResolvedSiteSettings()]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

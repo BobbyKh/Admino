@@ -13,6 +13,7 @@ import {
 } from "@/lib/email";
 import { requireAdmin } from "@/lib/auth";
 import type { Booking } from "@/lib/db/schema";
+import { getResolvedSiteId } from "@/lib/site-context";
 
 const bookingSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(100),
@@ -64,9 +65,12 @@ export async function createBooking(
     };
   }
 
+  const siteId = await getResolvedSiteId();
+
   const [booking] = await db
     .insert(bookings)
     .values({
+      siteId,
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -124,9 +128,11 @@ export async function submitContact(
   }
 
   const data = parsed.data;
+  const siteId = await getResolvedSiteId();
   const [msg] = await db
     .insert(messages)
     .values({
+      siteId,
       name: data.name,
       email: data.email,
       phone: data.phone || null,

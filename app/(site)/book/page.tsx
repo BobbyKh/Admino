@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Clock, MapPin, Phone, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookingForm } from "@/components/site/booking-form";
-import { getSiteSettings } from "@/lib/data";
+import { getResolvedSiteSettings } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Book a Table",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BookPage() {
-  const settings = await getSiteSettings();
+  const settings = await getResolvedSiteSettings();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

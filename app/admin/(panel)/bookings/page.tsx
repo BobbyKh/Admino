@@ -1,4 +1,4 @@
-import { desc, count } from "drizzle-orm";
+import { desc, count, eq } from "drizzle-orm";
 import { CalendarDays } from "lucide-react";
 import { db } from "@/lib/db";
 import { bookings } from "@/lib/db/schema";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/actions";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +38,17 @@ export default async function AdminBookingsPage({
 }) {
   const params = await searchParams;
   const { page, pageSize, offset } = getPaginationParams(params);
+  const siteId = await getAdminSiteId();
 
-  const [totalResult] = await db.select({ value: count() }).from(bookings);
+  const siteFilter = eq(bookings.siteId, siteId);
+  const [totalResult] = await db.select({ value: count() }).from(bookings).where(siteFilter);
   const total = totalResult.value;
   const meta = paginationMeta(total, page, pageSize);
 
   const rows = await db
     .select()
     .from(bookings)
+    .where(siteFilter)
     .orderBy(desc(bookings.createdAt))
     .limit(pageSize)
     .offset(offset);

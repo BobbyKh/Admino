@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { deleteMessage, toggleMessageRead } from "@/lib/actions";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +19,17 @@ export default async function AdminMessagesPage({
 }) {
   const params = await searchParams;
   const { page, pageSize, offset } = getPaginationParams(params);
+  const siteId = await getAdminSiteId();
 
-  const [totalResult] = await db.select({ value: count() }).from(messages);
+  const siteFilter = eq(messages.siteId, siteId);
+  const [totalResult] = await db.select({ value: count() }).from(messages).where(siteFilter);
   const total = totalResult.value;
   const meta = paginationMeta(total, page, pageSize);
 
   const rows = await db
     .select()
     .from(messages)
+    .where(siteFilter)
     .orderBy(desc(messages.createdAt))
     .limit(pageSize)
     .offset(offset);

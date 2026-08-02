@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getGallery, getSiteSettings } from "@/lib/data";
+import { getResolvedGallery, getResolvedSiteSettings } from "@/lib/data";
 import { GalleryFilter } from "@/components/site/gallery-filter";
 
 export const revalidate = 300;
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function GalleryPage() {
-  const [gallery, settings] = await Promise.all([getGallery(), getSiteSettings()]);
+  const [gallery, settings] = await Promise.all([getResolvedGallery(), getResolvedSiteSettings()]);
   const categories = ["All", ...Array.from(new Set(gallery.map((g) => g.category)))];
 
   return (

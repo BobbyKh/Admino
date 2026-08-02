@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactForm } from "@/components/site/contact-form";
-import { getSiteSettings } from "@/lib/data";
+import { getResolvedSiteSettings } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Contact Us",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const settings = await getSiteSettings();
+  const settings = await getResolvedSiteSettings();
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(
     settings.mapQuery
   )}&output=embed`;

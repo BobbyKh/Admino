@@ -21,6 +21,7 @@ import {
   type SettingKey,
   type SiteSettings,
 } from "@/lib/settings";
+import { getResolvedSiteId } from "@/lib/site-context";
 
 async function getSettingsRows(siteId?: number | null) {
   if (siteId) {
@@ -167,3 +168,45 @@ export async function getSitePages(siteId: number) {
     .where(eq(pages.siteId, siteId))
     .orderBy(asc(pages.sortOrder));
 }
+
+// ─── Auto-resolving versions (use site from request context) ─────────────────
+
+/**
+ * Returns siteId from the current request context.
+ * Throws if no site is resolved (callers should handle gracefully).
+ */
+async function requireSiteId(): Promise<number> {
+  const siteId = await getResolvedSiteId();
+  if (!siteId) throw new Error("No site resolved from request context");
+  return siteId;
+}
+
+export const getResolvedSiteSettings = cache(async (): Promise<SiteSettings> => {
+  const siteId = await getResolvedSiteId();
+  return getSiteSettings(siteId);
+});
+
+export const getResolvedGallery = cache(async () => {
+  const siteId = await getResolvedSiteId();
+  return getGallery(siteId);
+});
+
+export const getResolvedMenu = cache(async () => {
+  const siteId = await getResolvedSiteId();
+  return getMenu(siteId);
+});
+
+export const getResolvedFeaturedItems = cache(async () => {
+  const siteId = await getResolvedSiteId();
+  return getFeaturedItems(siteId);
+});
+
+export const getResolvedNavLinks = cache(async () => {
+  const siteId = await getResolvedSiteId();
+  return getNavLinks(siteId);
+});
+
+export const getResolvedHomeSections = cache(async () => {
+  const siteId = await getResolvedSiteId();
+  return getHomeSections(siteId);
+});

@@ -16,6 +16,7 @@ import { requireAdmin } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
 import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
 import { v2 as cloudinary } from "cloudinary";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export type AdminActionState = { success?: boolean; message?: string };
 
@@ -55,14 +56,18 @@ export async function updateSettings(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const now = new Date().toISOString();
   for (const key of SETTING_KEYS) {
     const value = formData.get(key);
     if (typeof value !== "string") continue;
     await db
       .insert(settings)
-      .values({ key, value, updatedAt: now })
-      .onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: now } });
+      .values({ key, siteId, value, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [settings.key, settings.siteId],
+        set: { value, updatedAt: now },
+      });
   }
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
@@ -76,6 +81,7 @@ export async function addGalleryImage(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const title = String(formData.get("title") ?? "").trim();
   const alt = String(formData.get("alt") ?? "").trim();
   const src = String(formData.get("src") ?? "").trim();
@@ -85,6 +91,7 @@ export async function addGalleryImage(
   if (!title || !src) return { message: "Title and image URL are required." };
 
   await db.insert(galleryImages).values({
+    siteId,
     title,
     alt: alt || title,
     src,
@@ -148,6 +155,7 @@ export async function addMenuCategory(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   let slug = String(formData.get("slug") ?? "")
@@ -162,7 +170,7 @@ export async function addMenuCategory(
 
   if (!name) return { message: "Category name is required." };
 
-  await db.insert(menuCategories).values({ name, slug, description: description || null, sortOrder: 0 });
+  await db.insert(menuCategories).values({ siteId, name, slug, description: description || null, sortOrder: 0 });
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
@@ -181,6 +189,7 @@ export async function addMenuItem(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const categoryId = Number(formData.get("categoryId"));
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -191,6 +200,7 @@ export async function addMenuItem(
   if (!name || !categoryId || !price) return { message: "Name, category and price are required." };
 
   await db.insert(menuItems).values({
+    siteId,
     categoryId,
     name,
     description: description || null,
@@ -427,7 +437,8 @@ export async function deleteMediaFolder(folder: string) {
 
 export async function getNavLinks() {
   await requireAdmin();
-  const allLinks = await db.select().from(navLinks).orderBy(asc(navLinks.sortOrder));
+  const siteId = await getAdminSiteId();
+  const allLinks = await db.select().from(navLinks).where(eq(navLinks.siteId, siteId)).orderBy(asc(navLinks.sortOrder));
   return allLinks;
 }
 
@@ -436,14 +447,15 @@ export async function addNavLink(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
   const external = formData.get("external") === "on";
   if (!label || !href) return { message: "Label and URL are required." };
-  // Get max sortOrder
-  const all = await db.select().from(navLinks).orderBy(desc(navLinks.sortOrder));
+  // Get max sortOrder for this site
+  const all = await db.select().from(navLinks).where(eq(navLinks.siteId, siteId)).orderBy(desc(navLinks.sortOrder));
   const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
-  await db.insert(navLinks).values({ label, href, sortOrder: maxSort, visible: true, external });
+  await db.insert(navLinks).values({ siteId, label, href, sortOrder: maxSort, visible: true, external });
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
   return { success: true, message: "Link added." };
@@ -486,7 +498,8 @@ export async function reorderNavLinks(orderedIds: number[]) {
 
 export async function getHomeSections() {
   await requireAdmin();
-  return db.select().from(homeSections).orderBy(asc(homeSections.sortOrder));
+  const siteId = await getAdminSiteId();
+  return db.select().from(homeSections).where(eq(homeSections.siteId, siteId)).orderBy(asc(homeSections.sortOrder));
 }
 
 export async function addHomeSection(
@@ -494,10 +507,11 @@ export async function addHomeSection(
   formData: FormData
 ): Promise<AdminActionState> {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const type = String(formData.get("type") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim() || null;
   if (!type) return { message: "Section type is required." };
-  const all = await db.select().from(homeSections).orderBy(desc(homeSections.sortOrder));
+  const all = await db.select().from(homeSections).where(eq(homeSections.siteId, siteId)).orderBy(desc(homeSections.sortOrder));
   const maxSort = all.length > 0 ? all[0].sortOrder + 1 : 0;
   // Default config based on type
   let config: string | null = null;
@@ -506,7 +520,7 @@ export async function addHomeSection(
   } else if (type === "customHtml") {
     config = JSON.stringify({ html: "" });
   }
-  await db.insert(homeSections).values({ type, title, sortOrder: maxSort, visible: true, config });
+  await db.insert(homeSections).values({ siteId, type, title, sortOrder: maxSort, visible: true, config });
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
   return { success: true, message: "Section added." };
@@ -811,6 +825,12 @@ export async function getAdminUsers() {
   return db.select().from(adminUsers);
 }
 
+export async function getSitesForCurrentUser() {
+  await requireAdmin();
+  const { getAllAdminSites } = await import("@/lib/admin-site");
+  return getAllAdminSites();
+}
+
 export async function createAdminUser(
   _prev: AdminActionState,
   formData: FormData
@@ -830,6 +850,8 @@ export async function createAdminUser(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "").trim();
   const role = String(formData.get("role") ?? "viewer").trim();
+  const siteIdRaw = formData.get("siteId");
+  const siteId = siteIdRaw ? Number(siteIdRaw) : null;
 
   if (!name || !email || !password) {
     return { message: "Name, email, and password are required." };
@@ -841,6 +863,13 @@ export async function createAdminUser(
   // Only super_admin can create other super_admins
   if (role === "super_admin" && userRole !== "super_admin") {
     return { message: "Only super admins can create super admin accounts." };
+  }
+
+  // Non-super-admins can only assign users to their own site
+  if (userRole !== "super_admin" && user.siteId) {
+    if (siteId && siteId !== user.siteId) {
+      return { message: "You can only assign users to your own site." };
+    }
   }
 
   const [existing] = await db
@@ -856,6 +885,7 @@ export async function createAdminUser(
     email,
     passwordHash: await hashPassword(password),
     role,
+    siteId: siteId || null,
   });
 
   revalidatePath("/admin/users");
@@ -880,6 +910,8 @@ export async function updateAdminUser(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "viewer").trim();
   const newPassword = String(formData.get("password") ?? "").trim();
+  const siteIdRaw = formData.get("siteId");
+  const siteId = siteIdRaw ? Number(siteIdRaw) : null;
 
   if (!id || !name || !email) {
     return { message: "ID, name, and email are required." };
@@ -895,7 +927,14 @@ export async function updateAdminUser(
     return { message: "You cannot change your own role." };
   }
 
-  const updateData: Record<string, unknown> = { name, email, role };
+  // Non-super-admins can only assign users to their own site
+  if (userRole !== "super_admin" && currentUser.siteId) {
+    if (siteId && siteId !== currentUser.siteId) {
+      return { message: "You can only assign users to your own site." };
+    }
+  }
+
+  const updateData: Record<string, unknown> = { name, email, role, siteId: siteId || null };
 
   // Only update password if provided
   if (newPassword) {

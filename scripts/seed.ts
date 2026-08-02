@@ -44,7 +44,7 @@ async function main() {
       .insert(settings)
       .values({ key, siteId, value, updatedAt: now })
       .onConflictDoUpdate({
-        target: settings.key,
+        target: [settings.key, settings.siteId],
         set: { value, updatedAt: now },
       });
   }
@@ -59,11 +59,12 @@ async function main() {
   if (!existing) {
     const password = process.env.ADMIN_PASSWORD ?? "maiti2024";
     await db.insert(adminUsers).values({
-      name: "Maiti Admin",
+      name: "Super Admin",
       email,
       passwordHash: await hashPassword(password),
+      role: "super_admin",
     });
-    console.log(`✔ Seeded admin user: ${email} (password: ${password})`);
+    console.log(`✔ Seeded super admin: ${email} (password: ${password})`);
   } else {
     console.log(`✔ Admin user already exists: ${email}`);
   }

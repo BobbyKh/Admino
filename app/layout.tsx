@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { getSiteSettings } from "@/lib/data";
+import { getResolvedSiteSettings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getSiteSettings();
+  const settings = await getResolvedSiteSettings();
 
   const themeCss = `
     :root {
