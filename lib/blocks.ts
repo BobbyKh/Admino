@@ -1,8 +1,5 @@
 /**
  * Block Type Registry — defines all available block types for the page builder.
- * Each block type has: name, icon, group, defaultConfig, and optional configSchema.
- *
- * This is a code-based registry (not DB-stored) for type safety and validation.
  */
 import {
   Type,
@@ -20,140 +17,20 @@ import {
   Star,
   MessageSquare,
   CalendarDays,
+  ShoppingCart,
+  Users,
+  BarChart3,
+  Mail,
+  Clock,
+  Layers,
+  AlertCircle,
+  ChevronRight,
+  CreditCard,
+  CheckCircle,
+  Timer,
+  FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-// ─── Block Config Types ──────────────────────────────────────────────────────
-
-export interface HeroConfig {
-  title: string;
-  subtitle: string;
-  badge: string;
-  image: string;
-  ctaPrimary: string;
-  ctaPrimaryLink: string;
-  ctaSecondary: string;
-  ctaSecondaryLink: string;
-}
-
-export interface TextConfig {
-  content: string;           // HTML content
-  alignment: "left" | "center" | "right";
-  maxWidth: string;          // e.g. "720px", "100%"
-}
-
-export interface ImageConfig {
-  src: string;
-  alt: string;
-  caption: string;
-  width: string;             // e.g. "100%", "600px"
-  objectFit: "cover" | "contain" | "fill";
-  link: string;              // optional click-through URL
-}
-
-export interface VideoConfig {
-  url: string;               // YouTube/Vimeo URL or direct video URL
-  title: string;
-  poster: string;
-  autoplay: boolean;
-  loop: boolean;
-}
-
-export interface GalleryConfig {
-  columns: 2 | 3 | 4;
-  gap: string;               // e.g. "16px"
-  showCaptions: boolean;
-  lightbox: boolean;
-  categoryFilter: boolean;
-}
-
-export interface FeaturesConfig {
-  title: string;
-  subtitle: string;
-  columns: 2 | 3 | 4;
-  items: Array<{
-    icon: string;
-    title: string;
-    description: string;
-  }>;
-}
-
-export interface CtaConfig {
-  title: string;
-  subtitle: string;
-  buttonText: string;
-  buttonLink: string;
-  buttonStyle: "primary" | "secondary" | "outline";
-  backgroundImage: string;
-  layout: "centered" | "left-aligned" | "split";
-}
-
-export interface MenuPreviewConfig {
-  title: string;
-  subtitle: string;
-  columns: 2 | 3 | 4;
-  showPrices: boolean;
-  showCategories: boolean;
-}
-
-export interface ContactFormConfig {
-  title: string;
-  subtitle: string;
-  fields: string[];          // which fields to show
-  submitText: string;
-  successMessage: string;
-}
-
-export interface MapConfig {
-  query: string;             // Google Maps query or embed URL
-  height: string;
-  zoom: number;
-  showMarker: boolean;
-}
-
-export interface TestimonialConfig {
-  title: string;
-  testimonials: Array<{
-    name: string;
-    role: string;
-    content: string;
-    avatar: string;
-    rating: number;
-  }>;
-  layout: "carousel" | "grid";
-}
-
-export interface BookingFormConfig {
-  title: string;
-  subtitle: string;
-  showTimeSlots: boolean;
-  maxGuests: number;
-  occasions: string[];
-}
-
-export interface DividerConfig {
-  style: "solid" | "dashed" | "dotted" | "gradient";
-  color: string;
-  spacing: string;           // e.g. "40px"
-}
-
-export interface CustomHtmlConfig {
-  html: string;
-}
-
-export interface SpacerConfig {
-  height: string;            // e.g. "80px"
-}
-
-export interface ColumnsConfig {
-  columns: Array<{
-    width: string;           // e.g. "50%", "1fr"
-    blocks: string[];        // nested block IDs (future)
-  }>;
-  gap: string;
-}
-
-// ─── Block Type Definition ───────────────────────────────────────────────────
 
 export interface BlockType {
   type: string;
@@ -164,37 +41,23 @@ export interface BlockType {
   defaultConfig: Record<string, unknown>;
 }
 
-// ─── Block Type Registry ─────────────────────────────────────────────────────
-
 export const BLOCK_TYPES: BlockType[] = [
-  // Layout
+  // ═══ Layout ═══
   {
     type: "hero",
     label: "Hero Banner",
     description: "Full-width hero with background image, title, and CTAs",
     icon: Star,
     group: "layout",
-    defaultConfig: {
-      title: "Welcome",
-      subtitle: "Your subtitle here",
-      badge: "",
-      image: "",
-      ctaPrimary: "Get Started",
-      ctaPrimaryLink: "/",
-      ctaSecondary: "",
-      ctaSecondaryLink: "",
-    } satisfies HeroConfig,
+    defaultConfig: { title: "Welcome", subtitle: "Your subtitle here", badge: "", image: "", ctaPrimary: "Get Started", ctaPrimaryLink: "/", ctaSecondary: "", ctaSecondaryLink: "" },
   },
   {
-    type: "columns",
-    label: "Columns",
-    description: "Multi-column layout container",
-    icon: LayoutGrid,
+    type: "spacer",
+    label: "Spacer",
+    description: "Empty vertical space between blocks",
+    icon: Minus,
     group: "layout",
-    defaultConfig: {
-      columns: [{ width: "50%", blocks: [] }, { width: "50%", blocks: [] }],
-      gap: "24px",
-    } satisfies ColumnsConfig,
+    defaultConfig: { height: "80px" },
   },
   {
     type: "divider",
@@ -202,35 +65,41 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Horizontal line separator",
     icon: Minus,
     group: "layout",
-    defaultConfig: {
-      style: "solid",
-      color: "var(--border)",
-      spacing: "40px",
-    } satisfies DividerConfig,
+    defaultConfig: { style: "solid", color: "var(--border)", width: "100%" },
   },
   {
-    type: "spacer",
-    label: "Spacer",
-    description: "Empty space between blocks",
-    icon: Minus,
+    type: "columns",
+    label: "Columns",
+    description: "Multi-column layout container",
+    icon: LayoutGrid,
     group: "layout",
-    defaultConfig: {
-      height: "80px",
-    } satisfies SpacerConfig,
+    defaultConfig: { columns: [{ width: "50%" }, { width: "50%" }], gap: "24px" },
   },
 
-  // Content
+  // ═══ Content ═══
   {
     type: "text",
     label: "Text / Rich Text",
     description: "HTML text block with formatting",
     icon: Type,
     group: "content",
-    defaultConfig: {
-      content: "<p>Enter your text here...</p>",
-      alignment: "left",
-      maxWidth: "720px",
-    } satisfies TextConfig,
+    defaultConfig: { content: "<p>Enter your text here...</p>", alignment: "left", maxWidth: "720px" },
+  },
+  {
+    type: "richText",
+    label: "Rich Text",
+    description: "HTML content block with prose styling",
+    icon: FileText,
+    group: "content",
+    defaultConfig: { html: "<h2>Your heading</h2><p>Your content here.</p>" },
+  },
+  {
+    type: "imageText",
+    label: "Image + Text",
+    description: "Side-by-side image and text layout",
+    icon: Image,
+    group: "content",
+    defaultConfig: { layout: "left", image: "", badge: "", title: "Add a Title", text: "Add your text content here.", buttonText: "", buttonLink: "" },
   },
   {
     type: "features",
@@ -238,30 +107,87 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Icon + title + description cards",
     icon: LayoutGrid,
     group: "content",
-    defaultConfig: {
-      title: "Our Features",
-      subtitle: "Why choose us",
-      columns: 3,
-      items: [
-        { icon: "leaf", title: "Feature 1", description: "Description here" },
-        { icon: "star", title: "Feature 2", description: "Description here" },
-        { icon: "heart", title: "Feature 3", description: "Description here" },
-      ],
-    } satisfies FeaturesConfig,
+    defaultConfig: { title: "Our Features", subtitle: "Why choose us", badge: "", items: [{ icon: "leaf", title: "Feature 1", text: "Description" }, { icon: "star", title: "Feature 2", text: "Description" }] },
   },
   {
-    type: "testimonials",
+    type: "testimonial",
     label: "Testimonials",
     description: "Customer reviews and ratings",
     icon: MessageSquare,
     group: "content",
-    defaultConfig: {
-      title: "What Our Customers Say",
-      testimonials: [
-        { name: "Customer Name", role: "Business Owner", content: "Great experience!", avatar: "", rating: 5 },
-      ],
-      layout: "carousel",
-    } satisfies TestimonialConfig,
+    defaultConfig: { title: "What People Say", badge: "", items: [{ name: "John D.", role: "CEO", text: "Amazing service!", rating: 5 }] },
+  },
+  {
+    type: "faq",
+    label: "FAQ Accordion",
+    description: "Frequently asked questions with expand/collapse",
+    icon: FileText,
+    group: "content",
+    defaultConfig: { title: "Frequently Asked Questions", badge: "", items: [{ question: "What is this?", answer: "This is a FAQ item." }] },
+  },
+  {
+    type: "stats",
+    label: "Stats / Numbers",
+    description: "Large number counters with labels",
+    icon: BarChart3,
+    group: "content",
+    defaultConfig: { title: "By the Numbers", badge: "", items: [{ value: "500+", label: "Happy Customers" }, { value: "10+", label: "Years Experience" }] },
+  },
+  {
+    type: "timeline",
+    label: "Timeline",
+    description: "Vertical timeline with numbered steps",
+    icon: Clock,
+    group: "content",
+    defaultConfig: { title: "Our Timeline", badge: "", items: [{ title: "Step 1", description: "Description", date: "2024" }] },
+  },
+  {
+    type: "steps",
+    label: "Steps",
+    description: "How-it-works numbered steps",
+    icon: ChevronRight,
+    group: "content",
+    defaultConfig: { title: "How It Works", badge: "", items: [{ title: "Sign Up", description: "Create your account" }, { title: "Configure", description: "Set things up" }, { title: "Launch", description: "Go live" }] },
+  },
+  {
+    type: "tabs",
+    label: "Tabs",
+    description: "Tabbed content switcher",
+    icon: Layers,
+    group: "content",
+    defaultConfig: { title: "", badge: "", items: [{ label: "Tab 1", content: "<p>Content 1</p>" }, { label: "Tab 2", content: "<p>Content 2</p>" }] },
+  },
+  {
+    type: "alert",
+    label: "Alert / Banner",
+    description: "Info, success, warning, or error alert",
+    icon: AlertCircle,
+    group: "content",
+    defaultConfig: { variant: "info", title: "Heads up!", text: "This is an important message." },
+  },
+  {
+    type: "services",
+    label: "Services List",
+    description: "Service cards with check icons",
+    icon: CheckCircle,
+    group: "content",
+    defaultConfig: { title: "Our Services", subtitle: "What we offer", badge: "", items: [{ title: "Web Design", description: "Beautiful, modern websites" }, { title: "Development", description: "Robust web applications" }] },
+  },
+  {
+    type: "team",
+    label: "Team Members",
+    description: "Team member cards with photos",
+    icon: Users,
+    group: "content",
+    defaultConfig: { title: "Meet the Team", badge: "", items: [{ name: "Jane Smith", role: "CEO", bio: "Visionary leader" }, { name: "Bob Jones", role: "CTO", bio: "Tech expert" }] },
+  },
+  {
+    type: "pricing",
+    label: "Pricing Table",
+    description: "Pricing tier comparison cards",
+    icon: CreditCard,
+    group: "content",
+    defaultConfig: { title: "Pricing Plans", subtitle: "Choose the right plan for you", badge: "", items: [{ name: "Basic", price: "$9", period: "mo", features: ["Feature 1", "Feature 2"] }, { name: "Pro", price: "$29", period: "mo", features: ["Feature 1", "Feature 2", "Feature 3"], highlighted: true }] },
   },
   {
     type: "customHtml",
@@ -269,26 +195,17 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Raw HTML/CSS/JS embed",
     icon: Code2,
     group: "content",
-    defaultConfig: {
-      html: "<div>Your HTML here</div>",
-    } satisfies CustomHtmlConfig,
+    defaultConfig: { html: "<div>Your HTML here</div>" },
   },
 
-  // Media
+  // ═══ Media ═══
   {
     type: "image",
     label: "Image",
     description: "Single image with optional caption",
     icon: Image,
     group: "media",
-    defaultConfig: {
-      src: "",
-      alt: "",
-      caption: "",
-      width: "100%",
-      objectFit: "cover",
-      link: "",
-    } satisfies ImageConfig,
+    defaultConfig: { src: "", alt: "", caption: "", width: "100%", objectFit: "cover", link: "" },
   },
   {
     type: "video",
@@ -296,43 +213,41 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "YouTube/Vimeo embed or native video",
     icon: Video,
     group: "media",
-    defaultConfig: {
-      url: "",
-      title: "",
-      poster: "",
-      autoplay: false,
-      loop: false,
-    } satisfies VideoConfig,
+    defaultConfig: { url: "", title: "", poster: "", autoplay: false, loop: false },
   },
   {
     type: "gallery",
     label: "Gallery",
-    description: "Filterable image grid",
+    description: "Image grid from gallery",
     icon: GalleryHorizontalEnd,
     group: "media",
-    defaultConfig: {
-      columns: 3,
-      gap: "16px",
-      showCaptions: true,
-      lightbox: true,
-      categoryFilter: true,
-    } satisfies GalleryConfig,
+    defaultConfig: { columns: 3, gap: "16px" },
+  },
+  {
+    type: "galleryLightbox",
+    label: "Gallery + Lightbox",
+    description: "Image grid with click-to-expand lightbox",
+    icon: Layers,
+    group: "media",
+    defaultConfig: { title: "Gallery", badge: "", items: [{ src: "", alt: "", caption: "" }] },
+  },
+  {
+    type: "slider",
+    label: "Image Slider",
+    description: "Auto-rotating image carousel",
+    icon: Image,
+    group: "media",
+    defaultConfig: { height: "500px", items: [{ image: "", title: "", subtitle: "" }] },
   },
 
-  // Commerce
+  // ═══ Commerce ═══
   {
     type: "menuPreview",
     label: "Menu Preview",
     description: "Featured items from the menu",
     icon: Newspaper,
     group: "commerce",
-    defaultConfig: {
-      title: "Popular Dishes",
-      subtitle: "From our kitchen",
-      columns: 4,
-      showPrices: true,
-      showCategories: true,
-    } satisfies MenuPreviewConfig,
+    defaultConfig: { title: "Featured Items", subtitle: "" },
   },
   {
     type: "cta",
@@ -340,44 +255,57 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Promotional banner with button",
     icon: MousePointerClick,
     group: "commerce",
-    defaultConfig: {
-      title: "Ready to get started?",
-      subtitle: "Join us today",
-      buttonText: "Book Now",
-      buttonLink: "/book",
-      buttonStyle: "primary",
-      backgroundImage: "",
-      layout: "centered",
-    } satisfies CtaConfig,
+    defaultConfig: { title: "Ready to get started?", subtitle: "Join us today", heroCtaPrimary: "Get Started", heroCtaPrimaryLink: "/" },
+  },
+  {
+    type: "ctaBanner",
+    label: "CTA Banner",
+    description: "Full-width colored call-to-action banner",
+    icon: MousePointerClick,
+    group: "commerce",
+    defaultConfig: { title: "Ready to Get Started?", subtitle: "Join thousands of happy customers.", buttonText: "Sign Up Free", buttonLink: "/", button2Text: "", button2Link: "", icon: "" },
+  },
+  {
+    type: "productGrid",
+    label: "Product Grid",
+    description: "Product cards with images and add-to-cart",
+    icon: ShoppingCart,
+    group: "commerce",
+    defaultConfig: { title: "Our Products", subtitle: "", badge: "", columns: "3", items: [{ name: "Product 1", price: "$29", image: "", description: "Great product", badge: "New" }] },
+  },
+  {
+    type: "newsletter",
+    label: "Newsletter Signup",
+    description: "Email subscription form",
+    icon: Mail,
+    group: "commerce",
+    defaultConfig: { title: "Subscribe to Our Newsletter", subtitle: "Stay updated with our latest news.", buttonText: "Subscribe", placeholder: "Enter your email", successMessage: "Thank you for subscribing!" },
   },
 
-  // Interactive
+  // ═══ Interactive ═══
   {
     type: "contactForm",
     label: "Contact Form",
-    description: "Embedded contact form",
+    description: "Contact/inquiry form with fields",
     icon: FormInput,
     group: "interactive",
-    defaultConfig: {
-      title: "Get in Touch",
-      subtitle: "We'd love to hear from you",
-      fields: ["name", "email", "subject", "message"],
-      submitText: "Send Message",
-      successMessage: "Thank you! We'll get back to you soon.",
-    } satisfies ContactFormConfig,
+    defaultConfig: { title: "Get in Touch", subtitle: "We'd love to hear from you.", badge: "", address: "", phone: "", email: "", showPhone: "true", showSubject: "true", buttonText: "Send Message", successMessage: "Thank you! We'll get back to you soon." },
+  },
+  {
+    type: "authForm",
+    label: "Auth Form (Login/Signup)",
+    description: "Login or signup form with toggle",
+    icon: FormInput,
+    group: "interactive",
+    defaultConfig: { mode: "login", title: "Welcome Back", subtitle: "Log in to your account", submitText: "Sign In", switchText: "Sign up", switchLink: "#", forgotLink: "Forgot password?" },
   },
   {
     type: "map",
     label: "Map",
-    description: "Google Maps embed",
+    description: "Google Maps embed with info",
     icon: MapPin,
     group: "interactive",
-    defaultConfig: {
-      query: "",
-      height: "400px",
-      zoom: 15,
-      showMarker: true,
-    } satisfies MapConfig,
+    defaultConfig: { query: "", title: "Find Us", badge: "", address: "", hours: "", phone: "" },
   },
   {
     type: "bookingForm",
@@ -385,13 +313,15 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Table reservation form",
     icon: CalendarDays,
     group: "interactive",
-    defaultConfig: {
-      title: "Reserve a Table",
-      subtitle: "Book your dining experience",
-      showTimeSlots: true,
-      maxGuests: 20,
-      occasions: ["Birthday", "Anniversary", "Business", "Other"],
-    } satisfies BookingFormConfig,
+    defaultConfig: { title: "Reserve a Table", subtitle: "Book your experience" },
+  },
+  {
+    type: "infoCard",
+    label: "Info Card",
+    description: "Hours, location, and contact info card",
+    icon: Clock,
+    group: "interactive",
+    defaultConfig: { title: "Quick Info", badge: "", hours: "", location: "", price: "", rating: "", capacity: "" },
   },
 ];
 
@@ -418,5 +348,5 @@ export const BLOCK_GROUP_LABELS: Record<string, string> = {
   content: "Content",
   media: "Media",
   commerce: "Commerce",
-  interactive: "Interactive",
+  interactive: "Forms & Interactive",
 };
