@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
-    "db:provision-homepages": "tsx scripts/provision-homepages.ts"
+    "db:provision-homepages": "tsx scripts/provision-homepages.ts",
+    "db:provision-ecommerce-templates": "tsx scripts/provision-ecommerce-templates.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

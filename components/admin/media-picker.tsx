@@ -7,7 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadImage } from "@/lib/cms-actions";
+import { uploadImage } from "@/lib/actions/index";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
 

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { getMenu } from "@/lib/data";
-import { deleteMenuCategory, deleteMenuItem } from "@/lib/cms-actions";
+import { deleteMenuCategory, deleteMenuItem } from "@/lib/actions/index";
 import { AddMenuItemForm } from "@/components/admin/menu-item-form";
 import { AddCategoryForm } from "@/components/admin/add-category-form";
 import { getAdminSiteId } from "@/lib/admin-site";

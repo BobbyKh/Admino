@@ -1,20 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pages, pageBlocks } from "@/lib/db/schema";
-import { getCurrentAdminSiteId, requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
+import { requireRole } from "@/lib/auth";
 import type { AdminActionState } from "./types";
 
 export async function getPages(siteId: number) {
-  await requireSiteAccess(siteId);
+  await requireRole("super_admin");
   return db.select().from(pages).where(eq(pages.siteId, siteId)).orderBy(asc(pages.sortOrder));
 }
 
 export async function getPage(id: number) {
+  await requireRole("super_admin");
   try {
-    return await requirePageAccess(id);
+    const [page] = await db.select().from(pages).where(eq(pages.id, id));
+    return page ?? null;
   } catch {
     return null;
   }
@@ -37,7 +39,7 @@ export async function createPage(
   const template = String(formData.get("template") ?? "default").trim();
 
   if (!siteId || !title) return { message: "Site ID and title are required." };
-  await requireSiteAccess(siteId);
+  await requireRole("super_admin");
 
   const [existing] = await db
     .select()
@@ -82,7 +84,7 @@ export async function updatePage(
   const published = formData.get("published") === "on";
 
   if (!id || !title) return { message: "Page ID and title are required." };
-  await requirePageAccess(id);
+  await requireRole("super_admin");
 
   await db
     .update(pages)
@@ -94,17 +96,17 @@ export async function updatePage(
 }
 
 export async function deletePage(id: number) {
-  const page = await requirePageAccess(id);
-  await db.delete(pages).where(and(eq(pages.id, id), eq(pages.siteId, page.siteId)));
+  await requireRole("super_admin");
+  await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
 }
 
 export async function reorderPages(orderedIds: number[]) {
-  const siteId = await getCurrentAdminSiteId();
+  await requireRole("super_admin");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
-      await tx.update(pages).set({ sortOrder: i }).where(and(eq(pages.id, orderedIds[i]), eq(pages.siteId, siteId)));
+      await tx.update(pages).set({ sortOrder: i }).where(eq(pages.id, orderedIds[i]));
     }
   });
   revalidatePath("/admin/pages");
@@ -113,7 +115,7 @@ export async function reorderPages(orderedIds: number[]) {
 // ─── Page Blocks ──────────────────────────────────────────────────────────────
 
 export async function getPageBlocks(pageId: number) {
-  await requirePageAccess(pageId);
+  await requireRole("super_admin");
   return db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
 }
 
@@ -127,7 +129,7 @@ export async function addPageBlock(
   const title = String(formData.get("title") ?? "").trim() || null;
 
   if (!pageId || !type) return { message: "Page ID and block type are required." };
-  await requirePageAccess(pageId);
+  await requireRole("super_admin");
 
   const maxSort = await db
     .select({ sortOrder: pageBlocks.sortOrder })
@@ -161,7 +163,7 @@ export async function updatePageBlock(
   const config = String(formData.get("config") ?? "").trim() || null;
 
   if (!id) return { message: "Block ID is required." };
-  await requirePageBlockAccess(id);
+  await requireRole("super_admin");
 
   await db
     .update(pageBlocks)
@@ -174,22 +176,17 @@ export async function updatePageBlock(
 }
 
 export async function deletePageBlock(id: number) {
-  await requirePageBlockAccess(id);
+  await requireRole("super_admin");
   await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
 }
 
 export async function reorderPageBlocks(orderedIds: number[]) {
-  const siteId = await getCurrentAdminSiteId();
+  await requireRole("super_admin");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
-      const [block] = await tx.select({ pageId: pageBlocks.pageId }).from(pageBlocks).where(eq(pageBlocks.id, orderedIds[i]));
-      if (!block) continue;
-      const [page] = await tx.select({ siteId: pages.siteId }).from(pages).where(eq(pages.id, block.pageId));
-      if (page?.siteId === siteId) {
-        await tx.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));
-      }
+      await tx.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));
     }
   });
   revalidatePath("/", "layout");

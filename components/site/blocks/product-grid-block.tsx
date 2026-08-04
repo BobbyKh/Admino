@@ -35,7 +35,7 @@ export function ProductGridBlock({ config }: { config: string | null }) {
   const columns = c.columns || "3";
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <section id="shop" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
         {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">

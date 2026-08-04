@@ -1,8 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { Clock, Leaf, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/settings";
 import type { NavLink } from "@/lib/db/schema";
+
+function withPreviewSite(href: string, siteSlug: string | null) {
+  if (!siteSlug || !href.startsWith("/") || href.startsWith("//")) return href;
+  const url = new URL(href, "http://preview.local");
+  url.searchParams.set("site", siteSlug);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 export function Footer({
   settings,
@@ -11,6 +21,8 @@ export function Footer({
   settings: SiteSettings;
   navLinks: NavLink[];
 }) {
+  const searchParams = useSearchParams();
+  const siteSlug = searchParams.get("site");
   const visibleLinks = navLinks.filter((l) => l.visible);
 
   return (
@@ -45,7 +57,7 @@ export function Footer({
             {visibleLinks.map((link) => (
               <li key={link.id}>
                 <Link
-                  href={link.href}
+                  href={link.external ? link.href : withPreviewSite(link.href, siteSlug)}
                   target={link.external ? "_blank" : undefined}
                   rel={link.external ? "noopener noreferrer" : undefined}
                   className="transition-colors hover:text-foreground"

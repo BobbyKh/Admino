@@ -32,7 +32,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { updateSettings, type AdminActionState } from "@/lib/cms-actions";
+import { updateSettings, type AdminActionState } from "@/lib/actions/index";
 import type { SettingKey } from "@/lib/settings";
 
 const initialState: AdminActionState = {};

@@ -38,7 +38,7 @@ import {
   getMediaItems,
   getMediaFolders,
   updateMediaAlt,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import type { Media } from "@/lib/db/schema";
 
 export default function MediaPage() {

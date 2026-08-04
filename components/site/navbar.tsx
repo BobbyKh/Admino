@@ -3,12 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Leaf, Menu, Phone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SiteSettings } from "@/lib/settings";
 import type { NavLink } from "@/lib/db/schema";
+
+function withPreviewSite(href: string, siteSlug: string | null) {
+  if (!siteSlug || !href.startsWith("/") || href.startsWith("//")) return href;
+  const url = new URL(href, "http://preview.local");
+  url.searchParams.set("site", siteSlug);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 export function Navbar({
   settings,
@@ -18,14 +25,16 @@ export function Navbar({
   navLinks: NavLink[];
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = React.useState(false);
+  const siteSlug = searchParams.get("site");
 
   const visibleLinks = navLinks.filter((l) => l.visible);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={withPreviewSite("/", siteSlug)} className="flex items-center gap-2">
           {settings.logo ? (
             <Image
               src={settings.logo}
@@ -49,7 +58,7 @@ export function Navbar({
           {visibleLinks.map((link) => (
             <Link
               key={link.id}
-              href={link.href}
+              href={link.external ? link.href : withPreviewSite(link.href, siteSlug)}
               target={link.external ? "_blank" : undefined}
               rel={link.external ? "noopener noreferrer" : undefined}
               className={cn(
@@ -74,7 +83,7 @@ export function Navbar({
             </a>
           )}
           {settings.navbarCtaLabel && (
-            <Link href={settings.navbarCtaLink || "/"}>
+            <Link href={withPreviewSite(settings.navbarCtaLink || "/", siteSlug)}>
               <Button>{settings.navbarCtaLabel}</Button>
             </Link>
           )}
@@ -97,7 +106,7 @@ export function Navbar({
             {visibleLinks.map((link) => (
               <Link
                 key={link.id}
-                href={link.href}
+                href={link.external ? link.href : withPreviewSite(link.href, siteSlug)}
                 target={link.external ? "_blank" : undefined}
                 rel={link.external ? "noopener noreferrer" : undefined}
                 onClick={() => setOpen(false)}
@@ -121,7 +130,7 @@ export function Navbar({
                 </a>
               )}
               {settings.navbarCtaLabel && (
-                <Link href={settings.navbarCtaLink || "/"} onClick={() => setOpen(false)}>
+                <Link href={withPreviewSite(settings.navbarCtaLink || "/", siteSlug)} onClick={() => setOpen(false)}>
                   <Button className="w-full">{settings.navbarCtaLabel}</Button>
                 </Link>
               )}

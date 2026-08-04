@@ -15,6 +15,13 @@
       "when": 1785666998320,
       "tag": "0001_condemned_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785844051137,
+      "tag": "0002_red_daredevil",
+      "breakpoints": true
     }
   ]
 }

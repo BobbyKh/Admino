@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth";
 
 interface ModelInfo {
   id: string;
@@ -69,6 +70,9 @@ async function fetchGoogleModels(apiKey: string): Promise<ModelInfo[]> {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await getSessionUser())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { provider, apiKey, baseUrl } = (await req.json()) as {
       provider: string;
       apiKey: string;

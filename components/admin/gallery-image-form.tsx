@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { addGalleryImage, updateGalleryImage, type AdminActionState } from "@/lib/cms-actions";
+import { addGalleryImage, updateGalleryImage, type AdminActionState } from "@/lib/actions/index";
 import type { GalleryImage } from "@/lib/db/schema";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 

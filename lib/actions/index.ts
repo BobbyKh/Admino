@@ -1,5 +1,3 @@
-"use server";
-
 // Re-export all domain modules for backward compatibility
 export type { AdminActionState, UploadState, MediaUploadState } from "./types";
 export { updateSettings } from "./settings";

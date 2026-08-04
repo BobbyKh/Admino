@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addMenuItem, type AdminActionState } from "@/lib/cms-actions";
+import { addMenuItem, type AdminActionState } from "@/lib/actions/index";
 import type { MenuCategory } from "@/lib/db/schema";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 

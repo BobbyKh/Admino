@@ -1,4 +1,4 @@
-import { desc, count, eq } from "drizzle-orm";
+import { and, desc, count, eq } from "drizzle-orm";
 import { Mail } from "lucide-react";
 import { db } from "@/lib/db";
 import { messages } from "@/lib/db/schema";
@@ -37,7 +37,7 @@ export default async function AdminMessagesPage({
   const [unreadResult] = await db
     .select({ value: count() })
     .from(messages)
-    .where(eq(messages.read, false));
+    .where(and(siteFilter, eq(messages.read, false)));
   const unread = unreadResult.value;
 
   return (

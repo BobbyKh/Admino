@@ -33,7 +33,7 @@ import {
   updateSite,
   deleteSite,
   getSites,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import { useActionState } from "react";
 
 type AdminActionState = { success?: boolean; message?: string };

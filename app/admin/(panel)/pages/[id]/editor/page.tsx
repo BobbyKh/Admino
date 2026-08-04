@@ -48,7 +48,7 @@ import {
   updatePageBlock,
   deletePageBlock,
   reorderPageBlocks,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import {
   BLOCK_TYPES,
   BLOCK_GROUP_LABELS,

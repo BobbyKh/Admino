@@ -236,6 +236,95 @@ export const adminUsers = pgTable("admin_users", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Ecommerce (tenant-scoped) ──────────────────────────────────────────────
+
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  image: text("image"),
+  price: integer("price").notNull(), // Minor currency unit, e.g. cents
+  currency: text("currency").notNull().default("usd"),
+  inventoryQuantity: integer("inventory_quantity").notNull().default(0),
+  status: text("status").notNull().default("draft"), // draft | active | archived
+  featured: boolean("featured").notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("products_site_id_idx").on(t.siteId),
+  siteSlugUnique: uniqueIndex("products_site_slug_idx").on(t.siteId, t.slug),
+  statusIdx: index("products_status_idx").on(t.status),
+}));
+
+export const carts = pgTable("carts", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  email: text("email"),
+  currency: text("currency").notNull().default("usd"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("carts_site_id_idx").on(t.siteId),
+}));
+
+export const cartItems = pgTable("cart_items", {
+  id: serial("id").primaryKey(),
+  cartId: integer("cart_id").notNull().references(() => carts.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: integer("unit_price").notNull(),
+}, (t) => ({
+  cartIdIdx: index("cart_items_cart_id_idx").on(t.cartId),
+  cartProductUnique: uniqueIndex("cart_items_cart_product_idx").on(t.cartId, t.productId),
+}));
+
+export const paymentConfigurations = pgTable("payment_configurations", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // stripe_connect initially
+  enabled: boolean("enabled").notNull().default(false),
+  accountId: text("account_id"),
+  settings: text("settings"), // Non-secret provider configuration JSON
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteProviderUnique: uniqueIndex("payment_configurations_site_provider_idx").on(t.siteId, t.provider),
+}));
+
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  orderNumber: text("order_number").notNull().unique(),
+  email: text("email").notNull(),
+  currency: text("currency").notNull(),
+  subtotal: integer("subtotal").notNull(),
+  total: integer("total").notNull(),
+  status: text("status").notNull().default("pending"), // pending | paid | fulfilled | cancelled
+  paymentStatus: text("payment_status").notNull().default("pending"),
+  paymentProvider: text("payment_provider"),
+  providerPaymentId: text("provider_payment_id"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("orders_site_id_idx").on(t.siteId),
+  statusIdx: index("orders_status_idx").on(t.status),
+  createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
+}));
+
+export const orderItems = pgTable("order_items", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: integer("unit_price").notNull(),
+}, (t) => ({
+  orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+}));
+
 // ─── Activity Logs (multi-tenant) ────────────────────────────────────────────
 
 export const activityLogs = pgTable("activity_logs", {
@@ -274,6 +363,12 @@ export type Site = typeof sites.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type PageBlock = typeof pageBlocks.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type Cart = typeof carts.$inferSelect;
+export type CartItem = typeof cartItems.$inferSelect;
+export type Order = typeof orders.$inferSelect;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type PaymentConfiguration = typeof paymentConfigurations.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth";
 
 interface UsageInfo {
   provider: string;
@@ -53,6 +54,9 @@ async function fetchGoogleUsage(apiKey: string): Promise<UsageInfo> {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await getSessionUser())) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { provider, apiKey } = (await req.json()) as {
       provider: string;
       apiKey: string;

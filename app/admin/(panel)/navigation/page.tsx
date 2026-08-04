@@ -14,7 +14,7 @@ import {
   getNavLinks,
   reorderNavLinks,
   updateNavLink,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import type { NavLink } from "@/lib/db/schema";
 
 export default function NavigationPage() {

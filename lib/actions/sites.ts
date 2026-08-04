@@ -7,6 +7,7 @@ import { sites } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
 import { createDefaultHomepage } from "@/lib/default-homepage";
 import { createDefaultNavigation } from "@/lib/default-navigation";
+import { createEcommerceTemplate } from "@/lib/default-ecommerce";
 import type { AdminActionState } from "./types";
 
 function getPlatformDomain() {
@@ -45,8 +46,12 @@ export async function createSite(
       published: false,
     })
     .returning({ id: sites.id });
-  await createDefaultHomepage(site.id);
-  await createDefaultNavigation(site.id);
+  if (template === "ecommerce") {
+    await createEcommerceTemplate(site.id, name);
+  } else {
+    await createDefaultHomepage(site.id);
+    await createDefaultNavigation(site.id);
+  }
   revalidatePath("/admin/sites");
   revalidatePath("/", "layout");
   return { success: true, message: "Site created." };

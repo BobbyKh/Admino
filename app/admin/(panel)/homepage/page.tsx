@@ -25,7 +25,7 @@ import {
   getHomeSections,
   reorderHomeSections,
   updateHomeSection,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import type { HomeSection } from "@/lib/db/schema";
 
 const SECTION_GROUPS = [

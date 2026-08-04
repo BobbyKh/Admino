@@ -3,7 +3,7 @@
 import { Star } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { toggleFeatured } from "@/lib/cms-actions";
+import { toggleFeatured } from "@/lib/actions/index";
 
 export function ToggleFeaturedButton({
   id,

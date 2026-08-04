@@ -28,8 +28,7 @@ async function getSettingsRows(siteId?: number | null) {
     const rows = await db.select().from(settings).where(eq(settings.siteId, siteId));
     return new Map(rows.map((r) => [r.key, r.value]));
   }
-  const rows = await db.select().from(settings);
-  return new Map(rows.map((r) => [r.key, r.value]));
+  return new Map<string, string>();
 }
 
 /** Returns ALL settings including secrets — server-side API routes only. Never expose to client. */
@@ -67,10 +66,7 @@ export const getGallery = cache(async (siteId?: number | null) => {
       .where(eq(galleryImages.siteId, siteId))
       .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
   }
-  return db
-    .select()
-    .from(galleryImages)
-    .orderBy(asc(galleryImages.sortOrder), desc(galleryImages.createdAt));
+  return [];
 });
 
 export const getMenu = cache(async (siteId?: number | null) => {
@@ -80,20 +76,14 @@ export const getMenu = cache(async (siteId?: number | null) => {
         .from(menuCategories)
         .where(eq(menuCategories.siteId, siteId))
         .orderBy(asc(menuCategories.sortOrder))
-    : await db
-        .select()
-        .from(menuCategories)
-        .orderBy(asc(menuCategories.sortOrder));
+    : [];
   const items = siteId
     ? await db
         .select()
         .from(menuItems)
         .where(eq(menuItems.siteId, siteId))
         .orderBy(asc(menuItems.sortOrder))
-    : await db
-        .select()
-        .from(menuItems)
-        .orderBy(asc(menuItems.sortOrder));
+    : [];
   return categories.map((category) => ({
     ...category,
     items: items.filter((i) => i.categoryId === category.id),
@@ -108,10 +98,7 @@ export const getFeaturedItems = cache(async (siteId?: number | null) => {
       .where(eq(menuItems.siteId, siteId))
       .orderBy(asc(menuItems.sortOrder));
   }
-  return db
-    .select()
-    .from(menuItems)
-    .orderBy(asc(menuItems.sortOrder));
+  return [];
 });
 
 export async function getNavLinks(siteId?: number | null) {
@@ -133,11 +120,7 @@ export async function getHomeSections(siteId?: number | null) {
       .where(and(eq(homeSections.siteId, siteId), eq(homeSections.visible, true)))
       .orderBy(asc(homeSections.sortOrder));
   }
-  return db
-    .select()
-    .from(homeSections)
-    .where(eq(homeSections.visible, true))
-    .orderBy(asc(homeSections.sortOrder));
+  return [];
 }
 
 // ─── Page Builder (new system) ───────────────────────────────────────────────

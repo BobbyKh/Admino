@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { deleteGalleryImage } from "@/lib/cms-actions";
+import { deleteGalleryImage } from "@/lib/actions/index";
 import { ToggleFeaturedButton } from "@/components/admin/toggle-featured-button";
 import { GalleryImageForm } from "@/components/admin/gallery-image-form";
 import { Pagination } from "@/components/admin/pagination";

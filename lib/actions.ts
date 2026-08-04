@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, messages } from "@/lib/db/schema";
 import {
@@ -14,6 +14,7 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import type { Booking } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 const bookingSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(100),
@@ -164,6 +165,7 @@ export async function updateBookingStatus(
   formData: FormData
 ) {
   await requireAdmin();
+  const siteId = await getAdminSiteId();
   const status = String(formData.get("status") ?? "");
   const valid = ["pending", "confirmed", "cancelled", "completed"];
   if (!valid.includes(status)) throw new Error("Invalid status");
@@ -171,7 +173,7 @@ export async function updateBookingStatus(
   const [updated] = await db
     .update(bookings)
     .set({ status })
-    .where(eq(bookings.id, bookingId))
+    .where(and(eq(bookings.id, bookingId), eq(bookings.siteId, siteId)))
     .returning();
 
   if (updated && status !== "pending") {
@@ -184,18 +186,24 @@ export async function updateBookingStatus(
 
 export async function deleteBooking(bookingId: number) {
   await requireAdmin();
-  await db.delete(bookings).where(eq(bookings.id, bookingId));
+  const siteId = await getAdminSiteId();
+  await db.delete(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.siteId, siteId)));
   revalidatePath("/admin/bookings");
 }
 
 export async function toggleMessageRead(messageId: number, read: boolean) {
   await requireAdmin();
-  await db.update(messages).set({ read }).where(eq(messages.id, messageId));
+  const siteId = await getAdminSiteId();
+  await db
+    .update(messages)
+    .set({ read })
+    .where(and(eq(messages.id, messageId), eq(messages.siteId, siteId)));
   revalidatePath("/admin/messages");
 }
 
 export async function deleteMessage(messageId: number) {
   await requireAdmin();
-  await db.delete(messages).where(eq(messages.id, messageId));
+  const siteId = await getAdminSiteId();
+  await db.delete(messages).where(and(eq(messages.id, messageId), eq(messages.siteId, siteId)));
   revalidatePath("/admin/messages");
 }

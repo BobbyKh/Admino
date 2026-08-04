@@ -49,7 +49,7 @@ import {
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import { useActionState } from "react";
 
 type AdminActionState = { success?: boolean; message?: string };

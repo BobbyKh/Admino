@@ -33,7 +33,7 @@ import {
   createMediaFolder,
   getMediaItems,
   getMediaFolders,
-} from "@/lib/cms-actions";
+} from "@/lib/actions/index";
 import type { Media } from "@/lib/db/schema";
 
 interface MediaLibraryProps {

@@ -12,7 +12,7 @@ import {
   Globe,
 } from "lucide-react";
 import { db } from "@/lib/db";
-import { bookings, galleryImages, messages, pages, sites } from "@/lib/db/schema";
+import { bookings, galleryImages, messages, pages } from "@/lib/db/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { formatBookingDate } from "@/lib/format";
 import { BookingAnalytics, MessageAnalytics } from "@/components/admin/analytics-charts";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default async function AdminDashboard() {
+  const siteId = await getAdminSiteId();
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
   const thirtyDaysAgo = new Date(now);
@@ -54,18 +56,18 @@ export default async function AdminDashboard() {
     galleryCount,
     featuredCount,
     categoryCount,
-    totalSites,
     totalPages,
     messagesByDay,
   ] = await Promise.all([
-    db.select({ value: count() }).from(bookings),
-    db.select({ value: count() }).from(bookings).where(eq(bookings.status, "pending")),
-    db.select({ value: count() }).from(bookings).where(eq(bookings.status, "confirmed")),
-    db.select({ value: count() }).from(messages).where(eq(messages.read, false)),
-    db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(8),
+    db.select({ value: count() }).from(bookings).where(eq(bookings.siteId, siteId)),
+    db.select({ value: count() }).from(bookings).where(and(eq(bookings.siteId, siteId), eq(bookings.status, "pending"))),
+    db.select({ value: count() }).from(bookings).where(and(eq(bookings.siteId, siteId), eq(bookings.status, "confirmed"))),
+    db.select({ value: count() }).from(messages).where(and(eq(messages.siteId, siteId), eq(messages.read, false))),
+    db.select().from(bookings).where(eq(bookings.siteId, siteId)).orderBy(desc(bookings.createdAt)).limit(8),
     db
       .select({ status: bookings.status, count: count() })
       .from(bookings)
+      .where(eq(bookings.siteId, siteId))
       .groupBy(bookings.status),
     db
       .select({
@@ -73,21 +75,20 @@ export default async function AdminDashboard() {
         count: count(),
       })
       .from(bookings)
-      .where(gte(bookings.date, sixMonthsAgo.toISOString().split("T")[0]))
+      .where(and(eq(bookings.siteId, siteId), gte(bookings.date, sixMonthsAgo.toISOString().split("T")[0])))
       .groupBy(sql`TO_CHAR(${bookings.date}::date, 'Mon YY'), DATE_TRUNC('month', ${bookings.date}::date)`)
       .orderBy(sql`DATE_TRUNC('month', ${bookings.date}::date)`),
-    db.select({ value: count() }).from(galleryImages),
-    db.select({ value: count() }).from(galleryImages).where(eq(galleryImages.featured, true)),
-    db.select({ value: countDistinct(galleryImages.category) }).from(galleryImages),
-    db.select({ value: count() }).from(sites),
-    db.select({ value: count() }).from(pages),
+    db.select({ value: count() }).from(galleryImages).where(eq(galleryImages.siteId, siteId)),
+    db.select({ value: count() }).from(galleryImages).where(and(eq(galleryImages.siteId, siteId), eq(galleryImages.featured, true))),
+    db.select({ value: countDistinct(galleryImages.category) }).from(galleryImages).where(eq(galleryImages.siteId, siteId)),
+    db.select({ value: count() }).from(pages).where(eq(pages.siteId, siteId)),
     db
       .select({
         day: sql<string>`TO_CHAR(${messages.createdAt}::date, 'Mon DD')`,
         count: count(),
       })
       .from(messages)
-      .where(sql`${messages.createdAt}::date >= ${thirtyDaysAgoStr}`)
+      .where(and(eq(messages.siteId, siteId), sql`${messages.createdAt}::date >= ${thirtyDaysAgoStr}`))
       .groupBy(sql`TO_CHAR(${messages.createdAt}::date, 'Mon DD'), DATE_TRUNC('day', ${messages.createdAt}::date)`)
       .orderBy(sql`DATE_TRUNC('day', ${messages.createdAt}::date)`),
   ]);
@@ -97,7 +98,6 @@ export default async function AdminDashboard() {
     { label: "Pending requests", value: pendingBookings[0]?.value ?? 0, icon: Clock },
     { label: "Confirmed tables", value: confirmedBookings[0]?.value ?? 0, icon: CheckCircle2 },
     { label: "Unread messages", value: unreadMessages[0]?.value ?? 0, icon: Mail },
-    { label: "Sites", value: totalSites[0]?.value ?? 0, icon: Globe },
     { label: "Pages", value: totalPages[0]?.value ?? 0, icon: FileText },
     { label: "Gallery images", value: galleryCount[0]?.value ?? 0, icon: Images },
     { label: "Featured images", value: featuredCount[0]?.value ?? 0, icon: Star },
