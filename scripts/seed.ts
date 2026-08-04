@@ -1,242 +1,307 @@
 /**
- * Seed script — creates admin user, default site, default settings, gallery and menu.
- * Requires PostgreSQL with DATABASE_URL set.
- * Usage: bun run db:seed
+ * Seeds the platform-owned Admino tenant with an editable web-builder showcase.
+ * It only refreshes pages and navigation belonging to the `default` site.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, closeDb } from "../lib/db/client";
 import { hashPassword } from "../lib/password";
-import { DEFAULT_SETTINGS } from "../lib/settings";
+import { DEFAULT_SETTINGS, type SettingKey } from "../lib/settings";
 import {
   adminUsers,
-  galleryImages,
-  homeSections,
-  menuCategories,
-  menuItems,
   navLinks,
-  pages,
   pageBlocks,
+  pages,
   settings,
   sites,
 } from "../lib/db/schema";
 
+const ADMINO_SETTINGS: Record<SettingKey, string> = {
+  ...DEFAULT_SETTINGS,
+  siteName: "Admino",
+  tagline: "Launch better websites, faster",
+  description: "Admino is a multi-tenant website builder for teams that need polished, editable websites without rebuilding from scratch.",
+  logo: "",
+  address: "Built for ambitious teams everywhere",
+  phone: "",
+  email: "hello@admino.com",
+  mapQuery: "",
+  videoTitle: "See what we can build together",
+  aboutTitle: "Website operations, simplified",
+  aboutText: "Admino gives platform teams a structured way to launch and operate tenant websites. Build pages from reusable blocks, give each tenant its own workspace, and keep every update under control.",
+  aboutImage: "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85",
+  services: JSON.stringify([
+    "Visual page building",
+    "Tenant workspaces",
+    "Custom navigation",
+    "Media management",
+    "Role-based access",
+    "Custom domains",
+  ]),
+  hours: "Monday to Friday, 9 AM to 5 PM",
+  priceRange: "Plans for every stage",
+  rating: "",
+  reviewCount: "",
+  footerNote: "Admino gives teams a faster way to publish and manage websites.",
+  navbarCtaLabel: "Start Building",
+  navbarCtaLink: "/contact",
+  navbarShowPhone: "false",
+  footerExploreTitle: "Product",
+  footerContactTitle: "Talk to us",
+  footerHoursTitle: "Availability",
+  footerCopyright: "© Admino. Built for modern website teams.",
+};
+
+type SeedBlock = { type: string; config: Record<string, unknown> };
+type SeedPage = {
+  title: string;
+  slug: string;
+  description: string;
+  blocks: SeedBlock[];
+};
+
+const SITE_PAGES: SeedPage[] = [
+  {
+    title: "Home",
+    slug: "home",
+    description: "Admino website builder",
+    blocks: [
+      {
+        type: "hero",
+        config: {
+          badge: "Multi-tenant website builder",
+          title: "Launch websites your clients can actually manage.",
+          subtitle: "Admino gives teams a polished builder, tenant-safe admin tools, reusable blocks, and a faster route from idea to live site.",
+          image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1920&q=85",
+          ctaPrimary: "Build your site",
+          ctaPrimaryLink: "/contact",
+          ctaSecondary: "Explore pricing",
+          ctaSecondaryLink: "/pricing",
+        },
+      },
+      {
+        type: "features",
+        config: {
+          title: "Everything your website needs to grow",
+          subtitle: "One workspace for publishing, editing, and operating every tenant site.",
+          items: [
+            { icon: "layers", title: "Visual page builder", text: "Compose pages from reusable blocks without touching code." },
+            { icon: "globe", title: "Tenant-ready", text: "Each website has its own content, media, navigation, and team." },
+            { icon: "shield", title: "Built for control", text: "Roles and tenant isolation keep every workspace protected." },
+            { icon: "zap", title: "Publish faster", text: "Start with a prebuilt homepage, then make it your own." },
+          ],
+        },
+      },
+      {
+        type: "imageText",
+        config: {
+          layout: "right",
+          badge: "Designed for operators",
+          title: "Give every tenant a website they can run themselves.",
+          text: "From header links and media to pages and homepage blocks, Admino keeps routine updates simple while your platform keeps the structure consistent.",
+          image: "https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=1200&q=85",
+          buttonText: "See how it works",
+          buttonLink: "/about",
+        },
+      },
+      {
+        type: "stats",
+        config: {
+          title: "A better foundation for every new site",
+          items: [
+            { value: "1", label: "Shared web platform" },
+            { value: "∞", label: "Tenant websites" },
+            { value: "30+", label: "Composable blocks" },
+            { value: "100%", label: "Tenant-scoped content" },
+          ],
+        },
+      },
+      {
+        type: "pricing",
+        config: {
+          badge: "Simple, flexible plans",
+          title: "A plan for every website operation",
+          subtitle: "Start small, then add tenants, domains, and team workflows as you grow.",
+          items: [
+            { name: "Starter", price: "$29", period: "month", description: "For one focused website", features: ["One tenant site", "Page builder", "Media library"], buttonText: "Get started", buttonLink: "/contact" },
+            { name: "Growth", price: "$99", period: "month", description: "For growing multi-site teams", highlighted: true, features: ["Up to 10 tenant sites", "Custom domains", "Team roles", "Priority support"], buttonText: "Choose Growth", buttonLink: "/contact" },
+            { name: "Platform", price: "Custom", period: "", description: "For serious website operations", features: ["Unlimited tenants", "Platform controls", "Custom integrations"], buttonText: "Talk to us", buttonLink: "/contact" },
+          ],
+        },
+      },
+      {
+        type: "ctaBanner",
+        config: {
+          title: "Ready to build a better website workflow?",
+          subtitle: "Create a tenant site, customize the homepage, and publish with confidence.",
+          buttonText: "Talk to Admino",
+          buttonLink: "/contact",
+        },
+      },
+    ],
+  },
+  {
+    title: "Pricing",
+    slug: "pricing",
+    description: "Flexible plans for every website team",
+    blocks: [
+      {
+        type: "pricing",
+        config: {
+          title: "Plans that scale with your tenants",
+          subtitle: "Start with a focused website, then grow into a full multi-site operation.",
+          items: [
+            { name: "Starter", price: "$29", period: "month", features: ["One tenant site", "Page builder", "Media library", "Email support"] },
+            { name: "Growth", price: "$99", period: "month", highlighted: true, features: ["Up to 10 tenant sites", "Custom domains", "Team roles", "Priority support"] },
+            { name: "Platform", price: "Custom", period: "", features: ["Unlimited tenants", "Platform controls", "Onboarding support", "Custom integrations"] },
+          ],
+        },
+      },
+      {
+        type: "faq",
+        config: {
+          title: "Pricing questions",
+          items: [
+            { question: "Can every tenant edit their own website?", answer: "Yes. Tenant users access only their assigned site and its content." },
+            { question: "Can I use my own domain?", answer: "Yes. Admino supports tenant subdomains and custom domains." },
+            { question: "Can I change plans later?", answer: "Yes. Plans are designed to grow with your website operation." },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    title: "About Admino",
+    slug: "about",
+    description: "The operating system for multi-tenant websites",
+    blocks: [
+      {
+        type: "imageText",
+        config: {
+          layout: "left",
+          badge: "About Admino",
+          title: "Website operations should not require a development queue.",
+          text: "Admino is built for teams that create and operate websites for many businesses. It combines a structured block builder with tenant-aware content, media, navigation, and permissions.",
+          image: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85",
+        },
+      },
+      {
+        type: "services",
+        config: {
+          title: "What Admino gives your team",
+          items: [
+            { title: "Reusable building blocks", description: "Create consistent pages without repeating implementation work." },
+            { title: "Tenant isolation", description: "Keep content, media, navigation, and users scoped to the right site." },
+            { title: "Operational visibility", description: "Manage sites, pages, users, and activity from one platform." },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    title: "Contact",
+    slug: "contact",
+    description: "Talk to the Admino team",
+    blocks: [
+      {
+        type: "contactForm",
+        config: {
+          title: "Let’s build your website platform",
+          subtitle: "Tell us about your tenants, workflows, and goals.",
+          email: "hello@admino.com",
+          showPhone: "false",
+          showSubject: "true",
+          buttonText: "Send inquiry",
+          successMessage: "Thanks. The Admino team will be in touch shortly.",
+        },
+      },
+    ],
+  },
+];
+
+async function seedPage(siteId: number, page: SeedPage) {
+  const [existingPage] = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(eq(pages.siteId, siteId), eq(pages.slug, page.slug)));
+
+  const pageId = existingPage?.id ?? (
+    await db
+      .insert(pages)
+      .values({ siteId, title: page.title, slug: page.slug, description: page.description, published: true, sortOrder: SITE_PAGES.indexOf(page) })
+      .returning({ id: pages.id })
+  )[0].id;
+
+  await db
+    .update(pages)
+    .set({ title: page.title, description: page.description, published: true, sortOrder: SITE_PAGES.indexOf(page), updatedAt: new Date().toISOString() })
+    .where(eq(pages.id, pageId));
+  await db.delete(pageBlocks).where(eq(pageBlocks.pageId, pageId));
+  await db.insert(pageBlocks).values(
+    page.blocks.map((block, sortOrder) => ({
+      pageId,
+      type: block.type,
+      sortOrder,
+      visible: true,
+      config: JSON.stringify(block.config),
+    }))
+  );
+}
+
 async function main() {
-  console.log("Seeding PostgreSQL database…");
+  console.log("Seeding the Admino default tenant...");
 
-  // Seed default site
   const [existingSite] = await db.select().from(sites).where(eq(sites.slug, "default"));
-  let siteId = existingSite?.id;
-  if (!siteId) {
-    const [newSite] = await db.insert(sites).values({
-      name: process.env.SITE_NAME ?? "Maiti Resort",
-      slug: "default",
-      template: "restaurant",
-      published: true,
-    }).returning();
-    siteId = newSite.id;
-  }
-  console.log(`✔ Site ready (id: ${siteId})`);
+  const siteId = existingSite?.id ?? (
+    await db
+      .insert(sites)
+      .values({ name: "Admino", slug: "default", template: "business", published: true, description: "Multi-tenant website builder" })
+      .returning({ id: sites.id })
+  )[0].id;
 
-  // Seed settings
-  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
-    const now = new Date().toISOString();
+  await db
+    .update(sites)
+    .set({ name: "Admino", template: "business", description: "Multi-tenant website builder", published: true, updatedAt: new Date().toISOString() })
+    .where(eq(sites.id, siteId));
+
+  for (const [key, value] of Object.entries(ADMINO_SETTINGS)) {
     await db
       .insert(settings)
-      .values({ key, siteId, value, updatedAt: now })
+      .values({ key, siteId, value, updatedAt: new Date().toISOString() })
       .onConflictDoUpdate({
         target: [settings.key, settings.siteId],
-        set: { value, updatedAt: now },
+        set: { value, updatedAt: new Date().toISOString() },
       });
   }
-  console.log("✔ Settings seeded");
 
-  // Seed admin user (idempotent)
-  const email = (process.env.ADMIN_EMAIL ?? "admin@maitiresort.com").toLowerCase();
-  const [existing] = await db
-    .select()
-    .from(adminUsers)
-    .where(eq(adminUsers.email, email));
-  if (!existing) {
-    const password = process.env.ADMIN_PASSWORD ?? "maiti2024";
+  const email = (process.env.ADMIN_EMAIL ?? "admin@admino.local").toLowerCase();
+  const [existingAdmin] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
+  if (!existingAdmin) {
     await db.insert(adminUsers).values({
-      name: "Super Admin",
+      name: "Admino Super Admin",
       email,
-      passwordHash: await hashPassword(password),
+      passwordHash: await hashPassword(process.env.ADMIN_PASSWORD ?? "admino2026"),
       role: "super_admin",
     });
-    console.log(`✔ Seeded super admin: ${email} (password: ${password})`);
-  } else {
-    console.log(`✔ Admin user already exists: ${email}`);
   }
 
-  // Seed gallery
-  const gallery = await db.select().from(galleryImages);
-  if (gallery.length === 0) {
-    const photos = [
-      { title: "Our Dining Hall", category: "Resort", src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Outdoor Seating", category: "Resort", src: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Fresh Momos", category: "Food", src: "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Nepali Thali", category: "Food", src: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Evening Coffee", category: "Food", src: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Garden View", category: "Resort", src: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Dessert Platter", category: "Food", src: "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Family Gathering", category: "Events", src: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Cold Drinks", category: "Food", src: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=1200&q=80" },
-      { title: "Sunset at the Resort", category: "Resort", src: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80" },
-    ];
-    for (const [i, p] of photos.entries()) {
-      await db.insert(galleryImages).values({
-        siteId,
-        title: p.title,
-        alt: p.title,
-        src: p.src,
-        category: p.category,
-        featured: i < 4,
-        sortOrder: i,
-      });
-    }
-    console.log(`✔ Seeded ${photos.length} gallery images`);
-  } else {
-    console.log(`✔ Gallery already has ${gallery.length} images`);
+  for (const page of SITE_PAGES) {
+    await seedPage(siteId, page);
   }
 
-  // Seed menu
-  const cats = await db.select().from(menuCategories);
-  if (cats.length === 0) {
-    const categories = [
-      { name: "Breakfast", slug: "breakfast", description: "Start your day right", sortOrder: 1 },
-      { name: "Lunch & Dinner", slug: "lunch-dinner", description: "Hearty Nepali & continental dishes", sortOrder: 2 },
-      { name: "Desserts", slug: "desserts", description: "Sweet endings", sortOrder: 3 },
-      { name: "Coffee & Bar", slug: "coffee-bar", description: "Coffee, beer & wine", sortOrder: 4 },
-    ];
-    for (const c of categories) {
-      await db.insert(menuCategories).values({ ...c, siteId });
-    }
-    const idFor = async (slug: string) => {
-      const [row] = await db
-        .select()
-        .from(menuCategories)
-        .where(eq(menuCategories.slug, slug));
-      if (!row) throw new Error(`Category not found: ${slug}`);
-      return row.id;
-    };
+  await db.delete(navLinks).where(eq(navLinks.siteId, siteId));
+  await db.insert(navLinks).values([
+    { siteId, label: "Home", href: "/", sortOrder: 0, visible: true, external: false },
+    { siteId, label: "Pricing", href: "/pricing", sortOrder: 1, visible: true, external: false },
+    { siteId, label: "About", href: "/about", sortOrder: 2, visible: true, external: false },
+    { siteId, label: "Contact", href: "/contact", sortOrder: 3, visible: true, external: false },
+  ]);
 
-    const items = [
-      { categoryId: await idFor("breakfast"), name: "Sel Roti with Achar", description: "Traditional Nepali rice roti served with spicy pickle.", price: 150, featured: true, sortOrder: 1 },
-      { categoryId: await idFor("breakfast"), name: "Puri Tarkari", description: "Crispy puris with mixed vegetable curry.", price: 180, featured: false, sortOrder: 2 },
-      { categoryId: await idFor("breakfast"), name: "Masala Omelette", description: "Fluffy omelette with onions, tomatoes & chillies, served with toast.", price: 220, featured: false, sortOrder: 3 },
-      { categoryId: await idFor("breakfast"), name: "Continental Breakfast", description: "Eggs any style, sausages, toast, butter & jam with tea or coffee.", price: 450, featured: false, sortOrder: 4 },
-      { categoryId: await idFor("lunch-dinner"), name: "Chicken Momo (Steam/Fried)", description: "Juicy chicken dumplings with sesame-tomato achar.", price: 250, featured: true, sortOrder: 1 },
-      { categoryId: await idFor("lunch-dinner"), name: "Veg Thukpa", description: "Noodle soup with seasonal vegetables in a warm broth.", price: 300, featured: false, sortOrder: 2 },
-      { categoryId: await idFor("lunch-dinner"), name: "Nepali Khaja Set", description: "Rice, dal, seasonal vegetables, achar & curry of the day.", price: 500, featured: true, sortOrder: 3 },
-      { categoryId: await idFor("lunch-dinner"), name: "Chicken Chowmein", description: "Wok-tossed noodles with chicken and garden vegetables.", price: 280, featured: false, sortOrder: 4 },
-      { categoryId: await idFor("lunch-dinner"), name: "Mutton Sekuwa", description: "Char-grilled spiced mutton skewers with pickled onions.", price: 650, featured: true, sortOrder: 5 },
-      { categoryId: await idFor("lunch-dinner"), name: "Veg Fried Rice", description: "Seasonal vegetables tossed with fragrant basmati rice.", price: 250, featured: false, sortOrder: 6 },
-      { categoryId: await idFor("desserts"), name: "Juju Dhau", description: "Creamy sweet curd — a Bhaktapur special.", price: 150, featured: true, sortOrder: 1 },
-      { categoryId: await idFor("desserts"), name: "Gulab Jamun", description: "Warm milk dumplings soaked in rose syrup.", price: 180, featured: false, sortOrder: 2 },
-      { categoryId: await idFor("desserts"), name: "Fruit Salad with Ice Cream", description: "Seasonal fruits topped with a scoop of ice cream.", price: 250, featured: false, sortOrder: 3 },
-      { categoryId: await idFor("coffee-bar"), name: "Nepali Coffee", description: "Rich, locally grown coffee, brewed to order.", price: 200, featured: false, sortOrder: 1 },
-      { categoryId: await idFor("coffee-bar"), name: "Masala Chai", description: "Spiced milk tea brewed the Nepali way.", price: 120, featured: true, sortOrder: 2 },
-      { categoryId: await idFor("coffee-bar"), name: "Local Beer (650ml)", description: "Chilled Nepali lager.", price: 450, featured: false, sortOrder: 3 },
-      { categoryId: await idFor("coffee-bar"), name: "House Wine (Glass)", description: "Red or white, served by the glass.", price: 500, featured: false, sortOrder: 4 },
-    ];
-    for (const item of items) {
-      await db.insert(menuItems).values({ ...item, siteId });
-    }
-    console.log(`✔ Seeded ${items.length} menu items`);
-  } else {
-    console.log(`✔ Menu already has ${cats.length} categories`);
-  }
-
-  // Seed navigation links
-  const existingLinks = await db.select().from(navLinks);
-  if (existingLinks.length === 0) {
-    const links = [
-      { label: "Home", href: "/", sortOrder: 0 },
-      { label: "Menu", href: "/menu", sortOrder: 1 },
-      { label: "Gallery", href: "/gallery", sortOrder: 2 },
-      { label: "Book a Table", href: "/book", sortOrder: 3 },
-      { label: "Contact", href: "/contact", sortOrder: 4 },
-    ];
-    for (const link of links) {
-      await db.insert(navLinks).values({ ...link, siteId, visible: true, external: false });
-    }
-    console.log(`✔ Seeded ${links.length} navigation links`);
-  } else {
-    console.log(`✔ Navigation already has ${existingLinks.length} links`);
-  }
-
-  // Seed homepage sections
-  const existingSections = await db.select().from(homeSections);
-  if (existingSections.length === 0) {
-    const sections = [
-      { type: "hero", title: null, sortOrder: 0 },
-      { type: "features", title: null, sortOrder: 1 },
-      { type: "about", title: null, sortOrder: 2 },
-      { type: "video", title: null, sortOrder: 3 },
-      { type: "menuPreview", title: null, sortOrder: 4 },
-      { type: "gallery", title: null, sortOrder: 5 },
-      { type: "cta", title: null, sortOrder: 6 },
-    ];
-    for (const section of sections) {
-      await db.insert(homeSections).values({
-        ...section,
-        siteId,
-        visible: section.type !== "video",
-        config: null,
-      });
-    }
-    console.log(`✔ Seeded ${sections.length} homepage sections`);
-  } else {
-    console.log(`✔ Homepage already has ${existingSections.length} sections`);
-  }
-
-  // Seed default homepage for the new page builder system
-  const [existingPage] = await db
-    .select()
-    .from(pages)
-    .where(eq(pages.slug, "home"));
-  if (!existingPage) {
-    const [homePage] = await db
-      .insert(pages)
-      .values({
-        siteId,
-        title: "Home",
-        slug: "home",
-        description: "Homepage",
-        template: "default",
-        published: true,
-        sortOrder: 0,
-      })
-      .returning();
-    console.log(`✔ Seeded homepage (id: ${homePage.id})`);
-
-    const pageSections = [
-      { type: "hero", title: null, sortOrder: 0, config: null },
-      { type: "features", title: null, sortOrder: 1, config: null },
-      { type: "about", title: null, sortOrder: 2, config: null },
-      { type: "menuPreview", title: null, sortOrder: 3, config: null },
-      { type: "gallery", title: null, sortOrder: 4, config: null },
-      { type: "cta", title: null, sortOrder: 5, config: null },
-    ];
-    for (const block of pageSections) {
-      await db.insert(pageBlocks).values({
-        pageId: homePage.id,
-        ...block,
-        visible: true,
-      });
-    }
-    console.log(`✔ Seeded ${pageSections.length} page blocks for homepage`);
-  } else {
-    console.log(`✔ Homepage already exists`);
-  }
-
-  console.log("✔ Seed complete.");
+  console.log(`Admino seed complete for default site ${siteId}.`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
   })
   .finally(() => closeDb(db));

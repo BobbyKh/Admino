@@ -13,7 +13,7 @@ export function VideoSection({ settings }: { settings: SiteSettings }) {
   const videoUrl = settings.videoUrl;
   const ytId = videoUrl ? getYouTubeId(videoUrl) : null;
   const vimeoId = videoUrl ? getVimeoId(videoUrl) : null;
-  const title = settings.videoTitle || "Experience Maiti Resort";
+  const title = settings.videoTitle || "See what we can build together";
   const description = settings.videoDescription;
   const poster = settings.videoPoster;
 
@@ -40,7 +40,7 @@ export function VideoSection({ settings }: { settings: SiteSettings }) {
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             <div className="text-center">
               <p className="text-sm font-medium">No video set</p>
-              <p className="text-xs">Add a YouTube, Vimeo, or video URL in Settings → Homepage → Video section</p>
+              <p className="text-xs">Add a YouTube, Vimeo, or video URL in the Video block settings.</p>
             </div>
           </div>
         )}

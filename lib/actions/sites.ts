@@ -4,14 +4,22 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sites } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
+import { createDefaultHomepage } from "@/lib/default-homepage";
+import { createDefaultNavigation } from "@/lib/default-navigation";
 import type { AdminActionState } from "./types";
+
+function getPlatformDomain() {
+  const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
+  if (!domain) return null;
+  return domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+}
 
 export async function createSite(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  await requireRole("super_admin");
   const name = String(formData.get("name") ?? "").trim();
   let slug = String(formData.get("slug") ?? "")
     .trim()
@@ -22,17 +30,25 @@ export async function createSite(
   if (!slug) slug = `site-${Date.now()}`;
   const template = String(formData.get("template") ?? "blank").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
+  const platformDomain = getPlatformDomain();
 
   if (!name) return { message: "Site name is required." };
 
-  await db.insert(sites).values({
-    name,
-    slug,
-    template,
-    description,
-    published: false,
-  });
+  const [site] = await db
+    .insert(sites)
+    .values({
+      name,
+      slug,
+      template,
+      description,
+      domain: platformDomain ? `${slug}.${platformDomain}` : null,
+      published: false,
+    })
+    .returning({ id: sites.id });
+  await createDefaultHomepage(site.id);
+  await createDefaultNavigation(site.id);
   revalidatePath("/admin/sites");
+  revalidatePath("/", "layout");
   return { success: true, message: "Site created." };
 }
 
@@ -40,7 +56,7 @@ export async function updateSite(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  await requireRole("super_admin");
   const id = Number(formData.get("id"));
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
@@ -57,12 +73,12 @@ export async function updateSite(
 }
 
 export async function deleteSite(id: number) {
-  await requireAdmin();
+  await requireRole("super_admin");
   await db.delete(sites).where(eq(sites.id, id));
   revalidatePath("/admin/sites");
 }
 
 export async function getSites() {
-  await requireAdmin();
+  await requireRole("super_admin");
   return db.select().from(sites);
 }

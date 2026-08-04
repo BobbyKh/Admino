@@ -1,16 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, desc, asc } from "drizzle-orm";
+import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { homeSections } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
-import { getAdminSiteId } from "@/lib/admin-site";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getHomeSections() {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   return db.select().from(homeSections).where(eq(homeSections.siteId, siteId)).orderBy(asc(homeSections.sortOrder));
 }
 
@@ -18,8 +16,7 @@ export async function addHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const type = String(formData.get("type") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim() || null;
   if (!type) return { message: "Section type is required." };
@@ -41,30 +38,30 @@ export async function updateHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   const id = Number(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim() || null;
   const visible = formData.get("visible") === "on";
   const config = String(formData.get("config") ?? "").trim() || null;
   if (!id) return { message: "Section ID is required." };
-  await db.update(homeSections).set({ title, visible, config }).where(eq(homeSections.id, id));
+  await db.update(homeSections).set({ title, visible, config }).where(and(eq(homeSections.id, id), eq(homeSections.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
   return { success: true, message: "Section updated." };
 }
 
 export async function deleteHomeSection(id: number) {
-  await requireAdmin();
-  await db.delete(homeSections).where(eq(homeSections.id, id));
+  const siteId = await getCurrentAdminSiteId();
+  await db.delete(homeSections).where(and(eq(homeSections.id, id), eq(homeSections.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
 }
 
 export async function reorderHomeSections(orderedIds: number[]) {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
-      await tx.update(homeSections).set({ sortOrder: i }).where(eq(homeSections.id, orderedIds[i]));
+      await tx.update(homeSections).set({ sortOrder: i }).where(and(eq(homeSections.id, orderedIds[i]), eq(homeSections.siteId, siteId)));
     }
   });
   revalidatePath("/", "layout");

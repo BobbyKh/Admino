@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Bot,
   CloudUpload,
-  Film,
   Globe,
-  Home,
   Mail,
   Paintbrush,
   Save,
@@ -19,10 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { VideoPicker } from "@/components/admin/video-picker";
 import {
   Select,
   SelectContent,
@@ -115,12 +111,8 @@ export function SettingsForm({
       {Object.keys(themeColors).length > 0 && (
         <style dangerouslySetInnerHTML={{ __html: buildThemeCss(themeColors) }} />
       )}
-      <Tabs defaultValue="homepage">
+      <Tabs defaultValue="branding">
         <TabsList variant="line" className="w-full justify-start gap-0 border-b px-1 pb-0">
-          <TabsTrigger value="homepage" className="gap-1.5">
-            <Home className="size-3.5" />
-            Homepage
-          </TabsTrigger>
           <TabsTrigger value="branding" className="gap-1.5">
             <Paintbrush className="size-3.5" />
             Branding
@@ -138,123 +130,6 @@ export function SettingsForm({
             Theme
           </TabsTrigger>
         </TabsList>
-
-        {/* ========================= HOMEPAGE TAB ========================= */}
-        <TabsContent value="homepage" className="space-y-6 pt-4">
-          {/* Hero Section */}
-          <Section
-            title="Hero Section"
-            hint="The main hero banner at the top of the homepage."
-            icon={<Home className="size-4" />}
-          >
-            <Field label="Badge (top pill)" name="heroBadge" value={initial.heroBadge} />
-            <Field label="Hero title" name="heroTitle" value={initial.heroTitle} />
-            <TextareaField
-              label="Hero subtitle"
-              name="heroSubtitle"
-              value={initial.heroSubtitle}
-              rows={3}
-            />
-            <ImageField label="Hero background image" name="heroImage" value={initial.heroImage} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Primary button text" name="heroCtaPrimary" value={initial.heroCtaPrimary} />
-              <Field label="Secondary button text" name="heroCtaSecondary" value={initial.heroCtaSecondary} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Primary button link" name="heroCtaPrimaryLink" value={initial.heroCtaPrimaryLink} placeholder="/contact" />
-              <Field label="Secondary button link" name="heroCtaSecondaryLink" value={initial.heroCtaSecondaryLink} placeholder="/gallery" />
-            </div>
-          </Section>
-
-          {/* Section Visibility */}
-          <Section
-            title="Homepage Sections"
-            hint="Show or hide sections on the homepage."
-            icon={<Settings className="size-4" />}
-          >
-            <div className="space-y-4">
-              <ToggleField
-                label="Features section"
-                name="showFeatures"
-                checked={initial.showFeatures === "true"}
-                description="The feature cards section on the homepage"
-              />
-              <ToggleField
-                label="About section"
-                name="showAbout"
-                checked={initial.showAbout === "true"}
-                description="The 'About Us' section with image and text"
-              />
-              <ToggleField
-                label="Video section"
-                name="showVideo"
-                checked={initial.showVideo === "true"}
-                description="A video showcase section (YouTube, Vimeo, or self-hosted)"
-              />
-              <ToggleField
-                label="Gallery preview"
-                name="showGallery"
-                checked={initial.showGallery === "true"}
-                description="The gallery preview grid on the homepage"
-              />
-              <ToggleField
-                label="Call-to-action banner"
-                name="showCta"
-                checked={initial.showCta === "true"}
-                description="The bottom CTA banner with call-to-action buttons"
-              />
-            </div>
-          </Section>
-
-          {/* Video Section */}
-          <Section
-            title="Video Section"
-            hint="Add a promotional video to the homepage. Supports YouTube, Vimeo, or Cloudinary-hosted videos."
-            icon={<Film className="size-4" />}
-          >
-            <VideoPicker
-              name="videoUrl"
-              value={initial.videoUrl}
-              posterName="videoPoster"
-              posterValue={initial.videoPoster}
-              label="Video URL"
-              description="Paste a YouTube or Vimeo URL, or upload a video file from the Media Library."
-            />
-            <Field label="Video title" name="videoTitle" value={initial.videoTitle} />
-            <TextareaField
-              label="Video description"
-              name="videoDescription"
-              value={initial.videoDescription}
-              rows={2}
-            />
-          </Section>
-
-          {/* Features */}
-          <Section
-            title="Features (cards)"
-            hint="One JSON array of {title, text, icon} objects. Icons: leaf, sun, users, parking, coffee, heart, star."
-          >
-            <TextareaField
-              label="Features JSON"
-              name="features"
-              value={initial.features}
-              rows={10}
-            />
-          </Section>
-
-          {/* Services */}
-          <Section
-            title="Services & amenities"
-            hint="A JSON array of strings shown as badges."
-          >
-            <TextareaField
-              label="Services JSON"
-              name="services"
-              value={initial.services}
-              rows={8}
-            />
-          </Section>
-        </TabsContent>
 
         {/* ========================= BRANDING TAB ========================= */}
         <TabsContent value="branding" className="space-y-6 pt-4">
@@ -323,6 +198,31 @@ export function SettingsForm({
               value={initial.footerNote}
               rows={2}
             />
+          </Section>
+
+          <Section title="Header & Footer Navigation" hint="Edit tenant navigation links separately in Admin → Navigation.">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Header button label" name="navbarCtaLabel" value={initial.navbarCtaLabel} />
+              <Field label="Header button link" name="navbarCtaLink" value={initial.navbarCtaLink} placeholder="/contact" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-navbarShowPhone">Show phone button in header</Label>
+              <select
+                id="s-navbarShowPhone"
+                name="navbarShowPhone"
+                defaultValue={initial.navbarShowPhone}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="true">Show</option>
+                <option value="false">Hide</option>
+              </select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Footer links heading" name="footerExploreTitle" value={initial.footerExploreTitle} />
+              <Field label="Footer contact heading" name="footerContactTitle" value={initial.footerContactTitle} />
+              <Field label="Footer hours heading" name="footerHoursTitle" value={initial.footerHoursTitle} />
+            </div>
+            <TextareaField label="Footer copyright" name="footerCopyright" value={initial.footerCopyright} rows={2} />
           </Section>
         </TabsContent>
 
@@ -562,38 +462,6 @@ function TextareaField({
         name={name}
         defaultValue={value}
         rows={rows ?? 4}
-      />
-    </div>
-  );
-}
-
-function ToggleField({
-  label,
-  name,
-  checked,
-  description,
-}: {
-  label: string;
-  name: string;
-  checked: boolean;
-  description?: string;
-}) {
-  const [isChecked, setIsChecked] = React.useState(checked);
-  return (
-    <div className="flex items-center justify-between rounded-lg border p-3">
-      <div className="space-y-0.5">
-        <Label htmlFor={`s-${name}`} className="cursor-pointer">
-          {label}
-        </Label>
-        {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        )}
-      </div>
-      <input type="hidden" name={name} value={isChecked ? "true" : "false"} />
-      <Switch
-        id={`s-${name}`}
-        checked={isChecked}
-        onCheckedChange={(val) => setIsChecked(val)}
       />
     </div>
   );

@@ -37,7 +37,8 @@ export function ChatWidget({ siteName }: { siteName: string }) {
     setError(null);
 
     try {
-      const res = await fetch("/api/chat", {
+      const siteSlug = new URLSearchParams(window.location.search).get("site");
+      const res = await fetch(siteSlug ? `/api/chat?site=${encodeURIComponent(siteSlug)}` : "/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: newMessages }),

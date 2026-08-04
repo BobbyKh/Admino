@@ -2,16 +2,20 @@ import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { ChatWidget } from "@/components/site/chat-widget";
 import { getResolvedSiteSettings, getResolvedNavLinks } from "@/lib/data";
+import { getResolvedSite } from "@/lib/site-context";
+import { notFound } from "next/navigation";
 
 export default async function SiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, navLinks] = await Promise.all([
+  const [site, settings, navLinks] = await Promise.all([
+    getResolvedSite(),
     getResolvedSiteSettings(),
     getResolvedNavLinks(),
   ]);
+  if (!site?.published) notFound();
   return (
     <>
       <a

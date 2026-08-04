@@ -1,19 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { menuCategories, menuItems } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
-import { getAdminSiteId } from "@/lib/admin-site";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function addMenuCategory(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   let slug = String(formData.get("slug") ?? "")
@@ -36,8 +34,8 @@ export async function addMenuCategory(
 }
 
 export async function deleteMenuCategory(categoryId: number) {
-  await requireAdmin();
-  await db.delete(menuCategories).where(eq(menuCategories.id, categoryId));
+  const siteId = await getCurrentAdminSiteId();
+  await db.delete(menuCategories).where(and(eq(menuCategories.id, categoryId), eq(menuCategories.siteId, siteId)));
   revalidatePath("/menu");
   revalidatePath("/admin/menu");
 }
@@ -46,8 +44,7 @@ export async function addMenuItem(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const categoryId = Number(formData.get("categoryId"));
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -56,6 +53,8 @@ export async function addMenuItem(
   const featured = formData.get("featured") === "on";
 
   if (!name || !categoryId || !price) return { message: "Name, category and price are required." };
+  const [category] = await db.select({ id: menuCategories.id }).from(menuCategories).where(and(eq(menuCategories.id, categoryId), eq(menuCategories.siteId, siteId)));
+  if (!category) return { message: "Invalid menu category." };
 
   await db.insert(menuItems).values({
     siteId,
@@ -78,7 +77,7 @@ export async function updateMenuItem(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   const id = Number(formData.get("id"));
   const categoryId = Number(formData.get("categoryId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -89,6 +88,8 @@ export async function updateMenuItem(
   const featured = formData.get("featured") === "on";
 
   if (!id || !name || !categoryId || !price) return { message: "Name, category and price are required." };
+  const [category] = await db.select({ id: menuCategories.id }).from(menuCategories).where(and(eq(menuCategories.id, categoryId), eq(menuCategories.siteId, siteId)));
+  if (!category) return { message: "Invalid menu category." };
 
   await db
     .update(menuItems)
@@ -101,7 +102,7 @@ export async function updateMenuItem(
       available,
       featured,
     })
-    .where(eq(menuItems.id, id));
+    .where(and(eq(menuItems.id, id), eq(menuItems.siteId, siteId)));
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");
@@ -109,8 +110,8 @@ export async function updateMenuItem(
 }
 
 export async function deleteMenuItem(itemId: number) {
-  await requireAdmin();
-  await db.delete(menuItems).where(eq(menuItems.id, itemId));
+  const siteId = await getCurrentAdminSiteId();
+  await db.delete(menuItems).where(and(eq(menuItems.id, itemId), eq(menuItems.siteId, siteId)));
   revalidatePath("/menu");
   revalidatePath("/", "layout");
   revalidatePath("/admin/menu");

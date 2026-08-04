@@ -1,22 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
 import { requireAdmin, hasMinRole } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
-import { getAllAdminSites } from "@/lib/admin-site";
+import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
 import type { AdminActionState } from "./types";
 
 export async function getAdminUsers() {
   await requireAdmin();
-  return db.select().from(adminUsers);
+  const siteId = await getAdminSiteId();
+  return db
+    .select()
+    .from(adminUsers)
+    .where(and(eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin")));
 }
 
 export async function getSitesForCurrentUser() {
   await requireAdmin();
-  return getAllAdminSites();
+  const siteId = await getAdminSiteId();
+  const sites = await getAllAdminSites();
+  return sites.filter((site) => site.id === siteId);
 }
 
 export async function createAdminUser(
@@ -33,8 +39,7 @@ export async function createAdminUser(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "").trim();
   const role = String(formData.get("role") ?? "viewer").trim();
-  const siteIdRaw = formData.get("siteId");
-  const siteId = siteIdRaw ? Number(siteIdRaw) : null;
+  const siteId = await getAdminSiteId();
 
   if (!name || !email || !password) {
     return { message: "Name, email, and password are required." };
@@ -43,14 +48,8 @@ export async function createAdminUser(
     return { message: "Password must be at least 6 characters." };
   }
 
-  if (role === "super_admin" && userRole !== "super_admin") {
-    return { message: "Only super admins can create super admin accounts." };
-  }
-
-  if (userRole !== "super_admin" && user.siteId) {
-    if (siteId && siteId !== user.siteId) {
-      return { message: "You can only assign users to your own site." };
-    }
+  if (!['admin', 'editor', 'viewer'].includes(role)) {
+    return { message: "Tenant users must be an admin, editor, or viewer." };
   }
 
   const [existing] = await db
@@ -66,7 +65,7 @@ export async function createAdminUser(
     email,
     passwordHash: await hashPassword(password),
     role,
-    siteId: siteId || null,
+    siteId,
   });
 
   revalidatePath("/admin/users");
@@ -88,28 +87,29 @@ export async function updateAdminUser(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "viewer").trim();
   const newPassword = String(formData.get("password") ?? "").trim();
-  const siteIdRaw = formData.get("siteId");
-  const siteId = siteIdRaw ? Number(siteIdRaw) : null;
+  const siteId = await getAdminSiteId();
 
   if (!id || !name || !email) {
     return { message: "ID, name, and email are required." };
   }
 
-  if (role === "super_admin" && userRole !== "super_admin") {
-    return { message: "Only super admins can assign super admin role." };
+  if (!['admin', 'editor', 'viewer'].includes(role)) {
+    return { message: "Tenant users must be an admin, editor, or viewer." };
   }
 
   if (id === currentUser.id && role !== currentUser.role) {
     return { message: "You cannot change your own role." };
   }
 
-  if (userRole !== "super_admin" && currentUser.siteId) {
-    if (siteId && siteId !== currentUser.siteId) {
-      return { message: "You can only assign users to your own site." };
-    }
+  const [targetUser] = await db
+    .select({ siteId: adminUsers.siteId, role: adminUsers.role })
+    .from(adminUsers)
+    .where(eq(adminUsers.id, id));
+  if (!targetUser || targetUser.siteId !== siteId || targetUser.role === "super_admin") {
+    return { message: "You can only edit users assigned to the active site." };
   }
 
-  const updateData: Record<string, unknown> = { name, email, role, siteId: siteId || null };
+  const updateData: Record<string, unknown> = { name, email, role, siteId };
 
   if (newPassword) {
     if (newPassword.length < 6) {
@@ -121,7 +121,9 @@ export async function updateAdminUser(
   await db
     .update(adminUsers)
     .set(updateData)
-    .where(eq(adminUsers.id, id));
+    .where(
+      and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
+    );
 
   revalidatePath("/admin/users");
   return { success: true, message: "User updated." };
@@ -138,6 +140,19 @@ export async function deleteAdminUser(id: number) {
     return { message: "You cannot delete your own account." };
   }
 
-  await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  const siteId = await getAdminSiteId();
+  const [targetUser] = await db
+    .select({ siteId: adminUsers.siteId, role: adminUsers.role })
+    .from(adminUsers)
+    .where(eq(adminUsers.id, id));
+  if (!targetUser || targetUser.siteId !== siteId || targetUser.role === "super_admin") {
+    return { message: "You can only delete users assigned to the active site." };
+  }
+
+  await db
+    .delete(adminUsers)
+    .where(
+      and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
+    );
   revalidatePath("/admin/users");
 }

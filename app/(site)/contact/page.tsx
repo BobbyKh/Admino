@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getResolvedSiteSettings();
   return {
     title: "Contact Us",
-    description: `Contact ${settings.siteName} at ${settings.address} — ${settings.phone}. Open ${settings.hours}. Send us a message or book your table.`,
+    description: `Contact ${settings.siteName}. ${settings.description}`,
     openGraph: {
       title: `Contact Us | ${settings.siteName}`,
       description: `Reach out to ${settings.siteName}. We'd love to hear from you.`,
@@ -30,11 +30,11 @@ export default async function ContactPage() {
           Get in touch
         </p>
         <h1 className="font-heading text-4xl font-semibold sm:text-5xl">
-          Contact Maiti Resort
+          Contact {settings.siteName}
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-          Questions, events or private gatherings — we&apos;d love to hear from
-          you. Reach us by phone, email or the form below.
+          Have a question about {settings.siteName}? Send us a message and our
+          team will get back to you.
         </p>
       </div>
 
@@ -55,35 +55,43 @@ export default async function ContactPage() {
                 <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
                 <span>{settings.address}</span>
               </p>
-              <p className="flex items-start gap-3">
-                <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
-                <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="hover:underline">
-                  {settings.phone}
-                </a>
-              </p>
-              <p className="flex items-start gap-3">
-                <Mail className="mt-0.5 size-4 shrink-0 text-primary" />
-                <a href={`mailto:${settings.email}`} className="hover:underline">
-                  {settings.email}
-                </a>
-              </p>
-              <p className="flex items-start gap-3">
-                <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
-                <span>{settings.hours}</span>
-              </p>
+              {settings.phone && (
+                <p className="flex items-start gap-3">
+                  <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="hover:underline">
+                    {settings.phone}
+                  </a>
+                </p>
+              )}
+              {settings.email && (
+                <p className="flex items-start gap-3">
+                  <Mail className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <a href={`mailto:${settings.email}`} className="hover:underline">
+                    {settings.email}
+                  </a>
+                </p>
+              )}
+              {settings.hours && (
+                <p className="flex items-start gap-3">
+                  <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span>{settings.hours}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden">
-            <iframe
-              src={mapSrc}
-              title={`Map of ${settings.siteName}`}
-              className="h-72 w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
-          </Card>
+          {settings.mapQuery && (
+            <Card className="overflow-hidden">
+              <iframe
+                src={mapSrc}
+                title={`Map of ${settings.siteName}`}
+                className="h-72 w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+            </Card>
+          )}
         </div>
       </div>
     </div>

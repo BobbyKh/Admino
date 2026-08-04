@@ -62,7 +62,7 @@ Copy `.env.example` to `.env.local` and fill in the values:
 
 | Variable              | Purpose                                             |
 | --------------------- | --------------------------------------------------- |
-| `DATABASE_URL`        | SQLite file path locally; **Postgres connection string in prod** (driver auto-selected) |
+| `DATABASE_URL`        | PostgreSQL connection string |
 | `AUTH_SECRET`         | JWT signing secret for admin sessions (**required in production**) |
 | `ADMIN_EMAIL`         | Admin login email used by the seed script           |
 | `ADMIN_PASSWORD`      | Admin login password used by the seed script        |
@@ -77,8 +77,36 @@ Copy `.env.example` to `.env.local` and fill in the values:
 | `CLOUDINARY_API_KEY`   | Cloudinary API key                                 |
 | `CLOUDINARY_API_SECRET`| Cloudinary API secret                              |
 | `SITE_URL`            | Public site URL (used in email links + sitemap)     |
+| `PLATFORM_DOMAIN`     | Root tenant domain, e.g. `admino.com`               |
 
 > **Email without SMTP:** if `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` are empty, the app still works — emails are logged to the server console instead of being sent, so you can develop without an email account.
+
+## Tenant subdomains
+
+Set `PLATFORM_DOMAIN=admino.com` in production. New sites are then assigned
+`<site-slug>.admino.com` automatically, for example `maiti-resort.admino.com`.
+
+Configure your DNS provider with a wildcard record that points at the application:
+
+```text
+Type: CNAME
+Host: *
+Value: your-deployment-hostname
+```
+
+Also configure the root domain and add `*.admino.com` as a wildcard domain in your
+hosting provider. On localhost, tenant previews remain available at
+`http://localhost:3000/?site=<site-slug>`.
+
+## Homepage Builder
+
+Each new tenant receives a published **Home** page with editable Hero and Features
+blocks. Manage it from **Admin → Pages → Home → Blocks**; create additional pages
+from the same Pages screen. To add the default Home page to existing tenants, run:
+
+```bash
+npm run db:provision-homepages
+```
 
 ### Gmail example
 

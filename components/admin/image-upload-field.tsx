@@ -7,7 +7,6 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadImage } from "@/lib/cms-actions";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
 
@@ -42,10 +41,11 @@ export function ImageUploadField({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await uploadImage(formData);
-      if (result?.url) {
+      const response = await fetch("/api/upload", { method: "POST", body: formData });
+      const result = await response.json();
+      if (response.ok && result.url) {
         onChange(result.url);
-        toast.success("Image uploaded to Cloudinary");
+        toast.success("Image uploaded to the media library");
       } else {
         toast.error(result?.error ?? "Upload failed.");
       }

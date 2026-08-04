@@ -1,5 +1,5 @@
 import type { GalleryImage, MenuItem } from "@/lib/db/schema";
-import type { SiteSettings } from "@/lib/settings";
+import type { Feature, SiteSettings } from "@/lib/settings";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
 import { AboutSection } from "./about-section";
@@ -33,9 +33,33 @@ import { GalleryLightboxBlock } from "../blocks/gallery-lightbox-block";
 import { StepsBlock } from "../blocks/steps-block";
 import { InfoCardBlock } from "../blocks/info-card-block";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
+}
+
+function getString(config: Record<string, unknown>, key: string): string | undefined {
+  const value = config[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function getStringConfig(config: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(config).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
+}
+
+function getFeatures(config: Record<string, unknown>, fallback: Feature[]): Feature[] {
+  const items = config.items;
+  if (!Array.isArray(items)) return fallback;
+  return items.filter(
+    (item): item is Feature =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof item.title === "string" &&
+      typeof item.text === "string" &&
+      typeof item.icon === "string"
+  );
 }
 
 export function SectionRenderer({
@@ -51,27 +75,63 @@ export function SectionRenderer({
 }) {
   const config = parseConfig(section.config ?? null);
   const cfg = section.config ?? null;
+  const isHomepageSection = section.siteId !== undefined;
 
   switch (section.type) {
     // Homepage sections (use settings)
     case "hero":
-      return <HeroSection settings={settings} />;
+      return (
+        <HeroSection
+          settings={{
+            ...settings,
+            heroTitle: getString(config, "title") ?? settings.heroTitle,
+            heroSubtitle: getString(config, "subtitle") ?? settings.heroSubtitle,
+            heroBadge: getString(config, "badge") ?? settings.heroBadge,
+            heroImage: getString(config, "image") ?? settings.heroImage,
+            heroCtaPrimary: getString(config, "ctaPrimary") ?? settings.heroCtaPrimary,
+            heroCtaPrimaryLink: getString(config, "ctaPrimaryLink") ?? settings.heroCtaPrimaryLink,
+            heroCtaSecondary: getString(config, "ctaSecondary") ?? settings.heroCtaSecondary,
+            heroCtaSecondaryLink: getString(config, "ctaSecondaryLink") ?? settings.heroCtaSecondaryLink,
+          }}
+        />
+      );
     case "features":
-      return <FeaturesSection features={settings.features} title={config.title} subtitle={config.subtitle} />;
+      if (isHomepageSection && settings.showFeatures !== "true") return null;
+      return (
+        <FeaturesSection
+          features={getFeatures(config, settings.features)}
+          title={getString(config, "title")}
+          subtitle={getString(config, "subtitle")}
+        />
+      );
     case "about":
+      if (isHomepageSection && settings.showAbout !== "true") return null;
       return <AboutSection settings={settings} />;
     case "video":
-      return <VideoSection settings={settings} />;
+      if (isHomepageSection && settings.showVideo !== "true") return null;
+      return (
+        <VideoSection
+          settings={{
+            ...settings,
+            videoUrl: getString(config, "url") ?? settings.videoUrl,
+            videoTitle: getString(config, "title") ?? settings.videoTitle,
+            videoDescription: getString(config, "description") ?? settings.videoDescription,
+            videoPoster: getString(config, "poster") ?? settings.videoPoster,
+          }}
+        />
+      );
     case "gallery":
+      if (isHomepageSection && settings.showGallery !== "true") return null;
       return <GallerySection images={galleryImages} />;
     case "cta":
+      if (isHomepageSection && settings.showCta !== "true") return null;
       return <CtaSection settings={settings} />;
     case "menuPreview":
       return <MenuPreviewSection items={featuredItems} />;
     case "banner":
-      return <BannerSection config={config} />;
+      return <BannerSection config={getStringConfig(config)} />;
     case "customHtml":
-      return <CustomHtmlSection config={config} />;
+      return <CustomHtmlSection config={getStringConfig(config)} />;
 
     // Page builder blocks (use config)
     case "authForm":

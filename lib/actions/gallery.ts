@@ -1,19 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { galleryImages } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
-import { getAdminSiteId } from "@/lib/admin-site";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function addGalleryImage(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const title = String(formData.get("title") ?? "").trim();
   const alt = String(formData.get("alt") ?? "").trim();
   const src = String(formData.get("src") ?? "").trim();
@@ -41,7 +39,7 @@ export async function updateGalleryImage(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   const id = Number(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim();
   const alt = String(formData.get("alt") ?? "").trim();
@@ -54,7 +52,7 @@ export async function updateGalleryImage(
   await db
     .update(galleryImages)
     .set({ title, alt: alt || title, src, category, featured })
-    .where(eq(galleryImages.id, id));
+    .where(and(eq(galleryImages.id, id), eq(galleryImages.siteId, siteId)));
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");
@@ -62,19 +60,19 @@ export async function updateGalleryImage(
 }
 
 export async function deleteGalleryImage(imageId: number) {
-  await requireAdmin();
-  await db.delete(galleryImages).where(eq(galleryImages.id, imageId));
+  const siteId = await getCurrentAdminSiteId();
+  await db.delete(galleryImages).where(and(eq(galleryImages.id, imageId), eq(galleryImages.siteId, siteId)));
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");
 }
 
 export async function toggleFeatured(imageId: number, featured: boolean) {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   await db
     .update(galleryImages)
     .set({ featured })
-    .where(eq(galleryImages.id, imageId));
+    .where(and(eq(galleryImages.id, imageId), eq(galleryImages.siteId, siteId)));
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
   revalidatePath("/admin/gallery");

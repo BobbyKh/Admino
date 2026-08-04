@@ -85,7 +85,7 @@ export const settings = pgTable("settings", {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
-  keySiteUnique: { unique: true, columns: [t.key, t.siteId] },
+  keySiteUnique: uniqueIndex("settings_key_site_id_idx").on(t.key, t.siteId),
   siteIdIdx: index("settings_site_id_idx").on(t.siteId),
 }));
 

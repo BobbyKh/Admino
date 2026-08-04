@@ -44,6 +44,14 @@ export const SETTING_KEYS = [
   "features",
   "services",
   "footerNote",
+  // Header and footer presentation
+  "navbarCtaLabel",
+  "navbarCtaLink",
+  "navbarShowPhone",
+  "footerExploreTitle",
+  "footerContactTitle",
+  "footerHoursTitle",
+  "footerCopyright",
   // Theme colors
   "themePrimary",
   "themePrimaryForeground",
@@ -163,6 +171,13 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   ]),
   footerNote:
     "Maiti Resort — a dining and relaxation venue in Kirtipur, Nepal. Open daily 10:00 AM – 10:00 PM.",
+  navbarCtaLabel: "Contact Us",
+  navbarCtaLink: "/contact",
+  navbarShowPhone: "true",
+  footerExploreTitle: "Explore",
+  footerContactTitle: "Visit Us",
+  footerHoursTitle: "Hours",
+  footerCopyright: "",
   // Theme colors
   themePrimary: "oklch(0.5 0.11 155)",
   themePrimaryForeground: "oklch(0.985 0 0)",
@@ -246,6 +261,13 @@ export interface SiteSettings {
   features: Feature[];
   services: string[];
   footerNote: string;
+  navbarCtaLabel: string;
+  navbarCtaLink: string;
+  navbarShowPhone: string;
+  footerExploreTitle: string;
+  footerContactTitle: string;
+  footerHoursTitle: string;
+  footerCopyright: string;
   // Theme colors
   themePrimary: string;
   themePrimaryForeground: string;

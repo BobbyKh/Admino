@@ -8,7 +8,6 @@ import {
   Trash2,
   Shield,
   ShieldCheck,
-  ShieldAlert,
   Eye,
   Globe,
 } from "lucide-react";
@@ -57,14 +56,12 @@ type AdminActionState = { success?: boolean; message?: string };
 type Site = { id: number; name: string; slug: string };
 
 const ROLES = [
-  { value: "super_admin", label: "Super Admin", icon: ShieldAlert, color: "text-red-600" },
   { value: "admin", label: "Admin", icon: ShieldCheck, color: "text-blue-600" },
   { value: "editor", label: "Editor", icon: Pencil, color: "text-green-600" },
   { value: "viewer", label: "Viewer", icon: Eye, color: "text-muted-foreground" },
 ];
 
 const ROLE_BADGE: Record<string, string> = {
-  super_admin: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
   admin: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
   editor: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
   viewer: "bg-muted text-muted-foreground",
@@ -91,15 +88,19 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (createState?.success) {
-      getAdminUsers().then(setUsers);
-      setCreateOpen(false);
+      getAdminUsers().then((updatedUsers) => {
+        setUsers(updatedUsers);
+        setCreateOpen(false);
+      });
     }
   }, [createState]);
 
   useEffect(() => {
     if (updateState?.success) {
-      getAdminUsers().then(setUsers);
-      setEditingUser(null);
+      getAdminUsers().then((updatedUsers) => {
+        setUsers(updatedUsers);
+        setEditingUser(null);
+      });
     }
   }, [updateState]);
 
@@ -115,7 +116,7 @@ export default function UsersPage() {
         <div>
           <h1 className="font-heading text-3xl font-semibold">Users</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage admin accounts and their permissions.
+            Manage users for the active site. Platform super admins are managed separately.
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -164,23 +165,6 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
-              {sites.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="siteId">Assign to Site</Label>
-                  <select
-                    id="siteId"
-                    name="siteId"
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">No site (global)</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Creating..." : "Create User"}
               </Button>
@@ -192,7 +176,7 @@ export default function UsersPage() {
       <Card>
         <CardHeader className="flex-row items-center gap-3">
           <Users className="size-4 text-primary" />
-          <CardTitle className="font-heading">All Users ({users.length})</CardTitle>
+          <CardTitle className="font-heading">Tenant Users ({users.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -339,23 +323,6 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
-              {sites.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Assign to Site</Label>
-                  <select
-                    name="siteId"
-                    defaultValue={editingUser.siteId ?? ""}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">No site (global)</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}
               </Button>

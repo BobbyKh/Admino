@@ -37,6 +37,8 @@ export function VideoPicker({
   posterValue,
   label = "Video URL",
   description,
+  onChange,
+  onPosterChange,
 }: {
   name: string;
   value: string;
@@ -44,6 +46,8 @@ export function VideoPicker({
   posterValue: string;
   label?: string;
   description?: string;
+  onChange?: (url: string) => void;
+  onPosterChange?: (url: string) => void;
 }) {
   const [uploading, setUploading] = React.useState(false);
   const [mediaOpen, setMediaOpen] = React.useState(false);
@@ -58,6 +62,16 @@ export function VideoPicker({
   const isCloudinaryVideo =
     videoSrc.includes("cloudinary.com") && videoSrc.includes("/video/");
 
+  function setVideo(url: string) {
+    setVideoSrc(url);
+    onChange?.(url);
+  }
+
+  function setPoster(url: string) {
+    setPosterSrc(url);
+    onPosterChange?.(url);
+  }
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("video/")) {
@@ -71,8 +85,8 @@ export function VideoPicker({
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const result = await res.json();
       if (res.ok && result.url) {
-        setVideoSrc(result.url);
-        toast.success("Video uploaded to Cloudinary");
+        setVideo(result.url);
+        toast.success("Video uploaded to the media library");
       } else {
         toast.error(result?.error ?? "Upload failed.");
       }
@@ -85,12 +99,12 @@ export function VideoPicker({
   }
 
   function handleMediaSelect(media: Media) {
-    setVideoSrc(media.url);
+    setVideo(media.url);
     toast.success("Video selected from library");
   }
 
   function handlePosterSelect(media: Media) {
-    setPosterSrc(media.url);
+    setPoster(media.url);
     toast.success("Poster image selected");
   }
 
@@ -141,7 +155,7 @@ export function VideoPicker({
           name={name}
           type="url"
           value={videoSrc}
-          onChange={(e) => setVideoSrc(e.target.value)}
+          onChange={(e) => setVideo(e.target.value)}
           placeholder="YouTube, Vimeo URL, or direct video link"
         />
       </div>
@@ -168,7 +182,7 @@ export function VideoPicker({
           name={posterName}
           type="url"
           value={posterSrc}
-          onChange={(e) => setPosterSrc(e.target.value)}
+          onChange={(e) => setPoster(e.target.value)}
           placeholder="Poster image URL (optional)"
         />
         {posterSrc && (

@@ -1,16 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, desc, asc } from "drizzle-orm";
+import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { navLinks } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
-import { getAdminSiteId } from "@/lib/admin-site";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getNavLinks() {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   return db.select().from(navLinks).where(eq(navLinks.siteId, siteId)).orderBy(asc(navLinks.sortOrder));
 }
 
@@ -18,8 +16,7 @@ export async function addNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
   const external = formData.get("external") === "on";
@@ -36,31 +33,31 @@ export async function updateNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   const id = Number(formData.get("id"));
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
   const visible = formData.get("visible") === "on";
   const external = formData.get("external") === "on";
   if (!id || !label || !href) return { message: "Label and URL are required." };
-  await db.update(navLinks).set({ label, href, visible, external }).where(eq(navLinks.id, id));
+  await db.update(navLinks).set({ label, href, visible, external }).where(and(eq(navLinks.id, id), eq(navLinks.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
   return { success: true, message: "Link updated." };
 }
 
 export async function deleteNavLink(id: number) {
-  await requireAdmin();
-  await db.delete(navLinks).where(eq(navLinks.id, id));
+  const siteId = await getCurrentAdminSiteId();
+  await db.delete(navLinks).where(and(eq(navLinks.id, id), eq(navLinks.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
 }
 
 export async function reorderNavLinks(orderedIds: number[]) {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
-      await tx.update(navLinks).set({ sortOrder: i }).where(eq(navLinks.id, orderedIds[i]));
+      await tx.update(navLinks).set({ sortOrder: i }).where(and(eq(navLinks.id, orderedIds[i]), eq(navLinks.siteId, siteId)));
     }
   });
   revalidatePath("/", "layout");

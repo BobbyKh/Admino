@@ -22,7 +22,9 @@ export async function middleware(request: NextRequest) {
   const hostname = host.split(":")[0]; // strip port
 
   // Local dev: allow ?site=<slug> to select a site
-  const siteSlug = request.nextUrl.searchParams.get("site");
+  const siteSlug = process.env.NODE_ENV === "development"
+    ? request.nextUrl.searchParams.get("site")
+    : null;
 
   // Pass resolution hints to server components via REQUEST headers
   const requestHeaders = new Headers(request.headers);

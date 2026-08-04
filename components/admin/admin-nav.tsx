@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Blocks,
   CalendarDays,
   ExternalLink,
   FolderInput,
@@ -38,7 +37,6 @@ const NAV_GROUPS = [
       { href: "/admin/sites", label: "Sites", icon: Globe },
       { href: "/admin/pages", label: "Pages", icon: FileText },
       { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
-      { href: "/admin/homepage", label: "Legacy Sections", icon: Blocks },
     ],
   },
   {
@@ -66,8 +64,23 @@ const NAV_GROUPS = [
   },
 ];
 
-export function AdminNav({ adminName, sites, currentSiteId }: { adminName: string; sites: Site[]; currentSiteId: number }) {
+export function AdminNav({
+  adminName,
+  role = "viewer",
+  sites,
+  currentSiteId,
+}: {
+  adminName: string;
+  role?: string;
+  sites: Site[];
+  currentSiteId: number;
+}) {
   const pathname = usePathname();
+  const isSuperAdmin = role === "super_admin";
+
+  const visibleNavGroups = NAV_GROUPS.filter(
+    (group) => group.label !== "Builder" || isSuperAdmin
+  );
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
@@ -82,7 +95,7 @@ export function AdminNav({ adminName, sites, currentSiteId }: { adminName: strin
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
-        {NAV_GROUPS.map((group, gi) => (
+        {visibleNavGroups.map((group, gi) => (
           <div key={group.label} className={cn("mb-2", gi > 0 && "mt-3")}>
             <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
               {group.label}

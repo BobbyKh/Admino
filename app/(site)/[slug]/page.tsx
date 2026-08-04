@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPageBySlug, getPageBlocks, getResolvedSiteSettings } from "@/lib/data";
+import {
+  getPageBySlug,
+  getPageBlocks,
+  getResolvedFeaturedItems,
+  getResolvedGallery,
+  getResolvedSiteSettings,
+} from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
@@ -15,7 +21,7 @@ export async function generateMetadata({
   const siteId = await getResolvedSiteId();
   if (!siteId) return {};
   const page = await getPageBySlug(siteId, slug);
-  if (!page) return {};
+  if (!page || !page.published) return {};
   return {
     title: page.title,
     description: page.description || undefined,
@@ -32,25 +38,27 @@ export default async function CmsPage({
   if (!siteId) notFound();
 
   const page = await getPageBySlug(siteId, slug);
-  if (!page) notFound();
+  if (!page || !page.published) notFound();
 
-  const [blocks, settings] = await Promise.all([
+  const [blocks, settings, galleryImages, featuredItems] = await Promise.all([
     getPageBlocks(page.id),
     getResolvedSiteSettings(),
+    getResolvedGallery(),
+    getResolvedFeaturedItems(),
   ]);
 
   return (
     <>
-      {blocks.map((block) => (
+      {blocks.filter((block) => block.visible).map((block) => (
         <SectionRenderer
           key={block.id}
           section={block}
           settings={settings}
-          galleryImages={[]}
-          featuredItems={[]}
+          galleryImages={galleryImages}
+          featuredItems={featuredItems}
         />
       ))}
-      {blocks.length === 0 && (
+      {blocks.filter((block) => block.visible).length === 0 && (
         <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
           <h1 className="font-heading text-4xl font-semibold mb-4">{page.title}</h1>
           <p className="text-muted-foreground">This page has no content yet.</p>

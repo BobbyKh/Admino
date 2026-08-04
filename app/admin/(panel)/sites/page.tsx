@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Globe, Plus, Pencil, Trash2, ExternalLink, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,7 @@ export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -64,17 +65,36 @@ export default function SitesPage() {
 
   useEffect(() => {
     if (createState?.success) {
-      getSites().then(setSites);
-      setCreateOpen(false);
+      getSites().then((updatedSites) => {
+        setSites(updatedSites);
+        setCreateOpen(false);
+      });
     }
   }, [createState]);
 
   useEffect(() => {
     if (updateState?.success) {
-      getSites().then(setSites);
-      setEditingSite(null);
+      getSites().then((updatedSites) => {
+        setSites(updatedSites);
+        setEditingSite(null);
+      });
     }
   }, [updateState]);
+
+  function getSiteUrl(site: Site) {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return `${window.location.origin}/?site=${encodeURIComponent(site.slug)}`;
+    }
+    return site.domain ? `https://${site.domain}` : null;
+  }
+
+  async function copySiteUrl(site: Site) {
+    const url = getSiteUrl(site);
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopiedSiteId(site.id);
+    window.setTimeout(() => setCopiedSiteId(null), 2000);
+  }
 
   return (
     <div className="space-y-6">
@@ -186,7 +206,35 @@ export default function SitesPage() {
                   <span>·</span>
                   <span>Created {new Date(site.createdAt).toLocaleDateString()}</span>
                 </div>
+                {site.published && getSiteUrl(site) ? (
+                  <div className="mt-3 flex items-center gap-2 rounded-md border bg-muted/30 p-2">
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={getSiteUrl(site)!}>
+                      {getSiteUrl(site)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => copySiteUrl(site)}
+                      aria-label={`Copy ${site.name} link`}
+                      title="Copy link"
+                    >
+                      {copiedSiteId === site.id ? <Check /> : <Copy />}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {site.published ? "Add a domain to enable the live site link." : "Publish this site to enable its public link."}
+                  </p>
+                )}
                 <div className="mt-4 flex gap-2">
+                  {site.published && getSiteUrl(site) && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={getSiteUrl(site)!} target="_blank" rel="noreferrer">
+                        <ExternalLink className="mr-1 size-3" />
+                        View Site
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

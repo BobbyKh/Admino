@@ -1,7 +1,7 @@
 import { CheckCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -12,8 +12,9 @@ interface Service {
   icon?: string;
 }
 
-function parseServices(raw: string | null): Service[] {
-  if (!raw) return [];
+function parseServices(raw: unknown): Service[] {
+  if (Array.isArray(raw)) return raw as Service[];
+  if (typeof raw !== "string" || !raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -26,16 +27,19 @@ function parseServices(raw: string | null): Service[] {
 export function ServicesBlock({ config }: { config: string | null }) {
   const c = parseConfig(config);
   const services = parseServices(c.items);
+  const badge = typeof c.badge === "string" ? c.badge : "";
+  const title = typeof c.title === "string" ? c.title : "";
+  const subtitle = typeof c.subtitle === "string" ? c.subtitle : "";
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
-        {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
+        {badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-          {c.title || "Our Services"}
+          {title || "Our Services"}
         </h2>
-        {c.subtitle && (
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
+        {subtitle && (
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{subtitle}</p>
         )}
       </div>
       {services.length > 0 ? (

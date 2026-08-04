@@ -122,10 +122,7 @@ export async function getNavLinks(siteId?: number | null) {
       .where(eq(navLinks.siteId, siteId))
       .orderBy(asc(navLinks.sortOrder));
   }
-  return db
-    .select()
-    .from(navLinks)
-    .orderBy(asc(navLinks.sortOrder));
+  return [];
 }
 
 export async function getHomeSections(siteId?: number | null) {
@@ -133,7 +130,7 @@ export async function getHomeSections(siteId?: number | null) {
     return db
       .select()
       .from(homeSections)
-      .where(eq(homeSections.siteId, siteId))
+      .where(and(eq(homeSections.siteId, siteId), eq(homeSections.visible, true)))
       .orderBy(asc(homeSections.sortOrder));
   }
   return db

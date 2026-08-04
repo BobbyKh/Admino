@@ -40,7 +40,7 @@ export function Footer({
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold">Explore</h3>
+          <h3 className="text-sm font-semibold">{settings.footerExploreTitle || "Explore"}</h3>
           <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
             {visibleLinks.map((link) => (
               <li key={link.id}>
@@ -58,7 +58,7 @@ export function Footer({
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold">Visit Us</h3>
+          <h3 className="text-sm font-semibold">{settings.footerContactTitle || "Visit Us"}</h3>
           <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
             <li className="flex items-start gap-2.5">
               <MapPin className="mt-0.5 size-4 shrink-0" />
@@ -80,7 +80,7 @@ export function Footer({
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold">Hours</h3>
+          <h3 className="text-sm font-semibold">{settings.footerHoursTitle || "Hours"}</h3>
           <p className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
             <Clock className="size-4 shrink-0" />
             {settings.hours}
@@ -94,7 +94,7 @@ export function Footer({
 
       <div className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>© {new Date().getFullYear()} {settings.siteName}. All rights reserved.</p>
+          <p>{settings.footerCopyright || `© ${new Date().getFullYear()} ${settings.siteName}. All rights reserved.`}</p>
           <p>{settings.footerNote}</p>
         </div>
       </div>

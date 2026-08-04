@@ -3,17 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
-import { getAdminSiteId } from "@/lib/admin-site";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function updateSettings(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  await requireAdmin();
-  const siteId = await getAdminSiteId();
+  const siteId = await getCurrentAdminSiteId();
   const now = new Date().toISOString();
   for (const key of SETTING_KEYS) {
     const value = formData.get(key);

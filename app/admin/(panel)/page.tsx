@@ -69,13 +69,13 @@ export default async function AdminDashboard() {
       .groupBy(bookings.status),
     db
       .select({
-        month: sql<string>`TO_CHAR(${bookings.date}, 'Mon YY')`,
+        month: sql<string>`TO_CHAR(${bookings.date}::date, 'Mon YY')`,
         count: count(),
       })
       .from(bookings)
       .where(gte(bookings.date, sixMonthsAgo.toISOString().split("T")[0]))
-      .groupBy(sql`TO_CHAR(${bookings.date}, 'Mon YY'), DATE_TRUNC('month', ${bookings.date})`)
-      .orderBy(sql`DATE_TRUNC('month', ${bookings.date})`),
+      .groupBy(sql`TO_CHAR(${bookings.date}::date, 'Mon YY'), DATE_TRUNC('month', ${bookings.date}::date)`)
+      .orderBy(sql`DATE_TRUNC('month', ${bookings.date}::date)`),
     db.select({ value: count() }).from(galleryImages),
     db.select({ value: count() }).from(galleryImages).where(eq(galleryImages.featured, true)),
     db.select({ value: countDistinct(galleryImages.category) }).from(galleryImages),

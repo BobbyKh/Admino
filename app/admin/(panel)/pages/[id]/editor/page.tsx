@@ -11,16 +11,17 @@ import {
   GripVertical,
   ChevronDown,
   ChevronUp,
-  Save,
   Loader2,
   Blocks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { VideoPicker } from "@/components/admin/video-picker";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +54,6 @@ import {
   BLOCK_GROUP_LABELS,
   getBlockType,
   getDefaultConfig,
-  type BlockType,
 } from "@/lib/blocks";
 
 // ─── Block Config Editor ─────────────────────────────────────────────────────
@@ -65,8 +65,18 @@ function BlockConfigEditor({
   block: PageBlock;
   onConfigChange: (config: string) => void;
 }) {
+  // Block schemas vary; individual editors validate the values they expose.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type EditableBlockConfig = Record<string, any>;
   const blockType = getBlockType(block.type);
-  const config = block.config ? JSON.parse(block.config) : {};
+  let config: EditableBlockConfig = getDefaultConfig(block.type) as EditableBlockConfig;
+  if (block.config) {
+    try {
+      config = JSON.parse(block.config) as EditableBlockConfig;
+    } catch {
+      config = getDefaultConfig(block.type) as EditableBlockConfig;
+    }
+  }
 
   const updateConfig = (key: string, value: unknown) => {
     const newConfig = { ...config, [key]: value };
@@ -104,10 +114,7 @@ function BlockConfigEditor({
             <Label>Badge</Label>
             <Input value={config.badge ?? ""} onChange={(e) => updateConfig("badge", e.target.value)} />
           </div>
-          <div className="space-y-1">
-            <Label>Background Image URL</Label>
-            <Input value={config.image ?? ""} onChange={(e) => updateConfig("image", e.target.value)} />
-          </div>
+          <ImageUploadField name={`hero-image-${block.id}`} label="Background image" value={config.image ?? ""} onChange={(url) => updateConfig("image", url)} />
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label>Primary CTA Text</Label>
@@ -167,10 +174,7 @@ function BlockConfigEditor({
     case "image":
       return (
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Image URL</Label>
-            <Input value={config.src ?? ""} onChange={(e) => updateConfig("src", e.target.value)} />
-          </div>
+          <ImageUploadField name={`image-${block.id}`} label="Image" value={config.src ?? ""} onChange={(url) => updateConfig("src", url)} />
           <div className="space-y-1">
             <Label>Alt Text</Label>
             <Input value={config.alt ?? ""} onChange={(e) => updateConfig("alt", e.target.value)} />
@@ -208,17 +212,23 @@ function BlockConfigEditor({
       return (
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Video URL (YouTube/Vimeo)</Label>
-            <Input value={config.url ?? ""} onChange={(e) => updateConfig("url", e.target.value)} />
-          </div>
-          <div className="space-y-1">
             <Label>Title</Label>
             <Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Poster Image URL</Label>
-            <Input value={config.poster ?? ""} onChange={(e) => updateConfig("poster", e.target.value)} />
+            <Label>Description</Label>
+            <Textarea value={config.description ?? ""} onChange={(e) => updateConfig("description", e.target.value)} rows={3} />
           </div>
+          <VideoPicker
+            name={`video-${block.id}`}
+            value={config.url ?? ""}
+            posterName={`video-poster-${block.id}`}
+            posterValue={config.poster ?? ""}
+            label="Video"
+            description="Upload a video or choose one from this tenant's Media Library."
+            onChange={(url) => updateConfig("url", url)}
+            onPosterChange={(url) => updateConfig("poster", url)}
+          />
           <div className="flex gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -261,10 +271,7 @@ function BlockConfigEditor({
               <Input value={config.buttonLink ?? ""} onChange={(e) => updateConfig("buttonLink", e.target.value)} />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Background Image URL</Label>
-            <Input value={config.backgroundImage ?? ""} onChange={(e) => updateConfig("backgroundImage", e.target.value)} />
-          </div>
+          <ImageUploadField name={`cta-background-${block.id}`} label="Background image" value={config.backgroundImage ?? ""} onChange={(url) => updateConfig("backgroundImage", url)} />
         </div>
       );
 
@@ -383,6 +390,10 @@ function BlockConfigEditor({
       );
 
     case "features":
+      {
+        const items = Array.isArray(config.items) ? config.items : [];
+        const updateItems = (nextItems: unknown[]) => updateConfig("items", nextItems);
+
       return (
         <div className="space-y-3">
           <div className="space-y-1">
@@ -406,20 +417,88 @@ function BlockConfigEditor({
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Items (JSON array)</Label>
-            <Textarea
-              value={JSON.stringify(config.items ?? [], null, 2)}
-              onChange={(e) => {
-                try {
-                  updateConfig("items", JSON.parse(e.target.value));
-                } catch {}
-              }}
-              rows={6}
-              className="font-mono text-xs"
-            />
+            <div className="flex items-center justify-between">
+              <Label>Feature cards</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => updateItems([...items, { icon: "star", title: "New feature", text: "Describe this feature." }])}
+              >
+                <Plus className="size-3.5" />
+                Add feature
+              </Button>
+            </div>
+            {items.map((item, index) => {
+              const feature = typeof item === "object" && item !== null ? item as Record<string, unknown> : {};
+              const updateFeature = (key: string, value: string) => {
+                const nextItems = [...items];
+                nextItems[index] = { ...feature, [key]: value };
+                updateItems(nextItems);
+              };
+              return (
+                <div key={index} className="space-y-2 rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Feature {index + 1}</p>
+                    <Button type="button" variant="ghost" size="icon-xs" onClick={() => updateItems(items.filter((_, itemIndex) => itemIndex !== index))}>
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <Input value={typeof feature.icon === "string" ? feature.icon : ""} onChange={(e) => updateFeature("icon", e.target.value)} placeholder="Icon" />
+                    <Input value={typeof feature.title === "string" ? feature.title : ""} onChange={(e) => updateFeature("title", e.target.value)} placeholder="Feature title" />
+                  </div>
+                  <Textarea value={typeof feature.text === "string" ? feature.text : ""} onChange={(e) => updateFeature("text", e.target.value)} placeholder="Feature description" rows={2} />
+                </div>
+              );
+            })}
           </div>
         </div>
       );
+      }
+
+    case "imageText":
+      return (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1"><Label>Layout</Label><select value={config.layout ?? "left"} onChange={(e) => updateConfig("layout", e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="left">Image left</option><option value="right">Image right</option></select></div>
+            <div className="space-y-1"><Label>Badge</Label><Input value={config.badge ?? ""} onChange={(e) => updateConfig("badge", e.target.value)} /></div>
+          </div>
+          <div className="space-y-1"><Label>Heading</Label><Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} /></div>
+          <div className="space-y-1"><Label>Text</Label><Textarea value={config.text ?? ""} onChange={(e) => updateConfig("text", e.target.value)} rows={4} /></div>
+          <ImageUploadField name={`image-text-${block.id}`} label="Image" value={config.image ?? ""} onChange={(url) => updateConfig("image", url)} />
+          <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><Label>Button text</Label><Input value={config.buttonText ?? ""} onChange={(e) => updateConfig("buttonText", e.target.value)} /></div><div className="space-y-1"><Label>Button link</Label><Input value={config.buttonLink ?? ""} onChange={(e) => updateConfig("buttonLink", e.target.value)} /></div></div>
+        </div>
+      );
+
+    case "richText":
+      return (
+        <div className="space-y-1">
+          <Label>Formatted content</Label>
+          <Textarea value={config.html ?? ""} onChange={(e) => updateConfig("html", e.target.value)} rows={10} placeholder="<h2>Your heading</h2><p>Your content...</p>" />
+        </div>
+      );
+
+    case "faq":
+      {
+        const items = Array.isArray(config.items) ? config.items : [];
+        const updateItems = (nextItems: unknown[]) => updateConfig("items", nextItems);
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>Title</Label><Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} /></div>
+            <div className="flex items-center justify-between"><Label>Questions</Label><Button type="button" variant="outline" size="sm" onClick={() => updateItems([...items, { question: "New question", answer: "Answer" }])}><Plus className="size-3.5" />Add question</Button></div>
+            {items.map((item, index) => {
+              const faq = typeof item === "object" && item !== null ? item as Record<string, unknown> : {};
+              const updateFaq = (key: string, value: string) => {
+                const nextItems = [...items];
+                nextItems[index] = { ...faq, [key]: value };
+                updateItems(nextItems);
+              };
+              return <div key={index} className="space-y-2 rounded-lg border p-3"><div className="flex justify-end"><Button type="button" variant="ghost" size="icon-xs" onClick={() => updateItems(items.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="size-3.5 text-destructive" /></Button></div><Input value={typeof faq.question === "string" ? faq.question : ""} onChange={(e) => updateFaq("question", e.target.value)} placeholder="Question" /><Textarea value={typeof faq.answer === "string" ? faq.answer : ""} onChange={(e) => updateFaq("answer", e.target.value)} placeholder="Answer" rows={3} /></div>;
+            })}
+          </div>
+        );
+      }
 
     default:
       return (
@@ -448,7 +527,7 @@ export default function BlockEditorPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [addBlockOpen, setAddBlockOpen] = useState(false);
-  const [pending, startTransition] = useState(false);
+  const [, setPending] = useState(false);
 
   // Load page and blocks
   useEffect(() => {
@@ -459,29 +538,23 @@ export default function BlockEditorPage() {
       ]);
       setPage(pageData);
       setBlocks(blocksData);
+      setExpandedId(blocksData[0]?.id ?? null);
       setLoading(false);
     }
     load();
   }, [pageId]);
-
-  // Auto-expand first block
-  useEffect(() => {
-    if (blocks.length > 0 && expandedId === null) {
-      setExpandedId(blocks[0].id);
-    }
-  }, [blocks]);
 
   const handleAddBlock = useCallback(
     async (type: string) => {
       const formData = new FormData();
       formData.set("pageId", String(pageId));
       formData.set("type", type);
-      startTransition(true);
+      setPending(true);
       await addPageBlock({}, formData);
       const updated = await getPageBlocks(pageId);
       setBlocks(updated);
       setAddBlockOpen(false);
-      startTransition(false);
+      setPending(false);
     },
     [pageId]
   );
@@ -493,24 +566,24 @@ export default function BlockEditorPage() {
       if (updates.title !== undefined) formData.set("title", updates.title);
       if (updates.visible !== undefined) formData.set("visible", updates.visible ? "on" : "");
       if (updates.config !== undefined) formData.set("config", updates.config);
-      startTransition(true);
+      setPending(true);
       await updatePageBlock({}, formData);
       const updated = await getPageBlocks(pageId);
       setBlocks(updated);
-      startTransition(false);
+      setPending(false);
     },
     [pageId]
   );
 
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
-      startTransition(true);
+      setPending(true);
       await deletePageBlock(blockId);
       setBlocks((prev) => prev.filter((b) => b.id !== blockId));
       if (expandedId === blockId) setExpandedId(null);
-      startTransition(false);
+      setPending(false);
     },
-    [pageId, expandedId]
+    [expandedId]
   );
 
   const handleReorder = useCallback(
@@ -521,9 +594,9 @@ export default function BlockEditorPage() {
       newBlocks.splice(toIndex, 0, moved);
       setBlocks(newBlocks);
       const orderedIds = newBlocks.map((b) => b.id);
-      startTransition(true);
+      setPending(true);
       await reorderPageBlocks(orderedIds);
-      startTransition(false);
+      setPending(false);
     },
     [blocks]
   );

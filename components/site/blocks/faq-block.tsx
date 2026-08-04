@@ -1,6 +1,6 @@
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -10,8 +10,9 @@ interface FaqItem {
   answer: string;
 }
 
-function parseFaqs(raw: string | null): FaqItem[] {
-  if (!raw) return [];
+function parseFaqs(raw: unknown): FaqItem[] {
+  if (Array.isArray(raw)) return raw as FaqItem[];
+  if (typeof raw !== "string" || !raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -24,16 +25,19 @@ function parseFaqs(raw: string | null): FaqItem[] {
 export function FaqBlock({ config }: { config: string | null }) {
   const c = parseConfig(config);
   const faqs = parseFaqs(c.items);
+  const badge = typeof c.badge === "string" ? c.badge : "";
+  const title = typeof c.title === "string" ? c.title : "";
+  const subtitle = typeof c.subtitle === "string" ? c.subtitle : "";
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
-        {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
+        {badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-          {c.title || "Frequently Asked Questions"}
+          {title || "Frequently Asked Questions"}
         </h2>
-        {c.subtitle && (
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
+        {subtitle && (
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{subtitle}</p>
         )}
       </div>
       {faqs.length > 0 ? (
@@ -47,7 +51,7 @@ export function FaqBlock({ config }: { config: string | null }) {
         </Accordion>
       ) : (
         <p className="text-center text-sm text-muted-foreground">
-          No FAQs configured. Add items as JSON in the block config.
+          No FAQs configured yet.
         </p>
       )}
     </section>

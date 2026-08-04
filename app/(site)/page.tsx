@@ -4,7 +4,10 @@ import {
   getResolvedGallery,
   getResolvedHomeSections,
   getResolvedSiteSettings,
+  getPageBlocks,
+  getPageBySlug,
 } from "@/lib/data";
+import { getResolvedSiteId } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
 export const revalidate = 300;
@@ -18,12 +21,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
+  const siteId = await getResolvedSiteId();
   const [settings, gallery, featured, sections] = await Promise.all([
     getResolvedSiteSettings(),
     getResolvedGallery(),
     getResolvedFeaturedItems(),
     getResolvedHomeSections(),
   ]);
+  const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
+  const homepageBlocks = homepage?.published ? await getPageBlocks(homepage.id) : [];
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -53,7 +59,20 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
-      {sections.map((section) => (
+      {homepage?.published && homepageBlocks
+        .filter((block) => block.visible)
+        .map((block) => (
+        <SectionRenderer
+          key={block.id}
+          section={block}
+          settings={settings}
+          galleryImages={gallery}
+          featuredItems={featured}
+        />
+      ))}
+
+      {/* Legacy sites continue using their existing homepage sections until provisioned. */}
+      {!homepage?.published && sections.map((section) => (
         <SectionRenderer
           key={section.id}
           section={section}
@@ -64,7 +83,7 @@ export default async function HomePage() {
       ))}
 
       {/* Fallback: if no sections configured, show default layout */}
-      {sections.length === 0 && (
+      {!homepage?.published && sections.length === 0 && (
         <>
           <SectionRenderer
             section={{ id: 0, type: "hero", title: null, sortOrder: 0, visible: true, config: null, createdAt: "", siteId: null }}

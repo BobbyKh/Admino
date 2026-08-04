@@ -19,9 +19,16 @@ import type { Site } from "@/lib/db/schema";
  */
 export const getResolvedSite = cache(async (): Promise<Site | null> => {
   const hdrs = await headers();
+  return getSiteForRequest(
+    hdrs.get("x-request-host") ?? "",
+    hdrs.get("x-site-slug")
+  );
+});
+
+/** Resolves a site for a public request without trusting a client-provided ID. */
+export async function getSiteForRequest(host: string, siteSlug?: string | null): Promise<Site | null> {
 
   // 1. Check for slug-based override (?site=<slug>)
-  const siteSlug = hdrs.get("x-site-slug");
   if (siteSlug) {
     const [site] = await db
       .select()
@@ -31,7 +38,6 @@ export const getResolvedSite = cache(async (): Promise<Site | null> => {
   }
 
   // 2. Check hostname-based resolution
-  const host = hdrs.get("x-request-host") ?? "";
   if (host) {
     const [site] = await db
       .select()
@@ -46,7 +52,7 @@ export const getResolvedSite = cache(async (): Promise<Site | null> => {
     .from(sites)
     .orderBy(sites.id);
   return site ?? null;
-});
+}
 
 /** Get siteId from the resolved site, or null if no site found. */
 export async function getResolvedSiteId(): Promise<number | null> {

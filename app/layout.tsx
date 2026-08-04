@@ -21,31 +21,22 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Maiti Resort — Dining & Relaxation in Kirtipur",
-    template: "%s · Maiti Resort",
-  },
-  description:
-    "Maiti Resort is a premier dining and relaxation venue in Kirtipur, Nepal. Enjoy authentic cuisine, cozy ambiance, and exceptional service.",
-  keywords: [
-    "restaurant",
-    "dining",
-    "resort",
-    "Kirtipur",
-    "Nepal",
-    "Maiti Resort",
-    "food",
-    "cafe",
-  ],
-  openGraph: {
-    title: "Maiti Resort — Dining & Relaxation in Kirtipur",
-    description:
-      "Enjoy authentic cuisine, cozy ambiance, and exceptional service at Maiti Resort.",
-    type: "website",
-    locale: "en_US",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getResolvedSiteSettings();
+  return {
+    title: {
+      default: settings.siteName,
+      template: `%s | ${settings.siteName}`,
+    },
+    description: settings.description,
+    openGraph: {
+      title: settings.siteName,
+      description: settings.description,
+      type: "website",
+      locale: "en_US",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

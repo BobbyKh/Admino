@@ -1,13 +1,13 @@
 "use server";
 
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import type { UploadState } from "./types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function uploadImage(formData: FormData): Promise<UploadState> {
-  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -22,7 +22,7 @@ export async function uploadImage(formData: FormData): Promise<UploadState> {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   try {
-    const { secure_url } = await uploadImageToCloudinary(buffer, "maiti");
+    const { secure_url } = await uploadImageToCloudinary(buffer, `sites/${siteId}`);
     return { url: secure_url };
   } catch (err) {
     console.error("Cloudinary upload failed:", err);

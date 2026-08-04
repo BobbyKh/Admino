@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllServerSettings } from "@/lib/data";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getSiteForRequest } from "@/lib/site-context";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -109,7 +110,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages required" }, { status: 400 });
     }
 
-    const settings = await getAllServerSettings();
+    const host = (req.headers.get("host") ?? "").split(":")[0];
+    const siteSlug = process.env.NODE_ENV === "development"
+      ? req.nextUrl.searchParams.get("site")
+      : null;
+    const site = await getSiteForRequest(host, siteSlug);
+    if (!site?.published) {
+      return NextResponse.json({ error: "Site not found" }, { status: 404 });
+    }
+    const settings = await getAllServerSettings(site.id);
 
     if (settings.aiChatEnabled !== "true") {
       return NextResponse.json({ error: "AI chat is disabled" }, { status: 403 });

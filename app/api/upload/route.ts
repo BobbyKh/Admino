@@ -3,6 +3,7 @@ import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/auth";
+import { getAdminSiteId } from "@/lib/admin-site";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const siteId = await getAdminSiteId();
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
       width: result.width || null,
       height: result.height || null,
       folder,
+      siteId,
     });
 
     return NextResponse.json({
