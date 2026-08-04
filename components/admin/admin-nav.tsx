@@ -15,8 +15,12 @@ import {
   FileText,
   ScrollText,
   Settings,
+  LayoutPanelTop,
   Users,
   UtensilsCrossed,
+  ShoppingBag,
+  Package,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -32,11 +36,13 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Builder",
+    label: "Site Management",
     items: [
-      { href: "/admin/sites", label: "Sites", icon: Globe },
+      { href: "/admin/sites", label: "Sites", icon: Globe, superAdminOnly: true },
       { href: "/admin/pages", label: "Pages", icon: FileText },
       { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
+      { href: "/admin/layout", label: "Header & Footer", icon: LayoutPanelTop },
+      { href: "/admin/settings", label: "Settings", icon: Settings },
     ],
   },
   {
@@ -46,18 +52,21 @@ const NAV_GROUPS = [
       { href: "/admin/messages", label: "Messages", icon: Mail },
       { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/admin/gallery", label: "Gallery", icon: Images },
-    ],
-  },
-  {
-    label: "Assets",
-    items: [
       { href: "/admin/media", label: "Media Library", icon: FolderInput },
     ],
   },
   {
-    label: "Configuration",
+    label: "Commerce",
     items: [
-      { href: "/admin/settings", label: "Settings", icon: Settings },
+      { href: "/admin/commerce", label: "Overview", icon: ShoppingBag },
+      { href: "/admin/commerce/products", label: "Products", icon: Package },
+      { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag },
+      { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText },
     ],
@@ -78,9 +87,10 @@ export function AdminNav({
   const pathname = usePathname();
   const isSuperAdmin = role === "super_admin";
 
-  const visibleNavGroups = NAV_GROUPS.filter(
-    (group) => group.label !== "Builder" || isSuperAdmin
-  );
+  const visibleNavGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.superAdminOnly || isSuperAdmin),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">

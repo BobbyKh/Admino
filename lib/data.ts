@@ -11,6 +11,7 @@ import {
   navLinks,
   pages,
   pageBlocks,
+  products,
   settings,
 } from "@/lib/db/schema";
 import {
@@ -99,6 +100,15 @@ export const getFeaturedItems = cache(async (siteId?: number | null) => {
       .orderBy(asc(menuItems.sortOrder));
   }
   return [];
+});
+
+export const getActiveProducts = cache(async (siteId?: number | null) => {
+  if (!siteId) return [];
+  return db
+    .select()
+    .from(products)
+    .where(and(eq(products.siteId, siteId), eq(products.status, "active")))
+    .orderBy(desc(products.featured), desc(products.createdAt));
 });
 
 export async function getNavLinks(siteId?: number | null) {

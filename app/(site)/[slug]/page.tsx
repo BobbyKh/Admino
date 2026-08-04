@@ -6,6 +6,7 @@ import {
   getResolvedFeaturedItems,
   getResolvedGallery,
   getResolvedSiteSettings,
+  getActiveProducts,
 } from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
@@ -40,11 +41,12 @@ export default async function CmsPage({
   const page = await getPageBySlug(siteId, slug);
   if (!page || !page.published) notFound();
 
-  const [blocks, settings, galleryImages, featuredItems] = await Promise.all([
+  const [blocks, settings, galleryImages, featuredItems, products] = await Promise.all([
     getPageBlocks(page.id),
     getResolvedSiteSettings(),
     getResolvedGallery(),
     getResolvedFeaturedItems(),
+    getActiveProducts(siteId),
   ]);
 
   return (
@@ -56,6 +58,7 @@ export default async function CmsPage({
           settings={settings}
           galleryImages={galleryImages}
           featuredItems={featuredItems}
+          products={products}
         />
       ))}
       {blocks.filter((block) => block.visible).length === 0 && (

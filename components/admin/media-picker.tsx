@@ -7,7 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadImage } from "@/lib/actions/index";
+import { uploadMedia } from "@/lib/actions/index";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
 
@@ -46,10 +46,10 @@ export function MediaPicker({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await uploadImage(formData);
+      const result = await uploadMedia(formData);
       if (result?.url) {
         onChange(result.url);
-        toast.success("Image uploaded to Cloudinary");
+        toast.success("Image uploaded to Media Library");
       } else {
         toast.error(result?.error ?? "Upload failed.");
       }

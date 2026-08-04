@@ -6,6 +6,7 @@ import {
   getResolvedSiteSettings,
   getPageBlocks,
   getPageBySlug,
+  getActiveProducts,
 } from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
@@ -22,11 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const siteId = await getResolvedSiteId();
-  const [settings, gallery, featured, sections] = await Promise.all([
+  const [settings, gallery, featured, sections, products] = await Promise.all([
     getResolvedSiteSettings(),
     getResolvedGallery(),
     getResolvedFeaturedItems(),
     getResolvedHomeSections(),
+    getActiveProducts(siteId),
   ]);
   const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
   const homepageBlocks = homepage?.published ? await getPageBlocks(homepage.id) : [];
@@ -68,6 +70,7 @@ export default async function HomePage() {
           settings={settings}
           galleryImages={gallery}
           featuredItems={featured}
+          products={products}
         />
       ))}
 
@@ -79,6 +82,7 @@ export default async function HomePage() {
           settings={settings}
           galleryImages={gallery}
           featuredItems={featured}
+          products={products}
         />
       ))}
 
@@ -90,42 +94,49 @@ export default async function HomePage() {
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "features", title: null, sortOrder: 1, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "about", title: null, sortOrder: 2, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "video", title: null, sortOrder: 3, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "menuPreview", title: null, sortOrder: 4, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "gallery", title: null, sortOrder: 5, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
           <SectionRenderer
             section={{ id: 0, type: "cta", title: null, sortOrder: 6, visible: true, config: null, createdAt: "", siteId: null }}
             settings={settings}
             galleryImages={gallery}
             featuredItems={featured}
+            products={products}
           />
         </>
       )}

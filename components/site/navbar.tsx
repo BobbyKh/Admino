@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Leaf, Menu, Phone, X } from "lucide-react";
+import { Leaf, Menu, Phone, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SiteSettings } from "@/lib/settings";
@@ -20,9 +20,13 @@ function withPreviewSite(href: string, siteSlug: string | null) {
 export function Navbar({
   settings,
   navLinks,
+  showCart = false,
+  sticky = true,
 }: {
   settings: SiteSettings;
   navLinks: NavLink[];
+  showCart?: boolean;
+  sticky?: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -32,7 +36,7 @@ export function Navbar({
   const visibleLinks = navLinks.filter((l) => l.visible);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md">
+    <header className={`${sticky ? "sticky top-0" : "relative"} z-40 w-full border-b bg-background/80 backdrop-blur-md`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href={withPreviewSite("/", siteSlug)} className="flex items-center gap-2">
           {settings.logo ? (
@@ -74,6 +78,9 @@ export function Navbar({
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
+          {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label="View cart">
+            <Button variant="ghost" size="icon"><ShoppingCart className="size-4" /></Button>
+          </Link>}
           {settings.navbarShowPhone === "true" && settings.phone && (
             <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
               <Button variant="outline" className="gap-2">
@@ -121,6 +128,7 @@ export function Navbar({
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t pt-3">
+              {showCart && <Link href={withPreviewSite("/cart", siteSlug)} onClick={() => setOpen(false)}><Button variant="outline" className="w-full gap-2"><ShoppingCart className="size-4" />Cart</Button></Link>}
               {settings.navbarShowPhone === "true" && settings.phone && (
                 <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
                   <Button variant="outline" className="w-full gap-2">

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Clock, Leaf, Mail, MapPin, Phone } from "lucide-react";
 import type { SiteSettings } from "@/lib/settings";
 import type { NavLink } from "@/lib/db/schema";
+import type { LayoutSettings } from "@/lib/layout-settings";
 
 function withPreviewSite(href: string, siteSlug: string | null) {
   if (!siteSlug || !href.startsWith("/") || href.startsWith("//")) return href;
@@ -17,9 +18,11 @@ function withPreviewSite(href: string, siteSlug: string | null) {
 export function Footer({
   settings,
   navLinks,
+  layout,
 }: {
   settings: SiteSettings;
   navLinks: NavLink[];
+  layout: LayoutSettings;
 }) {
   const searchParams = useSearchParams();
   const siteSlug = searchParams.get("site");
@@ -27,8 +30,8 @@ export function Footer({
 
   return (
     <footer className="border-t bg-muted/40">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="md:col-span-1">
+      <div className={`mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 ${[layout.footerShowBrand, layout.footerShowNavigation, layout.footerShowContact, layout.footerShowHours].filter(Boolean).length > 1 ? "md:grid-cols-4" : ""}`}>
+        {layout.footerShowBrand && <div className="md:col-span-1">
           <div className="flex items-center gap-2">
             {settings.logo ? (
               <Image
@@ -49,9 +52,9 @@ export function Footer({
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             {settings.tagline}
           </p>
-        </div>
+        </div>}
 
-        <div>
+        {layout.footerShowNavigation && <div>
           <h3 className="text-sm font-semibold">{settings.footerExploreTitle || "Explore"}</h3>
           <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
             {visibleLinks.map((link) => (
@@ -67,9 +70,9 @@ export function Footer({
               </li>
             ))}
           </ul>
-        </div>
+        </div>}
 
-        <div>
+        {layout.footerShowContact && <div>
           <h3 className="text-sm font-semibold">{settings.footerContactTitle || "Visit Us"}</h3>
           <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
             <li className="flex items-start gap-2.5">
@@ -89,9 +92,9 @@ export function Footer({
               </a>
             </li>
           </ul>
-        </div>
+        </div>}
 
-        <div>
+        {layout.footerShowHours && <div>
           <h3 className="text-sm font-semibold">{settings.footerHoursTitle || "Hours"}</h3>
           <p className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
             <Clock className="size-4 shrink-0" />
@@ -101,7 +104,7 @@ export function Footer({
             {settings.priceRange} ·{" "}
             <span className="text-amber-600">★ {settings.rating}</span>
           </p>
-        </div>
+        </div>}
       </div>
 
       <div className="border-t">

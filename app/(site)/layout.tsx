@@ -3,6 +3,7 @@ import { Footer } from "@/components/site/footer";
 import { ChatWidget } from "@/components/site/chat-widget";
 import { getResolvedSiteSettings, getResolvedNavLinks } from "@/lib/data";
 import { getResolvedSite } from "@/lib/site-context";
+import { getLayoutSettings } from "@/lib/layout-settings";
 import { notFound } from "next/navigation";
 
 export default async function SiteLayout({
@@ -16,6 +17,7 @@ export default async function SiteLayout({
     getResolvedNavLinks(),
   ]);
   if (!site?.published) notFound();
+  const layout = await getLayoutSettings(site.id);
   return (
     <>
       <a
@@ -24,9 +26,9 @@ export default async function SiteLayout({
       >
         Skip to content
       </a>
-      <Navbar settings={settings} navLinks={navLinks} />
-      <main id="main-content" className="flex-1">{children}</main>
-      <Footer settings={settings} navLinks={navLinks} />
+      {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showCart={site.template === "ecommerce" && layout.headerShowCart} />}
+      <main id="main-content" data-template={site.template} className="flex-1">{children}</main>
+      {layout.footerVisible && <Footer settings={settings} navLinks={navLinks} layout={layout} />}
       {settings.aiChatEnabled === "true" && settings.hasAiApiKey === "true" && (
         <ChatWidget siteName={settings.siteName} />
       )}

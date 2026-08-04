@@ -1,5 +1,6 @@
-import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
+import type { Product as CatalogProduct } from "@/lib/db/schema";
+import { AddToCartButton } from "@/components/site/add-to-cart-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ interface Product {
   description?: string;
   badge?: string;
   link?: string;
+  id?: number;
+  inventoryQuantity?: number;
 }
 
 function parseProducts(raw: string | null): Product[] {
@@ -29,9 +32,21 @@ function parseProducts(raw: string | null): Product[] {
   }
 }
 
-export function ProductGridBlock({ config }: { config: string | null }) {
+export function ProductGridBlock({ config, products: catalogProducts }: { config: string | null; products: CatalogProduct[] }) {
   const c = parseConfig(config);
-  const products = parseProducts(c.items);
+  const configuredProducts = parseProducts(c.items);
+  const products: Product[] = catalogProducts.length > 0
+    ? catalogProducts.map((product) => ({
+      name: product.title,
+      price: formatPrice(product.price, product.currency),
+      image: product.image ?? undefined,
+      description: product.description ?? undefined,
+      badge: product.featured ? "Featured" : undefined,
+      link: undefined,
+      id: product.id,
+      inventoryQuantity: product.inventoryQuantity,
+    }))
+    : configuredProducts;
   const columns = c.columns || "3";
 
   return (
@@ -51,12 +66,13 @@ export function ProductGridBlock({ config }: { config: string | null }) {
             <Card key={i} className="group overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
               {product.image && (
                 <div className="relative aspect-square overflow-hidden">
-                  <Image
+                  {/* Product images may come from any tenant media host. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={product.image}
                     alt={product.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, 33vw"
+                    loading="lazy"
+                    className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   {product.badge && (
                     <Badge className="absolute left-3 top-3">{product.badge}</Badge>
@@ -71,33 +87,23 @@ export function ProductGridBlock({ config }: { config: string | null }) {
                 {product.description && (
                   <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  asChild={!!product.link}
-                >
-                  {product.link ? (
-                    <a href={product.link}>
-                      <ShoppingCart className="size-4" />
-                      Add to Cart
-                    </a>
-                  ) : (
-                    <>
-                      <ShoppingCart className="size-4" />
-                      Add to Cart
-                    </>
-                  )}
-                </Button>
+                {product.id ? <AddToCartButton productId={product.id} available={(product.inventoryQuantity ?? 0) > 0} /> : product.link ? <Button size="sm" variant="outline" className="gap-2" asChild><a href={product.link}><ShoppingCart className="size-4" />View product</a></Button> : null}
               </CardContent>
             </Card>
           ))}
         </div>
       ) : (
         <p className="text-center text-sm text-muted-foreground">
-          No products configured. Add items as JSON in the block config.
+          No products are available yet. Check back soon.
         </p>
       )}
     </section>
   );
+}
+
+function formatPrice(price: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(price / 100);
 }

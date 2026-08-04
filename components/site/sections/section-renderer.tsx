@@ -1,4 +1,4 @@
-import type { GalleryImage, MenuItem } from "@/lib/db/schema";
+import type { GalleryImage, MenuItem, Product } from "@/lib/db/schema";
 import type { Feature, SiteSettings } from "@/lib/settings";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
@@ -67,11 +67,13 @@ export function SectionRenderer({
   settings,
   galleryImages,
   featuredItems,
+  products,
 }: {
   section: { id: number; type: string; title?: string | null; sortOrder: number; visible: boolean; config?: string | null; createdAt?: string; siteId?: number | null };
   settings: SiteSettings;
   galleryImages: GalleryImage[];
   featuredItems: MenuItem[];
+  products: Product[];
 }) {
   const config = parseConfig(section.config ?? null);
   const cfg = section.config ?? null;
@@ -145,7 +147,7 @@ export function SectionRenderer({
     case "pricing":
       return <PricingBlock config={cfg} />;
     case "productGrid":
-      return <ProductGridBlock config={cfg} />;
+      return <ProductGridBlock config={cfg} products={products} />;
     case "team":
       return <TeamBlock config={cfg} />;
     case "stats":
