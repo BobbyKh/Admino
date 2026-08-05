@@ -175,16 +175,28 @@ export async function updatePageBlock(
   formData: FormData
 ): Promise<AdminActionState> {
   const id = Number(formData.get("id"));
-  const title = String(formData.get("title") ?? "").trim() || null;
-  const visible = formData.get("visible") === "on";
-  const config = String(formData.get("config") ?? "").trim() || null;
 
   if (!id) return { message: "Block ID is required." };
   await requireRole("super_admin");
 
+  // Callers update one block property at a time. Preserve every omitted field
+  // rather than treating it as an empty value.
+  const updates: { title?: string | null; visible?: boolean; config?: string | null; updatedAt: string } = {
+    updatedAt: new Date().toISOString(),
+  };
+  if (formData.has("title")) {
+    updates.title = String(formData.get("title") ?? "").trim() || null;
+  }
+  if (formData.has("visible")) {
+    updates.visible = formData.get("visible") === "on";
+  }
+  if (formData.has("config")) {
+    updates.config = String(formData.get("config") ?? "").trim() || null;
+  }
+
   await db
     .update(pageBlocks)
-    .set({ title, visible, config, updatedAt: new Date().toISOString() })
+    .set(updates)
     .where(eq(pageBlocks.id, id));
 
   revalidatePath("/", "layout");
