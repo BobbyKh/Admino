@@ -226,6 +226,9 @@ export default function SitesPage() {
                     {site.published ? "Add a domain to enable the live site link." : "Publish this site to enable its public link."}
                   </p>
                 )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {site.domain ? `Primary domain: ${site.domain}` : "No custom domain connected."}
+                </p>
                 <div className="mt-4 flex gap-2">
                   {site.published && getSiteUrl(site) && (
                     <Button variant="outline" size="sm" asChild>
@@ -310,10 +313,15 @@ export default function SitesPage() {
                 <Label>Site Name *</Label>
                 <Input name="name" defaultValue={editingSite.name} required />
               </div>
-              <div className="space-y-2">
-                <Label>Slug</Label>
-                <Input name="slug" defaultValue={editingSite.slug} disabled />
-              </div>
+               <div className="space-y-2">
+                 <Label>Slug</Label>
+                 <Input name="slug" defaultValue={editingSite.slug} disabled />
+               </div>
+               <div className="space-y-2">
+                 <Label>Custom domain</Label>
+                 <Input name="domain" defaultValue={editingSite.domain ?? ""} placeholder="www.example.com" />
+                 <p className="text-xs text-muted-foreground">In Vercel, add this domain to the project, then point its DNS CNAME record to `cname.vercel-dns.com`.</p>
+               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea name="description" defaultValue={editingSite.description ?? ""} rows={2} />

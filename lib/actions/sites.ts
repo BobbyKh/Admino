@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sites } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
@@ -14,6 +14,18 @@ function getPlatformDomain() {
   const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
   if (!domain) return null;
   return domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+}
+
+function normalizeDomain(value: FormDataEntryValue | null) {
+  const domain = String(value ?? "").trim().toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "");
+  if (!domain) return null;
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(domain)) {
+    throw new Error("Enter a valid domain, for example www.example.com.");
+  }
+  return domain;
 }
 
 export async function createSite(
@@ -66,12 +78,22 @@ export async function updateSite(
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
   const published = formData.get("published") === "on";
+  const customDomain = normalizeDomain(formData.get("domain"));
 
   if (!id || !name) return { message: "Site ID and name are required." };
 
+  const [currentSite] = await db.select({ slug: sites.slug }).from(sites).where(eq(sites.id, id));
+  if (!currentSite) return { message: "Site not found." };
+  const domain = customDomain ?? (getPlatformDomain() ? `${currentSite.slug}.${getPlatformDomain()}` : null);
+
+  if (domain) {
+    const [existingDomain] = await db.select({ id: sites.id }).from(sites).where(and(eq(sites.domain, domain), ne(sites.id, id)));
+    if (existingDomain) return { message: "This domain is already assigned to another site." };
+  }
+
   await db
     .update(sites)
-    .set({ name, description, published, updatedAt: new Date().toISOString() })
+    .set({ name, description, domain, published, updatedAt: new Date().toISOString() })
     .where(eq(sites.id, id));
   revalidatePath("/admin/sites");
   return { success: true, message: "Site updated." };

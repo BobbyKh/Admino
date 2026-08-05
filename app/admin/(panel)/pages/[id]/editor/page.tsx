@@ -23,13 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { VideoPicker } from "@/components/admin/video-picker";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -500,6 +493,24 @@ function BlockConfigEditor({
         );
       }
 
+    case "search":
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>Title</Label><Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} /></div>
+          <div className="space-y-1"><Label>Subtitle</Label><Input value={config.subtitle ?? ""} onChange={(e) => updateConfig("subtitle", e.target.value)} /></div>
+          <div className="space-y-1"><Label>Search placeholder</Label><Input value={config.placeholder ?? ""} onChange={(e) => updateConfig("placeholder", e.target.value)} /></div>
+        </div>
+      );
+
+    case "serviceGrid":
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>Title</Label><Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} /></div>
+          <div className="space-y-1"><Label>Subtitle</Label><Input value={config.subtitle ?? ""} onChange={(e) => updateConfig("subtitle", e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><Label>Source</Label><select value={config.source ?? "latest"} onChange={(e) => updateConfig("source", e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="latest">Latest services</option><option value="featured">Featured services</option></select></div><div className="space-y-1"><Label>Maximum services</Label><Input value={config.limit ?? "6"} type="number" min="1" onChange={(e) => updateConfig("limit", e.target.value)} /></div></div>
+        </div>
+      );
+
     default:
       return (
         <div className="space-y-1">
@@ -526,7 +537,7 @@ export default function BlockEditorPage() {
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [addBlockOpen, setAddBlockOpen] = useState(false);
+  const [blockSearch, setBlockSearch] = useState("");
   const [, setPending] = useState(false);
 
   // Load page and blocks
@@ -553,7 +564,6 @@ export default function BlockEditorPage() {
       await addPageBlock({}, formData);
       const updated = await getPageBlocks(pageId);
       setBlocks(updated);
-      setAddBlockOpen(false);
       setPending(false);
     },
     [pageId]
@@ -602,6 +612,18 @@ export default function BlockEditorPage() {
   );
 
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const filteredBlockTypes = BLOCK_TYPES.filter((blockType) => {
+    const query = blockSearch.trim().toLowerCase();
+    return !query || `${blockType.label} ${blockType.description}`.toLowerCase().includes(query);
+  });
+
+  const handlePaletteDrop = (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    const type = event.dataTransfer.getData("text/plain");
+    if (dragIdx === null && getBlockType(type)) {
+      handleAddBlock(type);
+    }
+  };
 
   if (loading) {
     return (
@@ -642,70 +664,78 @@ export default function BlockEditorPage() {
           <Badge variant={page.published ? "default" : "secondary"}>
             {page.published ? "Published" : "Draft"}
           </Badge>
-          <Dialog open={addBlockOpen} onOpenChange={setAddBlockOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 size-4" />
-                Add Block
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add Block</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                {Object.entries(BLOCK_GROUP_LABELS).map(([group, label]) => {
-                  const blockTypes = BLOCK_TYPES.filter((b) => b.group === group);
-                  if (blockTypes.length === 0) return null;
-                  return (
-                    <div key={group}>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        {label}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {blockTypes.map((bt) => {
-                          const Icon = bt.icon;
-                          return (
-                            <button
-                              key={bt.type}
-                              onClick={() => handleAddBlock(bt.type)}
-                              className="flex items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted"
-                            >
-                              <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
-                                <Icon className="size-4 text-primary" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium">{bt.label}</p>
-                                <p className="text-xs text-muted-foreground line-clamp-1">
-                                  {bt.description}
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
-      {/* Blocks list */}
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="h-fit rounded-lg border bg-card p-4 lg:sticky lg:top-4">
+          <div className="mb-4">
+            <h2 className="font-semibold">Block palette</h2>
+            <p className="text-xs text-muted-foreground">Click or drag a block onto the canvas.</p>
+          </div>
+          <Input
+            value={blockSearch}
+            onChange={(event) => setBlockSearch(event.target.value)}
+            placeholder="Search blocks..."
+            aria-label="Search blocks"
+            className="mb-4"
+          />
+          <div className="max-h-[50vh] space-y-4 overflow-y-auto pr-1">
+            {Object.entries(BLOCK_GROUP_LABELS).map(([group, label]) => {
+              const blockTypes = filteredBlockTypes.filter((blockType) => blockType.group === group);
+              if (blockTypes.length === 0) return null;
+              return (
+                <section key={group}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    {label}
+                  </p>
+                  <div className="space-y-2">
+                    {blockTypes.map((blockType) => {
+                      const Icon = blockType.icon;
+                      return (
+                        <button
+                          key={blockType.type}
+                          type="button"
+                          draggable
+                          onClick={() => handleAddBlock(blockType.type)}
+                          onDragStart={(event) => {
+                            event.dataTransfer.setData("text/plain", blockType.type);
+                            event.dataTransfer.effectAllowed = "copy";
+                          }}
+                          className="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted"
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
+                            <Icon className="size-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{blockType.label}</p>
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {blockType.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+            {filteredBlockTypes.length === 0 && <p className="text-sm text-muted-foreground">No blocks found.</p>}
+          </div>
+        </aside>
+        <section
+          className="min-w-0"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={handlePaletteDrop}
+        >
       {blocks.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Blocks className="mb-4 size-12 text-muted-foreground/40" />
             <p className="text-lg font-medium">No blocks yet</p>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Add your first block to start building this page.
+            <p className="text-sm text-muted-foreground">
+              Choose a block from the palette or drag one here to start building this page.
             </p>
-            <Button onClick={() => setAddBlockOpen(true)}>
-              <Plus className="mr-2 size-4" />
-              Add Block
-            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -732,10 +762,13 @@ export default function BlockEditorPage() {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = "move";
                   }}
-                  onDrop={() => {
+                  onDrop={(event) => {
+                    event.stopPropagation();
                     if (dragIdx !== null) {
                       handleReorder(dragIdx, index);
                       setDragIdx(null);
+                    } else {
+                      handlePaletteDrop(event);
                     }
                   }}
                   onDragEnd={() => setDragIdx(null)}
@@ -834,6 +867,8 @@ export default function BlockEditorPage() {
           })}
         </div>
       )}
+        </section>
+      </div>
     </div>
   );
 }

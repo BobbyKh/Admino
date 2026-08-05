@@ -159,6 +159,8 @@ export default function PagesPage() {
                     <option value="full-width">Full Width</option>
                     <option value="sidebar">With Sidebar</option>
                     <option value="landing">Landing Page</option>
+                    <option value="privacy-policy">Privacy Policy</option>
+                    <option value="terms">Terms of Service</option>
                   </select>
                 </div>
                 <Button type="submit" className="w-full" disabled={pending}>
@@ -327,9 +329,11 @@ export default function PagesPage() {
                 >
                   <option value="default">Default</option>
                   <option value="full-width">Full Width</option>
-                  <option value="sidebar">With Sidebar</option>
-                  <option value="landing">Landing Page</option>
-                </select>
+                    <option value="sidebar">With Sidebar</option>
+                    <option value="landing">Landing Page</option>
+                    <option value="privacy-policy">Privacy Policy</option>
+                    <option value="terms">Terms of Service</option>
+                  </select>
               </div>
               <div className="flex items-center gap-2">
                 <input

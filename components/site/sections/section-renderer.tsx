@@ -1,4 +1,4 @@
-import type { GalleryImage, MenuItem, Product } from "@/lib/db/schema";
+import type { GalleryImage, MenuItem, Product, Service, ServiceCategory } from "@/lib/db/schema";
 import type { Feature, SiteSettings } from "@/lib/settings";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
@@ -32,6 +32,8 @@ import { AlertBlock } from "../blocks/alert-block";
 import { GalleryLightboxBlock } from "../blocks/gallery-lightbox-block";
 import { StepsBlock } from "../blocks/steps-block";
 import { InfoCardBlock } from "../blocks/info-card-block";
+import { SearchBlock } from "../blocks/search-block";
+import { ServiceGridBlock } from "../blocks/service-grid-block";
 
 function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
@@ -68,12 +70,16 @@ export function SectionRenderer({
   galleryImages,
   featuredItems,
   products,
+  serviceCategories = [],
+  services = [],
 }: {
   section: { id: number; type: string; title?: string | null; sortOrder: number; visible: boolean; config?: string | null; createdAt?: string; siteId?: number | null };
   settings: SiteSettings;
   galleryImages: GalleryImage[];
   featuredItems: MenuItem[];
   products: Product[];
+  serviceCategories?: ServiceCategory[];
+  services?: Service[];
 }) {
   const config = parseConfig(section.config ?? null);
   const cfg = section.config ?? null;
@@ -148,6 +154,8 @@ export function SectionRenderer({
       return <PricingBlock config={cfg} />;
     case "productGrid":
       return <ProductGridBlock config={cfg} products={products} />;
+    case "search":
+      return <SearchBlock config={cfg} products={products} />;
     case "team":
       return <TeamBlock config={cfg} />;
     case "stats":
@@ -174,6 +182,8 @@ export function SectionRenderer({
       return <MapBlock config={cfg} />;
     case "services":
       return <ServicesBlock config={cfg} />;
+    case "serviceGrid":
+      return <ServiceGridBlock config={cfg} categories={serviceCategories} services={services} />;
     case "alert":
       return <AlertBlock config={cfg} />;
     case "galleryLightbox":

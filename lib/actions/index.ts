@@ -12,4 +12,6 @@ export { getAdminUsers, getSitesForCurrentUser, createAdminUser, updateAdminUser
 export { uploadImage } from "./uploads";
 export { updateLayoutSettings } from "./layout";
 export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentConfigurations, createPaymentConfiguration, updatePaymentConfiguration, deletePaymentConfiguration, listOrders, updateOrderStatus, approveOrderPayment, rejectOrderPayment, fulfillOrder, getCommerceSettings, updateCommerceSettings, getPaymentSecretStatus } from "./commerce";
+export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
+export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
 export { addStoreCartItem, completeStoreCheckout, getStoreCart, getStorePaymentMethods, updateStoreCartItem } from "./storefront-commerce";

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
-import { pages } from "@/lib/db/schema";
+import { blogPosts, pages } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getResolvedSite } from "@/lib/site-context";
 
@@ -15,19 +15,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/gallery`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/book`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
     { url: `${base}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
   ];
 
   if (!site?.published) return staticPages;
 
   try {
-    const allPages = await db
+    const [allPages, publishedPosts] = await Promise.all([db
       .select({
         slug: pages.slug,
         updatedAt: pages.updatedAt,
         siteId: pages.siteId,
       })
       .from(pages)
-      .where(and(eq(pages.siteId, site.id), eq(pages.published, true)));
+      .where(and(eq(pages.siteId, site.id), eq(pages.published, true))),
+    db.select({ slug: blogPosts.slug, updatedAt: blogPosts.updatedAt }).from(blogPosts)
+      .where(and(eq(blogPosts.siteId, site.id), eq(blogPosts.published, true))),
+    ]);
 
     const cmsPages: MetadataRoute.Sitemap = allPages
       .filter((p) => p.slug && !["menu", "gallery", "book", "contact"].includes(p.slug))
@@ -38,7 +42,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
 
-    return [...staticPages, ...cmsPages];
+    const blogRoutes: MetadataRoute.Sitemap = publishedPosts.map((post) => ({
+      url: `${base}/blog/${post.slug}`,
+      lastModified: post.updatedAt ? new Date(post.updatedAt) : new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    }));
+    return [...staticPages, ...cmsPages, ...blogRoutes];
   } catch {
     return staticPages;
   }

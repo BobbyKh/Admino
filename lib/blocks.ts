@@ -27,6 +27,8 @@ import {
   CreditCard,
   CheckCircle,
   FileText,
+  Search,
+  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -265,11 +267,19 @@ export const BLOCK_TYPES: BlockType[] = [
   },
   {
     type: "productGrid",
-    label: "Product Grid",
-    description: "Product cards with images and add-to-cart",
+    label: "Featured Product Grid",
+    description: "Latest featured product cards with images and add-to-cart",
     icon: ShoppingCart,
     group: "commerce",
-    defaultConfig: { title: "Our Products", subtitle: "", badge: "", columns: "3", items: [{ name: "Product 1", price: "$29", image: "", description: "Great product", badge: "New" }] },
+    defaultConfig: { title: "Featured Products", subtitle: "", badge: "", columns: "3", limit: "4", items: [{ name: "Product 1", price: "$29", image: "", description: "Great product", badge: "New" }] },
+  },
+  {
+    type: "serviceGrid",
+    label: "Services Grid",
+    description: "Dynamic services with category filters",
+    icon: Wrench,
+    group: "content",
+    defaultConfig: { title: "Our Services", subtitle: "What we offer", badge: "", source: "latest", categoryId: "all", limit: "6" },
   },
   {
     type: "newsletter",
@@ -312,6 +322,14 @@ export const BLOCK_TYPES: BlockType[] = [
     icon: CalendarDays,
     group: "interactive",
     defaultConfig: { title: "Reserve a Table", subtitle: "Book your experience" },
+  },
+  {
+    type: "search",
+    label: "Product Search",
+    description: "Search the active product catalog",
+    icon: Search,
+    group: "interactive",
+    defaultConfig: { title: "Search products", subtitle: "Find what you are looking for.", placeholder: "Search products" },
   },
   {
     type: "infoCard",

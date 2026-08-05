@@ -7,6 +7,7 @@ import {
   getPageBlocks,
   getPageBySlug,
   getActiveProducts,
+  getActiveServiceCatalog,
 } from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
@@ -23,12 +24,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const siteId = await getResolvedSiteId();
-  const [settings, gallery, featured, sections, products] = await Promise.all([
+  const [settings, gallery, featured, sections, products, serviceCatalog] = await Promise.all([
     getResolvedSiteSettings(),
     getResolvedGallery(),
     getResolvedFeaturedItems(),
     getResolvedHomeSections(),
     getActiveProducts(siteId),
+    getActiveServiceCatalog(siteId),
   ]);
   const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
   const homepageBlocks = homepage?.published ? await getPageBlocks(homepage.id) : [];
@@ -71,6 +73,8 @@ export default async function HomePage() {
           galleryImages={gallery}
           featuredItems={featured}
           products={products}
+          serviceCategories={serviceCatalog.categories}
+          services={serviceCatalog.services}
         />
       ))}
 
@@ -83,6 +87,8 @@ export default async function HomePage() {
           galleryImages={gallery}
           featuredItems={featured}
           products={products}
+          serviceCategories={serviceCatalog.categories}
+          services={serviceCatalog.services}
         />
       ))}
 

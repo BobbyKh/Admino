@@ -4,6 +4,7 @@ import * as React from "react";
 import { ShoppingCart } from "lucide-react";
 import type { Product as CatalogProduct } from "@/lib/db/schema";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
+import { ProductGridFilters } from "@/components/site/blocks/product-grid-filters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +42,12 @@ function parseProducts(raw: string | null): Product[] {
 export function ProductGridBlock({ config, products: catalogProducts }: { config: string | null; products: CatalogProduct[] }) {
   const c = parseConfig(config);
   const configuredProducts = parseProducts(c.items);
+  const featuredProductLimit = Math.max(1, Number(c.limit) || 4);
+  const featuredCatalogProducts = catalogProducts
+    .filter((product) => product.featured)
+    .slice(0, featuredProductLimit);
   const products: Product[] = catalogProducts.length > 0
-    ? catalogProducts.map((product) => ({
+    ? featuredCatalogProducts.map((product) => ({
       name: product.title,
       price: formatPrice(product.price, product.currency),
       image: product.image ?? undefined,
@@ -75,7 +80,19 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
         )}
       </div>
-      {catalogProducts.length > 0 && <div className="mb-8 grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-4"><select value={category} onChange={(event) => setCategory(event.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm"><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select><input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} type="number" min="0" placeholder="Min price" className="rounded-lg border bg-background px-3 py-2 text-sm" /><input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max price" className="rounded-lg border bg-background px-3 py-2 text-sm" /><select value={sort} onChange={(event) => setSort(event.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm"><option value="latest">Latest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div>}
+      {featuredCatalogProducts.length > 0 && (
+        <ProductGridFilters
+          categories={categories}
+          category={category}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          sort={sort}
+          onCategoryChange={setCategory}
+          onMinPriceChange={setMinPrice}
+          onMaxPriceChange={setMaxPrice}
+          onSortChange={setSort}
+        />
+      )}
       {filteredProducts.length > 0 ? (
         <div className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-${columns}`}>
           {filteredProducts.map((product, i) => (

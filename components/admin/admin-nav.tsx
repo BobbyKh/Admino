@@ -21,6 +21,8 @@ import {
   ShoppingBag,
   Package,
   CreditCard,
+  Newspaper,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -53,6 +55,8 @@ const NAV_GROUPS = [
       { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
       { href: "/admin/gallery", label: "Gallery", icon: Images },
       { href: "/admin/media", label: "Media Library", icon: FolderInput },
+      { href: "/admin/services", label: "Services", icon: Wrench },
+      { href: "/admin/blog", label: "Blog", icon: Newspaper },
     ],
   },
   {
@@ -94,7 +98,8 @@ export function AdminNav({
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex h-16 items-center gap-2 border-b px-5">
+      <div className="border-b px-5 py-3">
+        <div className="flex items-center gap-2">
         <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <UtensilsCrossed className="size-4" />
         </span>
@@ -102,6 +107,8 @@ export function AdminNav({
           <p className="text-sm font-semibold">Admino</p>
           <p className="text-xs text-muted-foreground">Web Builder</p>
         </div>
+        </div>
+        <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
@@ -137,7 +144,6 @@ export function AdminNav({
         ))}
       </nav>
 
-      <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       <div className="border-t p-3">
         <div className="mb-2 px-3 py-1.5 text-xs text-muted-foreground">
           Signed in as <span className="font-medium text-foreground">{adminName}</span>

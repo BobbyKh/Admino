@@ -12,6 +12,8 @@ import {
   pages,
   pageBlocks,
   products,
+  serviceCategories,
+  services,
   settings,
 } from "@/lib/db/schema";
 import {
@@ -109,6 +111,15 @@ export const getActiveProducts = cache(async (siteId?: number | null) => {
     .from(products)
     .where(and(eq(products.siteId, siteId), eq(products.status, "active")))
     .orderBy(desc(products.featured), desc(products.createdAt));
+});
+
+export const getActiveServiceCatalog = cache(async (siteId?: number | null) => {
+  if (!siteId) return { categories: [], services: [] };
+  const [categories, serviceList] = await Promise.all([
+    db.select().from(serviceCategories).where(eq(serviceCategories.siteId, siteId)).orderBy(asc(serviceCategories.sortOrder), asc(serviceCategories.name)),
+    db.select().from(services).where(and(eq(services.siteId, siteId), eq(services.active, true))).orderBy(desc(services.featured), desc(services.createdAt)),
+  ]);
+  return { categories, services: serviceList };
 });
 
 export async function getNavLinks(siteId?: number | null) {

@@ -261,6 +261,57 @@ export const products = pgTable("products", {
   statusIdx: index("products_status_idx").on(t.status),
 }));
 
+// ─── Blog (tenant-scoped) ───────────────────────────────────────────────────
+
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  excerpt: text("excerpt"),
+  content: text("content").notNull(),
+  coverImage: text("cover_image"),
+  category: text("category"),
+  published: boolean("published").notNull().default(false),
+  publishedAt: text("published_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("blog_posts_site_id_idx").on(t.siteId),
+  siteSlugUnique: uniqueIndex("blog_posts_site_slug_idx").on(t.siteId, t.slug),
+  publishedIdx: index("blog_posts_published_idx").on(t.siteId, t.published, t.publishedAt),
+}));
+
+// ─── Service catalog (tenant-scoped, non-ecommerce) ─────────────────────────
+
+export const serviceCategories = pgTable("service_categories", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+}, (t) => ({
+  siteIdIdx: index("service_categories_site_id_idx").on(t.siteId),
+  siteSlugUnique: uniqueIndex("service_categories_site_slug_idx").on(t.siteId, t.slug),
+}));
+
+export const services = pgTable("services", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => serviceCategories.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  image: text("image"),
+  featured: boolean("featured").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("services_site_id_idx").on(t.siteId),
+  categoryIdIdx: index("services_category_id_idx").on(t.categoryId),
+}));
+
 export const carts = pgTable("carts", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
@@ -367,11 +418,14 @@ export type Page = typeof pages.$inferSelect;
 export type PageBlock = typeof pageBlocks.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type BlogPost = typeof blogPosts.$inferSelect;
 export type Cart = typeof carts.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type PaymentConfiguration = typeof paymentConfigurations.$inferSelect;
+export type ServiceCategory = typeof serviceCategories.$inferSelect;
+export type Service = typeof services.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

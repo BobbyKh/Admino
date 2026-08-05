@@ -21,10 +21,10 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0]; // strip port
 
-  // Local dev: allow ?site=<slug> to select a site
-  const siteSlug = process.env.NODE_ENV === "development"
-    ? request.nextUrl.searchParams.get("site")
-    : null;
+  // Local development and Vercel deployment URLs can preview any public tenant.
+  // Custom domains continue to resolve by hostname and do not need this override.
+  const isPreviewHost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app");
+  const siteSlug = isPreviewHost ? request.nextUrl.searchParams.get("site") : null;
 
   // Pass resolution hints to server components via REQUEST headers
   const requestHeaders = new Headers(request.headers);
