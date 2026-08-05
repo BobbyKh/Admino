@@ -49,6 +49,57 @@ import {
   getDefaultConfig,
 } from "@/lib/blocks";
 
+function RepeaterConfigEditor({
+  items,
+  onChange,
+}: {
+  items: Record<string, unknown>[];
+  onChange: (items: Record<string, unknown>[]) => void;
+}) {
+  const fields = [...new Set(items.flatMap((item) => Object.keys(item)))];
+  const template = items[0] ?? { title: "New item" };
+
+  function updateItem(index: number, key: string, value: unknown) {
+    const nextItems = [...items];
+    nextItems[index] = { ...nextItems[index], [key]: value };
+    onChange(nextItems);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label>Items</Label>
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...items, { ...template }])}>
+          <Plus className="size-3.5" />Add item
+        </Button>
+      </div>
+      {items.map((item, index) => (
+        <div key={index} className="space-y-3 rounded-lg border p-3">
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="icon-xs" onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}>
+              <Trash2 className="size-3.5 text-destructive" />
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {fields.map((field) => {
+              const value = item[field] ?? template[field] ?? "";
+              const label = field.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+              if (typeof value === "boolean") {
+                return <label key={field} className="flex items-center gap-2 pt-7 text-sm font-medium"><input type="checkbox" checked={value} onChange={(event) => updateItem(index, field, event.target.checked)} />{label}</label>;
+              }
+              if (Array.isArray(value)) {
+                return <div key={field} className="space-y-1 md:col-span-2"><Label>{label}</Label><Input value={value.join(", ")} onChange={(event) => updateItem(index, field, event.target.value.split(",").map((entry) => entry.trim()).filter(Boolean))} placeholder="Separate values with commas" /></div>;
+              }
+              const isLongText = ["text", "description", "content", "answer", "bio"].includes(field);
+              return <div key={field} className={`space-y-1 ${isLongText ? "md:col-span-2" : ""}`}><Label>{label}</Label>{isLongText ? <Textarea value={String(value)} onChange={(event) => updateItem(index, field, event.target.value)} rows={3} /> : <Input value={String(value)} onChange={(event) => updateItem(index, field, event.target.value)} />}</div>;
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Block Config Editor ─────────────────────────────────────────────────────
 
 function BlockConfigEditor({
@@ -512,6 +563,10 @@ function BlockConfigEditor({
       );
 
     default:
+      if (Array.isArray(config.items)) {
+        const items = config.items.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null);
+        return <RepeaterConfigEditor items={items} onChange={(nextItems) => updateConfig("items", nextItems)} />;
+      }
       return (
         <div className="space-y-1">
           <Label>Config (JSON)</Label>
