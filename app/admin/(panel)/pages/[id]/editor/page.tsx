@@ -910,9 +910,7 @@ export default function BlockEditorPage() {
                       </div>
                       <BlockConfigEditor
                         block={block}
-                        onConfigChange={(config) =>
-                          handleUpdateBlock(block.id, { config })
-                        }
+                        onConfigChange={(config) => handleConfigChange(block.id, config)}
                       />
                     </div>
                   </CardContent>
