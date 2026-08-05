@@ -1,3 +1,6 @@
+"use client";
+
+import * as React from "react";
 import { ShoppingCart } from "lucide-react";
 import type { Product as CatalogProduct } from "@/lib/db/schema";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
@@ -19,6 +22,9 @@ interface Product {
   link?: string;
   id?: number;
   inventoryQuantity?: number;
+  category?: string;
+  amount?: number;
+  currency?: string;
 }
 
 function parseProducts(raw: string | null): Product[] {
@@ -45,9 +51,18 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
       link: undefined,
       id: product.id,
       inventoryQuantity: product.inventoryQuantity,
+      category: product.category ?? undefined,
+      amount: product.price,
+      currency: product.currency,
     }))
     : configuredProducts;
   const columns = c.columns || "3";
+  const [category, setCategory] = React.useState("all");
+  const [minPrice, setMinPrice] = React.useState("");
+  const [maxPrice, setMaxPrice] = React.useState("");
+  const [sort, setSort] = React.useState("latest");
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))] as string[];
+  const filteredProducts = products.filter((product) => (category === "all" || product.category === category) && (!minPrice || !product.amount || product.amount >= Number(minPrice) * 100) && (!maxPrice || !product.amount || product.amount <= Number(maxPrice) * 100)).sort((a, b) => sort === "low" ? (a.amount ?? 0) - (b.amount ?? 0) : sort === "high" ? (b.amount ?? 0) - (a.amount ?? 0) : 0);
 
   return (
     <section id="shop" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
@@ -60,9 +75,10 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
         )}
       </div>
-      {products.length > 0 ? (
+      {catalogProducts.length > 0 && <div className="mb-8 grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-4"><select value={category} onChange={(event) => setCategory(event.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm"><option value="all">All categories</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select><input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} type="number" min="0" placeholder="Min price" className="rounded-lg border bg-background px-3 py-2 text-sm" /><input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} type="number" min="0" placeholder="Max price" className="rounded-lg border bg-background px-3 py-2 text-sm" /><select value={sort} onChange={(event) => setSort(event.target.value)} className="rounded-lg border bg-background px-3 py-2 text-sm"><option value="latest">Latest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div>}
+      {filteredProducts.length > 0 ? (
         <div className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-${columns}`}>
-          {products.map((product, i) => (
+          {filteredProducts.map((product, i) => (
             <Card key={i} className="group overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
               {product.image && (
                 <div className="relative aspect-square overflow-hidden">
@@ -94,7 +110,7 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
         </div>
       ) : (
         <p className="text-center text-sm text-muted-foreground">
-          No products are available yet. Check back soon.
+          No products match these filters. Try a different category or price range.
         </p>
       )}
     </section>

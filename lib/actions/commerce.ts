@@ -15,6 +15,9 @@ const productSchema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
   description: z.string().trim().max(2000).optional().default(""),
   image: z.string().trim().url().optional().or(z.literal("")),
+  category: z.string().trim().max(80).optional().default(""),
+  sizes: z.string().trim().max(500).optional().default(""),
+  colors: z.string().trim().max(500).optional().default(""),
   price: z.coerce.number().int().min(0),
   currency: z.string().trim().toLowerCase().length(3, "Currency must be a three-letter code, such as USD."),
   inventoryQuantity: z.coerce.number().int().min(0),
@@ -35,6 +38,9 @@ function productInput(formData: FormData) {
     slug: formData.get("slug"),
     description: formData.get("description") ?? "",
     image: formData.get("image") ?? "",
+    category: formData.get("category") ?? "",
+    sizes: formData.get("sizes") ?? "",
+    colors: formData.get("colors") ?? "",
     price: formData.get("price"),
     currency: formData.get("currency") ?? "usd",
     inventoryQuantity: formData.get("inventoryQuantity") ?? 0,
@@ -67,6 +73,9 @@ export async function createProduct(formData: FormData) {
     ...product,
     description: product.description || null,
     image: product.image || null,
+    category: product.category || null,
+    sizes: toOptionJson(product.sizes),
+    colors: toOptionJson(product.colors),
     updatedAt: new Date().toISOString(),
   });
   revalidateCommerce();
@@ -83,9 +92,17 @@ export async function updateProduct(productId: number, formData: FormData) {
     ...product,
     description: product.description || null,
     image: product.image || null,
+    category: product.category || null,
+    sizes: toOptionJson(product.sizes),
+    colors: toOptionJson(product.colors),
     updatedAt: new Date().toISOString(),
   }).where(and(eq(products.id, productId), eq(products.siteId, siteId)));
   revalidateCommerce();
+}
+
+function toOptionJson(value: string) {
+  const options = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+  return options.length ? JSON.stringify(options) : null;
 }
 
 export async function deleteProduct(productId: number) {

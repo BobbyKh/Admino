@@ -22,6 +22,13 @@
       "when": 1785844051137,
       "tag": "0002_red_daredevil",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785859164563,
+      "tag": "0003_youthful_doctor_doom",
+      "breakpoints": true
     }
   ]
 }
