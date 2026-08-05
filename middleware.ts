@@ -33,11 +33,19 @@ export async function middleware(request: NextRequest) {
   }
   requestHeaders.set("x-request-host", hostname);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+  if (siteSlug) {
+    response.cookies.set("site_preview", siteSlug, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60,
+    });
+  }
+  return response;
 }
 
 export const config = {

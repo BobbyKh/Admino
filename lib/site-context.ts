@@ -1,6 +1,6 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -12,16 +12,18 @@ import type { Site } from "@/lib/db/schema";
  *
  * Resolution order:
  * 1. x-site-slug header (?site= query param in URL)
- * 2. x-request-host header (hostname lookup)
- * 3. Fallback: first site in DB (default tenant)
+ * 2. Preview cookie (persists localhost/Vercel tenant previews across links)
+ * 3. x-request-host header (hostname lookup)
+ * 4. Fallback: first site in DB (default tenant)
  *
  * Returns null only if no sites exist at all.
  */
 export const getResolvedSite = cache(async (): Promise<Site | null> => {
   const hdrs = await headers();
+  const cookieStore = await cookies();
   return getSiteForRequest(
     hdrs.get("x-request-host") ?? "",
-    hdrs.get("x-site-slug")
+    hdrs.get("x-site-slug") ?? cookieStore.get("site_preview")?.value
   );
 });
 
