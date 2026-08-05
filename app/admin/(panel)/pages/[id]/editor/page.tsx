@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -594,6 +594,7 @@ export default function BlockEditorPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [blockSearch, setBlockSearch] = useState("");
   const [, setPending] = useState(false);
+  const configSaveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
 
   // Load page and blocks
   useEffect(() => {
@@ -639,6 +640,20 @@ export default function BlockEditorPage() {
     },
     [pageId]
   );
+
+  const handleConfigChange = useCallback((blockId: number, config: string) => {
+    setBlocks((previous) => previous.map((block) => block.id === blockId ? { ...block, config } : block));
+    const existingTimer = configSaveTimers.current.get(blockId);
+    if (existingTimer) clearTimeout(existingTimer);
+    configSaveTimers.current.set(blockId, setTimeout(() => {
+      configSaveTimers.current.delete(blockId);
+      void handleUpdateBlock(blockId, { config });
+    }, 600));
+  }, [handleUpdateBlock]);
+
+  useEffect(() => () => {
+    configSaveTimers.current.forEach((timer) => clearTimeout(timer));
+  }, []);
 
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
