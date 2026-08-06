@@ -21,6 +21,7 @@ import {
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { assertTenantFeaturePage } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function AdminBookingsPage({
   const params = await searchParams;
   const { page, pageSize, offset } = getPaginationParams(params);
   const siteId = await getAdminSiteId();
+  await assertTenantFeaturePage(siteId, "bookings");
 
   const siteFilter = eq(bookings.siteId, siteId);
   const [totalResult] = await db.select({ value: count() }).from(bookings).where(siteFilter);

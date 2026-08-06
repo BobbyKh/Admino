@@ -29,6 +29,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Site } from "@/lib/db/schema";
 import {
+  TENANT_FEATURE_METADATA,
+  FEATURE_CATEGORIES,
+} from "@/lib/tenant-features-constants";
+import {
   createSite,
   updateSite,
   deleteSite,
@@ -215,7 +219,7 @@ export default function SitesPage() {
                 </div>
                 <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <Sparkles className="size-3" />
-                  {featureAccess[site.id]?.length ?? 0} AI feature{featureAccess[site.id]?.length === 1 ? "" : "s"} enabled
+                  {featureAccess[site.id]?.length ?? 0} of {Object.keys(TENANT_FEATURE_METADATA).length} features enabled
                 </p>
                 {site.published && getSiteUrl(site) ? (
                   <div className="mt-3 flex items-center gap-2 rounded-md border bg-muted/30 p-2">
@@ -304,8 +308,8 @@ export default function SitesPage() {
       {/* Edit Dialog */}
       {editingSite && (
         <Dialog open={!!editingSite} onOpenChange={(open) => !open && setEditingSite(null)}>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader className="pr-6">
               <DialogTitle>Edit {editingSite.name}</DialogTitle>
             </DialogHeader>
             <form
@@ -346,19 +350,40 @@ export default function SitesPage() {
                 />
                  <Label>Published</Label>
                </div>
-               <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+<div className="space-y-3 rounded-lg border bg-muted/30 p-3">
                  <div>
-                   <Label>Tenant AI features</Label>
-                   <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific AI tools. Super admins always retain access.</p>
+                   <Label>Tenant features</Label>
+                   <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific platform features. Leave a feature unchecked to disable it. Super admins always retain access, regardless of these toggles.</p>
                  </div>
-                 <label className="flex items-center gap-2 text-sm">
-                   <input type="checkbox" name="feature_ai_theme_generator" defaultChecked={featureAccess[editingSite.id]?.includes("ai_theme_generator")} className="size-4" />
-                   AI theme generator
-                 </label>
-                 <label className="flex items-center gap-2 text-sm">
-                   <input type="checkbox" name="feature_ai_block_assistant" defaultChecked={featureAccess[editingSite.id]?.includes("ai_block_assistant")} className="size-4" />
-                   AI block assistant
-                 </label>
+                 {FEATURE_CATEGORIES.map((category) => {
+                   const features = Object.values(TENANT_FEATURE_METADATA).filter(
+                     (meta) => meta.category === category
+                   );
+                   if (features.length === 0) return null;
+                   return (
+                     <div key={category}>
+                       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                         {category}
+                       </p>
+                       <div className="grid gap-2 sm:grid-cols-2">
+                         {features.map((meta) => (
+                           <label
+                             key={meta.key}
+                             className="flex cursor-pointer items-center gap-2.5 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
+                           >
+                             <input
+                               type="checkbox"
+                               name={`feature_${meta.key}`}
+                               defaultChecked={featureAccess[editingSite.id]?.includes(meta.key)}
+                               className="size-4 shrink-0"
+                             />
+                             <span className="leading-tight">{meta.label}</span>
+                           </label>
+                         ))}
+                       </div>
+                     </div>
+                   );
+                 })}
                </div>
                <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}

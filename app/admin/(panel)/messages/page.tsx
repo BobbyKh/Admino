@@ -9,6 +9,7 @@ import { deleteMessage, toggleMessageRead } from "@/lib/actions";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { assertTenantFeaturePage } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function AdminMessagesPage({
   const params = await searchParams;
   const { page, pageSize, offset } = getPaginationParams(params);
   const siteId = await getAdminSiteId();
+  await assertTenantFeaturePage(siteId, "messages");
 
   const siteFilter = eq(messages.siteId, siteId);
   const [totalResult] = await db.select({ value: count() }).from(messages).where(siteFilter);

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { pages, pageBlocks } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
+import { requireTenantFeature } from "@/lib/tenant-features";
 import { validateBlockConfig, validateBlockType } from "@/lib/block-config-validation";
 import type { AdminActionState } from "./types";
 
@@ -15,13 +16,17 @@ const LEGAL_TEMPLATE_CONTENT: Record<string, string> = {
 };
 
 export async function getPages(siteId: number) {
-  await requireSiteAccess(siteId);
+  const user = await requireSiteAccess(siteId);
+  await requirePagesFeature(user, siteId);
   return db.select().from(pages).where(eq(pages.siteId, siteId)).orderBy(asc(pages.sortOrder));
 }
 
 export async function getPage(id: number) {
   try {
-    return await requirePageAccess(id);
+    const page = await requirePageAccess(id);
+    const user = await requireSiteAccess(page.siteId);
+    await requirePagesFeature(user, page.siteId);
+    return page;
   } catch {
     return null;
   }
@@ -29,6 +34,10 @@ export async function getPage(id: number) {
 
 function canWritePage(role: string) {
   return hasMinRole((role as Role) ?? "viewer", "editor");
+}
+
+async function requirePagesFeature(user: { id: number; role: string }, siteId: number) {
+  await requireTenantFeature(siteId, "pages", { role: (user.role as Role) ?? "viewer", userId: user.id });
 }
 
 export async function createPage(
@@ -48,8 +57,9 @@ export async function createPage(
   const template = String(formData.get("template") ?? "default").trim();
 
   if (!siteId || !title) return { message: "Site ID and title are required." };
-  const user = await requireSiteAccess(siteId);
+const user = await requireSiteAccess(siteId);
   if (!canWritePage(user.role)) return { message: "You don't have permission to create pages." };
+  await requirePagesFeature(user, siteId);
 
   const [existing] = await db
     .select()
@@ -109,6 +119,7 @@ export async function updatePage(
   const page = await requirePageAccess(id);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) return { message: "You don't have permission to update pages." };
+  await requirePagesFeature(user, page.siteId);
 
   const normalizedSlug = slug
     .toLowerCase()
@@ -134,6 +145,7 @@ export async function deletePage(id: number) {
   const page = await requirePageAccess(id);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
+  await requirePagesFeature(user, page.siteId);
   await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
@@ -144,8 +156,9 @@ export async function reorderPages(orderedIds: number[]) {
   const rows = await db.select({ id: pages.id, siteId: pages.siteId }).from(pages).where(inArray(pages.id, orderedIds));
   const siteId = rows[0]?.siteId;
   if (!siteId || rows.length !== orderedIds.length || rows.some((row) => row.siteId !== siteId)) throw new Error("Invalid page order.");
-  const user = await requireSiteAccess(siteId);
+const user = await requireSiteAccess(siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
+  await requirePagesFeature(user, siteId);
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(pages).set({ sortOrder: i }).where(eq(pages.id, orderedIds[i]));
@@ -157,7 +170,9 @@ export async function reorderPages(orderedIds: number[]) {
 // ─── Page Blocks ──────────────────────────────────────────────────────────────
 
 export async function getPageBlocks(pageId: number) {
-  await requirePageAccess(pageId);
+  const page = await requirePageAccess(pageId);
+  const user = await requireSiteAccess(page.siteId);
+  await requirePagesFeature(user, page.siteId);
   return db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
 }
 
@@ -176,9 +191,10 @@ export async function addPageBlock(
   } catch (error) {
     return { message: error instanceof Error ? error.message : "Invalid block type." };
   }
-  const page = await requirePageAccess(pageId);
+const page = await requirePageAccess(pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) return { message: "You don't have permission to update page blocks." };
+  await requirePagesFeature(user, page.siteId);
 
   const maxSort = await db
     .select({ sortOrder: pageBlocks.sortOrder })
@@ -213,6 +229,7 @@ export async function updatePageBlock(
   const page = await requirePageAccess(block.pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) return { message: "You don't have permission to update page blocks." };
+  await requirePagesFeature(user, page.siteId);
 
   // Callers update one block property at a time. Preserve every omitted field
   // rather than treating it as an empty value.
@@ -248,6 +265,7 @@ export async function deletePageBlock(id: number) {
   const page = await requirePageAccess(block.pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
+  await requirePagesFeature(user, page.siteId);
   await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
@@ -258,9 +276,10 @@ export async function reorderPageBlocks(orderedIds: number[]) {
   const rows = await db.select({ id: pageBlocks.id, pageId: pageBlocks.pageId }).from(pageBlocks).where(inArray(pageBlocks.id, orderedIds));
   const pageId = rows[0]?.pageId;
   if (!pageId || rows.length !== orderedIds.length || rows.some((row) => row.pageId !== pageId)) throw new Error("Invalid block order.");
-  const page = await requirePageAccess(pageId);
+const page = await requirePageAccess(pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
+  await requirePagesFeature(user, page.siteId);
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));

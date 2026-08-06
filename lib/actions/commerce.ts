@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { isTestPaymentProvider, type TestPaymentProvider } from "@/lib/commerce/providers";
 import { db } from "@/lib/db";
 import { orderItems, orders, paymentConfigurations, products, settings } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/secrets";
 
 const productSchema = z.object({
@@ -29,7 +29,7 @@ const orderStatusSchema = z.enum(["pending", "paid", "fulfilled", "cancelled"]);
 
 async function getCommerceSiteId() {
   await requireRole("admin");
-  return getCurrentAdminSiteId();
+  return getCurrentSiteRequiringFeature("commerce");
 }
 
 function productInput(formData: FormData) {

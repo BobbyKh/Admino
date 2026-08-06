@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { blogPosts } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 
 const blogPostSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -21,7 +21,7 @@ const blogPostSchema = z.object({
 
 async function getBlogSiteId() {
   await requireRole("admin");
-  return getCurrentAdminSiteId();
+  return getCurrentSiteRequiringFeature("blog");
 }
 
 function blogPostInput(formData: FormData) {

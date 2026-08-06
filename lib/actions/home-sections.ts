@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { homeSections } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getHomeSections() {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("pages");
   return db.select().from(homeSections).where(eq(homeSections.siteId, siteId)).orderBy(asc(homeSections.sortOrder));
 }
 
@@ -16,7 +16,8 @@ export async function addHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("pages");
+  if (denied) return { message: denied };
   const type = String(formData.get("type") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim() || null;
   if (!type) return { message: "Section type is required." };
@@ -38,7 +39,8 @@ export async function updateHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("pages");
+  if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim() || null;
   const visible = formData.get("visible") === "on";
@@ -51,14 +53,14 @@ export async function updateHomeSection(
 }
 
 export async function deleteHomeSection(id: number) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("pages");
   await db.delete(homeSections).where(and(eq(homeSections.id, id), eq(homeSections.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
 }
 
 export async function reorderHomeSections(orderedIds: number[]) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("pages");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(homeSections).set({ sortOrder: i }).where(and(eq(homeSections.id, orderedIds[i]), eq(homeSections.siteId, siteId)));

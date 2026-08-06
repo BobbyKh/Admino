@@ -236,6 +236,22 @@ export const adminUsers = pgTable("admin_users", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Per-user tenant feature grants ─────────────────────────────────────────
+// Restrictive overlay on top of site-level feature access. When a user has
+// grants recorded, they can only use the granted features; with no grants they
+// inherit every feature enabled for their site.
+export const userFeatures = pgTable("user_features", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }),
+  feature: text("feature").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  userFeatureUnique: uniqueIndex("user_features_user_feature_idx").on(t.userId, t.feature),
+  userIdIdx: index("user_features_user_id_idx").on(t.userId),
+}));
+
 // ─── Ecommerce (tenant-scoped) ──────────────────────────────────────────────
 
 export const products = pgTable("products", {
@@ -426,6 +442,8 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export type PaymentConfiguration = typeof paymentConfigurations.$inferSelect;
 export type ServiceCategory = typeof serviceCategories.$inferSelect;
 export type Service = typeof services.$inferSelect;
+export type UserFeature = typeof userFeatures.$inferSelect;
+export type NewUserFeature = typeof userFeatures.$inferInsert;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

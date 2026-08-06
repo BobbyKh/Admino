@@ -1,6 +1,7 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, type Role } from "@/lib/auth";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
+import { getEffectiveTenantFeatureAccess } from "@/lib/tenant-features";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,19 @@ export default async function AdminLayout({
 }) {
   const user = await requireAdmin();
   const [sites, currentSiteId] = await Promise.all([getAllAdminSites(), getAdminSiteId()]);
+  const features = await getEffectiveTenantFeatureAccess(currentSiteId, {
+    role: user.role as Role,
+    userId: user.id,
+  });
   return (
     <div className="flex min-h-svh bg-muted/30">
-      <AdminNav adminName={user.name} role={user.role} sites={sites} currentSiteId={currentSiteId} />
+      <AdminNav
+        adminName={user.name}
+        role={user.role}
+        sites={sites}
+        currentSiteId={currentSiteId}
+        features={features}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <main key={currentSiteId} className="flex-1 overflow-x-auto p-6 lg:p-8">{children}</main>
       </div>

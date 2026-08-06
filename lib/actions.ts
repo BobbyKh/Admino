@@ -11,10 +11,11 @@ import {
   sendBookingConfirmation,
   sendContactAdminAlert,
 } from "@/lib/email";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, type Role } from "@/lib/auth";
 import type { Booking } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { requireTenantFeature } from "@/lib/tenant-features";
 
 const bookingSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(100),
@@ -164,8 +165,9 @@ export async function updateBookingStatus(
   bookingId: number,
   formData: FormData
 ) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const siteId = await getAdminSiteId();
+  await requireTenantFeature(siteId, "bookings", { role: user.role as Role, userId: user.id });
   const status = String(formData.get("status") ?? "");
   const valid = ["pending", "confirmed", "cancelled", "completed"];
   if (!valid.includes(status)) throw new Error("Invalid status");
@@ -185,15 +187,17 @@ export async function updateBookingStatus(
 }
 
 export async function deleteBooking(bookingId: number) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const siteId = await getAdminSiteId();
+  await requireTenantFeature(siteId, "bookings", { role: user.role as Role, userId: user.id });
   await db.delete(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.siteId, siteId)));
   revalidatePath("/admin/bookings");
 }
 
 export async function toggleMessageRead(messageId: number, read: boolean) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const siteId = await getAdminSiteId();
+  await requireTenantFeature(siteId, "messages", { role: user.role as Role, userId: user.id });
   await db
     .update(messages)
     .set({ read })
@@ -202,8 +206,9 @@ export async function toggleMessageRead(messageId: number, read: boolean) {
 }
 
 export async function deleteMessage(messageId: number) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const siteId = await getAdminSiteId();
+  await requireTenantFeature(siteId, "messages", { role: user.role as Role, userId: user.id });
   await db.delete(messages).where(and(eq(messages.id, messageId), eq(messages.siteId, siteId)));
   revalidatePath("/admin/messages");
 }

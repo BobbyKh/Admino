@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { serviceCategories, services } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 
 const categorySchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -24,7 +24,7 @@ const serviceSchema = z.object({
 
 async function getServiceSiteId() {
   await requireRole("admin");
-  return getCurrentAdminSiteId();
+  return getCurrentSiteRequiringFeature("services");
 }
 
 function revalidateServices() {

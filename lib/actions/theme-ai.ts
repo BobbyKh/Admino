@@ -65,7 +65,7 @@ export async function generateThemeFromPrompt(prompt: string): Promise<GenerateT
 async function generateThemeFromPromptOrThrow(prompt: string): Promise<AiGeneratedTheme> {
   const user = await requireRole("admin");
   const siteId = await getCurrentAdminSiteId();
-  await requireTenantFeature(siteId, "ai_theme_generator", user.role as Role);
+  await requireTenantFeature(siteId, "ai_theme_generator", { role: user.role as Role, userId: user.id });
   const settings = await getAllServerSettings(siteId);
   const input = z.string().trim().min(8, "Describe the theme in a little more detail.").max(800).parse(prompt);
 

@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { navLinks } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getNavLinks() {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("navigation");
   return db.select().from(navLinks).where(eq(navLinks.siteId, siteId)).orderBy(asc(navLinks.sortOrder));
 }
 
@@ -16,7 +16,8 @@ export async function addNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("navigation");
+  if (denied) return { message: denied };
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
   const external = formData.get("external") === "on";
@@ -33,7 +34,8 @@ export async function updateNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("navigation");
+  if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
@@ -47,14 +49,14 @@ export async function updateNavLink(
 }
 
 export async function deleteNavLink(id: number) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("navigation");
   await db.delete(navLinks).where(and(eq(navLinks.id, id), eq(navLinks.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
 }
 
 export async function reorderNavLinks(orderedIds: number[]) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("navigation");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(navLinks).set({ sortOrder: i }).where(and(eq(navLinks.id, orderedIds[i]), eq(navLinks.siteId, siteId)));

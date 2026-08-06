@@ -29,8 +29,27 @@ import { adminLogout } from "@/lib/actions";
 import { SiteSelector } from "@/components/admin/site-selector";
 
 type Site = { id: number; name: string; slug: string };
+type TenantFeature = string;
 
-const NAV_GROUPS = [
+const ROLE_RANK: Record<string, number> = {
+  viewer: 0,
+  editor: 1,
+  admin: 2,
+  super_admin: 3,
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  feature?: TenantFeature;
+  superAdminOnly?: boolean;
+  minRole?: "admin";
+};
+
+type NavGroup = { label: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
     items: [
@@ -41,38 +60,38 @@ const NAV_GROUPS = [
     label: "Site Management",
     items: [
       { href: "/admin/sites", label: "Sites", icon: Globe, superAdminOnly: true },
-      { href: "/admin/pages", label: "Pages", icon: FileText },
-      { href: "/admin/navigation", label: "Navigation", icon: LinkIcon },
-      { href: "/admin/layout", label: "Header & Footer", icon: LayoutPanelTop },
-      { href: "/admin/settings", label: "Settings", icon: Settings },
+      { href: "/admin/pages", label: "Pages", icon: FileText, feature: "pages" },
+      { href: "/admin/navigation", label: "Navigation", icon: LinkIcon, feature: "navigation" },
+      { href: "/admin/layout", label: "Header & Footer", icon: LayoutPanelTop, feature: "layout" },
+      { href: "/admin/settings", label: "Settings", icon: Settings, feature: "settings" },
     ],
   },
   {
     label: "Content",
     items: [
-      { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
-      { href: "/admin/messages", label: "Messages", icon: Mail },
-      { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
-      { href: "/admin/gallery", label: "Gallery", icon: Images },
-      { href: "/admin/media", label: "Media Library", icon: FolderInput },
-      { href: "/admin/services", label: "Services", icon: Wrench },
-      { href: "/admin/blog", label: "Blog", icon: Newspaper },
+      { href: "/admin/bookings", label: "Bookings", icon: CalendarDays, feature: "bookings" },
+      { href: "/admin/messages", label: "Messages", icon: Mail, feature: "messages" },
+      { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed, feature: "menu" },
+      { href: "/admin/gallery", label: "Gallery", icon: Images, feature: "gallery" },
+      { href: "/admin/media", label: "Media Library", icon: FolderInput, feature: "media" },
+      { href: "/admin/services", label: "Services", icon: Wrench, feature: "services" },
+      { href: "/admin/blog", label: "Blog", icon: Newspaper, feature: "blog" },
     ],
   },
   {
     label: "Commerce",
     items: [
-      { href: "/admin/commerce", label: "Overview", icon: ShoppingBag },
-      { href: "/admin/commerce/products", label: "Products", icon: Package },
-      { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag },
-      { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard },
+      { href: "/admin/commerce", label: "Overview", icon: ShoppingBag, feature: "commerce" },
+      { href: "/admin/commerce/products", label: "Products", icon: Package, feature: "commerce" },
+      { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag, feature: "commerce" },
+      { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard, feature: "commerce" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { href: "/admin/users", label: "Users", icon: Users },
-      { href: "/admin/activity", label: "Activity Log", icon: ScrollText },
+      { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
+      { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
     ],
   },
 ];
@@ -82,18 +101,26 @@ export function AdminNav({
   role = "viewer",
   sites,
   currentSiteId,
+  features = [],
 }: {
   adminName: string;
   role?: string;
   sites: Site[];
   currentSiteId: number;
+  features?: TenantFeature[];
 }) {
   const pathname = usePathname();
   const isSuperAdmin = role === "super_admin";
+  const userRoleRank = ROLE_RANK[role] ?? 0;
 
   const visibleNavGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.superAdminOnly || isSuperAdmin),
+    items: group.items.filter((item) => {
+      if (item.superAdminOnly && !isSuperAdmin) return false;
+      if (item.minRole && userRoleRank < ROLE_RANK[item.minRole]) return false;
+      if (item.feature && !features.includes(item.feature)) return false;
+      return true;
+    }),
   })).filter((group) => group.items.length > 0);
 
   return (

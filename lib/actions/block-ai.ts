@@ -24,7 +24,7 @@ async function generateBlockConfigOrThrow(blockId: number, instruction: string, 
   const page = await requirePageAccess(block.pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) throw new Error("Forbidden");
-  await requireTenantFeature(page.siteId, "ai_block_assistant", user.role as Role);
+  await requireTenantFeature(page.siteId, "ai_block_assistant", { role: user.role as Role, userId: user.id });
 
   const blockType = getBlockType(block.type);
   if (!blockType) throw new Error("This block type is not supported by AI.");

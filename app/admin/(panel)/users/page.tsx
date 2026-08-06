@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Eye,
   Globe,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,13 +44,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdminUser } from "@/lib/db/schema";
+import { cn } from "@/lib/utils";
 import {
   getAdminUsers,
   getSitesForCurrentUser,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
+  getUserFeatures,
+  updateUserFeatures,
 } from "@/lib/actions/index";
+import {
+  TENANT_FEATURE_METADATA,
+  FEATURE_CATEGORIES,
+  type TenantFeature,
+} from "@/lib/tenant-features-constants";
 import { useActionState } from "react";
 
 type AdminActionState = { success?: boolean; message?: string };
@@ -73,6 +82,10 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [accessUser, setAccessUser] = useState<AdminUser | null>(null);
+  const [accessSelected, setAccessSelected] = useState<Set<TenantFeature>>(new Set());
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessMessage, setAccessMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createAdminUser, {});
@@ -109,6 +122,17 @@ export default function UsersPage() {
     if (!r) return Shield;
     return r.icon;
   };
+
+  function openAccessDialog(user: AdminUser) {
+    setAccessUser(user);
+    setAccessMessage("");
+    setAccessSelected(new Set());
+    setAccessLoading(true);
+    getUserFeatures(user.id).then((features) => {
+      setAccessSelected(new Set(features));
+      setAccessLoading(false);
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -235,6 +259,14 @@ export default function UsersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => openAccessDialog(user)}
+                              title="Manage feature access"
+                            >
+                              <KeyRound className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => setEditingUser(user)}
                             >
                               <Pencil className="size-4" />
@@ -327,6 +359,93 @@ export default function UsersPage() {
                 {pending ? "Saving..." : "Save Changes"}
               </Button>
             </form>
+          </DialogContent>
+        </Dialog>
+      )}
+      {/* Feature Access Dialog */}
+      {accessUser && (
+        <Dialog open={!!accessUser} onOpenChange={(open) => !open && setAccessUser(null)}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader className="pr-6">
+              <DialogTitle>Feature access — {accessUser.name}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Pick which tenant features this user can use. Leave everything unchecked to inherit
+              every feature enabled for the site.
+            </p>
+            {accessLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <form
+                action={() => {
+                  startTransition(() => {
+                    updateUserFeatures(accessUser.id, [...accessSelected]).then((result) => {
+                      if (result?.success) {
+                        setAccessUser(null);
+                      } else {
+                        setAccessMessage(result?.message ?? "Unable to update access.");
+                      }
+                    });
+                  });
+                }}
+                className="space-y-4"
+              >
+                {accessMessage && <p className="text-sm text-destructive">{accessMessage}</p>}
+                {FEATURE_CATEGORIES.map((category) => {
+                  const features = Object.values(TENANT_FEATURE_METADATA).filter(
+                    (meta) => meta.category === category
+                  );
+                  if (features.length === 0) return null;
+return (
+                      <div key={category}>
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                          {category}
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {features.map((meta) => {
+                            const checked = accessSelected.has(meta.key);
+                            return (
+                              <label
+                                key={meta.key}
+                                className={cn(
+                                  "flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm transition-colors hover:border-primary/50",
+                                  checked ? "border-primary/60 bg-primary/5" : "bg-background"
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setAccessSelected((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(meta.key)) {
+                                        next.delete(meta.key);
+                                      } else {
+                                        next.add(meta.key);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="mt-0.5 size-4 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <span className="block font-medium leading-tight">{meta.label}</span>
+                                  <span className="block text-xs text-muted-foreground">
+                                    {meta.description}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                <Button type="submit" className="w-full" disabled={pending}>
+                  {pending ? "Saving..." : "Save Access"}
+                </Button>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       )}

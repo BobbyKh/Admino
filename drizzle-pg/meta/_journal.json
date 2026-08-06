@@ -43,6 +43,13 @@
       "when": 1785929582667,
       "tag": "0005_puzzling_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786028643502,
+      "tag": "0006_lovely_scourge",
+      "breakpoints": true
     }
   ]
 }

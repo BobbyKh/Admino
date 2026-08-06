@@ -1,15 +1,61 @@
 import "server-only";
 
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pageBlocks, pages } from "@/lib/db/schema";
 import { requireAdmin, type Role } from "@/lib/auth";
 import { getAdminSiteId } from "@/lib/admin-site";
+import {
+  checkTenantFeature,
+  requireTenantFeature,
+  type TenantFeature,
+} from "@/lib/tenant-features";
 
 /** Returns the site currently authorized for the authenticated admin. */
 export async function getCurrentAdminSiteId(): Promise<number> {
   await requireAdmin();
   return getAdminSiteId();
+}
+
+/** Currently authenticated admin plus their active site selection. */
+export async function getCurrentAdminContext() {
+  const user = await requireAdmin();
+  const siteId = await getAdminSiteId();
+  return { siteId, user };
+}
+
+/**
+ * Site id + denial message for the active admin context. Callers that return a
+ * friendly AdminActionState message should inspect `denied` and bail out.
+ */
+export async function getCurrentSiteWithFeature(feature: TenantFeature) {
+  const { siteId, user } = await getCurrentAdminContext();
+  const denied = await checkTenantFeature(siteId, feature, {
+    role: user.role as Role,
+    userId: user.id,
+  });
+  return { siteId, denied };
+}
+
+/** Throws unless the active admin context may use the feature. */
+export async function getCurrentSiteRequiringFeature(feature: TenantFeature): Promise<number> {
+  const { siteId, user } = await getCurrentAdminContext();
+  await requireTenantFeature(siteId, feature, { role: user.role as Role, userId: user.id });
+  return siteId;
+}
+
+/**
+ * Page-level guard for server components. Redirects to /admin when the active
+ * admin is not allowed to use the feature for the given site.
+ */
+export async function assertTenantFeaturePage(siteId: number, feature: TenantFeature) {
+  const user = await requireAdmin();
+  const denied = await checkTenantFeature(siteId, feature, {
+    role: user.role as Role,
+    userId: user.id,
+  });
+  if (denied) redirect("/admin");
 }
 
 /** Verifies access to a site supplied by an untrusted client request. */

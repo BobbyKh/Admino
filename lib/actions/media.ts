@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { count, eq, desc, ilike, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
 import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
 import { v2 as cloudinary } from "cloudinary";
 import type { MediaUploadState } from "./types";
@@ -15,7 +15,8 @@ export async function uploadMedia(
   formData: FormData,
   folder?: string
 ): Promise<MediaUploadState> {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("media");
+  if (denied) return { error: denied };
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -74,7 +75,7 @@ export async function getMediaItems(options?: {
   limit?: number;
   offset?: number;
 }) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
 
   const conditions = [eq(media.siteId, siteId)];
 
@@ -127,32 +128,33 @@ function sanitizeFolder(value: string) {
 }
 
 export async function getMediaFolders() {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
   const allItems = await db.select({ folder: media.folder }).from(media).where(eq(media.siteId, siteId));
   const folders = [...new Set(allItems.map((item) => item.folder))].sort();
   return folders;
 }
 
 export async function deleteMediaItem(mediaId: number) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
   await db.delete(media).where(and(eq(media.id, mediaId), eq(media.siteId, siteId)));
   revalidatePath("/admin/media");
 }
 
 export async function updateMediaAlt(mediaId: number, alt: string) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
   await db.update(media).set({ alt }).where(and(eq(media.id, mediaId), eq(media.siteId, siteId)));
   revalidatePath("/admin/media");
 }
 
 export async function moveMediaToFolder(mediaId: number, folder: string) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
   await db.update(media).set({ folder }).where(and(eq(media.id, mediaId), eq(media.siteId, siteId)));
   revalidatePath("/admin/media");
 }
 
 export async function createMediaFolder(folderName: string) {
-  const siteId = await getCurrentAdminSiteId();
+  const { siteId, denied } = await getCurrentSiteWithFeature("media");
+  if (denied) return { error: denied };
   const trimmed = folderName.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-");
   if (!trimmed) return { error: "Invalid folder name." };
 
@@ -170,7 +172,7 @@ export async function createMediaFolder(folderName: string) {
 }
 
 export async function deleteMediaFolder(folder: string) {
-  const siteId = await getCurrentAdminSiteId();
+  const siteId = await getCurrentSiteRequiringFeature("media");
   const items = await db.select().from(media).where(and(eq(media.folder, folder), eq(media.siteId, siteId)));
   const config = await getCloudinaryConfig();
   if (config) {

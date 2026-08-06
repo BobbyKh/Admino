@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
-import { requireAdmin, hasMinRole } from "@/lib/auth";
+import { requireAdmin, hasMinRole, type Role } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
 import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
+import { getUserFeatureAccess, setUserFeatureAccess, type TenantFeature } from "@/lib/tenant-features";
 import type { AdminActionState } from "./types";
 
 export async function getAdminUsers() {
@@ -155,4 +156,40 @@ export async function deleteAdminUser(id: number) {
       and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
     );
   revalidatePath("/admin/users");
+}
+
+/** Resolves a target tenant user, enforcing admin+ access and site scope. */
+async function resolveManageableTargetUser(userId: number) {
+  const currentUser = await requireAdmin();
+  const userRole = (currentUser.role as Role) ?? "viewer";
+  if (!hasMinRole(userRole, "admin")) return null;
+  const siteId = await getAdminSiteId();
+  const [target] = await db
+    .select({ siteId: adminUsers.siteId, role: adminUsers.role })
+    .from(adminUsers)
+    .where(eq(adminUsers.id, userId));
+  if (!target || target.role === "super_admin") return null;
+  if (userRole !== "super_admin" && target.siteId !== siteId) return null;
+  return { siteId };
+}
+
+/** Per-user tenant feature grants for a manageable tenant user. */
+export async function getUserFeatures(userId: number): Promise<TenantFeature[]> {
+  const target = await resolveManageableTargetUser(userId);
+  if (!target) return [];
+  return getUserFeatureAccess(userId);
+}
+
+/** Overwrites a tenant user's per-user feature grants (empty = inherit site). */
+export async function updateUserFeatures(
+  userId: number,
+  features: TenantFeature[]
+): Promise<AdminActionState> {
+  const target = await resolveManageableTargetUser(userId);
+  if (!target) {
+    return { message: "You can only manage access for tenant users on the active site." };
+  }
+  await setUserFeatureAccess(userId, features);
+  revalidatePath("/admin/users");
+  return { success: true, message: "Feature access updated." };
 }
