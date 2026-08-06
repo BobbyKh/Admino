@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Loader2,
   Blocks,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { VideoPicker } from "@/components/admin/video-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription as ModalDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +50,7 @@ import {
   updatePageBlock,
   deletePageBlock,
   reorderPageBlocks,
+  generateBlockConfig,
 } from "@/lib/actions/index";
 import {
   BLOCK_TYPES,
@@ -581,6 +591,77 @@ function BlockConfigEditor({
   }
 }
 
+function AiBlockAssistant({
+  block,
+  onConfigChange,
+}: {
+  block: PageBlock;
+  onConfigChange: (config: string) => void;
+}) {
+  const [instruction, setInstruction] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function generate() {
+    setPending(true);
+    setError(null);
+    try {
+      const result = await generateBlockConfig(block.id, instruction, block.config);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      onConfigChange(result.config);
+      setInstruction("");
+      setOpen(false);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="gap-1.5">
+          <Sparkles className="size-3.5 text-primary" />
+          AI Assist
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Sparkles className="size-4 text-primary" />Improve this block with AI</DialogTitle>
+          <ModalDescription>
+            Describe the result you want. AI updates this {getBlockType(block.type)?.label ?? block.type} block using its current content as context.
+          </ModalDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Textarea
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            rows={4}
+            placeholder="Make this more premium and concise for a boutique hotel"
+            autoFocus
+          />
+          <div className="flex flex-wrap gap-2">
+            {["Make it more premium", "Make it concise", "Improve SEO"].map((example) => (
+              <Button key={example} type="button" variant="secondary" size="sm" onClick={() => setInstruction(example)}>{example}</Button>
+            ))}
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+            <Button type="button" onClick={generate} disabled={pending || instruction.trim().length < 3} className="gap-2">
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              Generate and apply
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Editor Component ───────────────────────────────────────────────────
 
 export default function BlockEditorPage() {
@@ -913,6 +994,12 @@ export default function BlockEditorPage() {
                 {isExpanded && (
                   <CardContent className="border-t bg-muted/30 px-4 py-4">
                     <div className="space-y-3">
+                      <div className="flex justify-end">
+                        <AiBlockAssistant
+                          block={block}
+                          onConfigChange={(config) => handleConfigChange(block.id, config)}
+                        />
+                      </div>
                       <div className="space-y-1">
                         <Label>Block Title (optional)</Label>
                         <Input

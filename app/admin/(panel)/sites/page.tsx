@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import {
   createSite,
   updateSite,
   deleteSite,
+  getAllTenantFeatureAccess,
   getSites,
 } from "@/lib/actions/index";
 import { useActionState } from "react";
@@ -53,11 +54,15 @@ export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [featureAccess, setFeatureAccess] = useState<Record<number, string[]>>({});
   const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    getSites().then(setSites);
+    Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([nextSites, access]) => {
+      setSites(nextSites);
+      setFeatureAccess(access);
+    });
   }, []);
 
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createSite, {});
@@ -65,8 +70,9 @@ export default function SitesPage() {
 
   useEffect(() => {
     if (createState?.success) {
-      getSites().then((updatedSites) => {
+      Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([updatedSites, access]) => {
         setSites(updatedSites);
+        setFeatureAccess(access);
         setCreateOpen(false);
       });
     }
@@ -74,8 +80,9 @@ export default function SitesPage() {
 
   useEffect(() => {
     if (updateState?.success) {
-      getSites().then((updatedSites) => {
+      Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([updatedSites, access]) => {
         setSites(updatedSites);
+        setFeatureAccess(access);
         setEditingSite(null);
       });
     }
@@ -206,6 +213,10 @@ export default function SitesPage() {
                   <span>·</span>
                   <span>Created {new Date(site.createdAt).toLocaleDateString()}</span>
                 </div>
+                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Sparkles className="size-3" />
+                  {featureAccess[site.id]?.length ?? 0} AI feature{featureAccess[site.id]?.length === 1 ? "" : "s"} enabled
+                </p>
                 {site.published && getSiteUrl(site) ? (
                   <div className="mt-3 flex items-center gap-2 rounded-md border bg-muted/30 p-2">
                     <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={getSiteUrl(site)!}>
@@ -326,16 +337,30 @@ export default function SitesPage() {
                 <Label>Description</Label>
                 <Textarea name="description" defaultValue={editingSite.description ?? ""} rows={2} />
               </div>
-              <div className="flex items-center gap-2">
+               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   name="published"
                   defaultChecked={editingSite.published}
                   className="size-4"
                 />
-                <Label>Published</Label>
-              </div>
-              <Button type="submit" className="w-full" disabled={pending}>
+                 <Label>Published</Label>
+               </div>
+               <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                 <div>
+                   <Label>Tenant AI features</Label>
+                   <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific AI tools. Super admins always retain access.</p>
+                 </div>
+                 <label className="flex items-center gap-2 text-sm">
+                   <input type="checkbox" name="feature_ai_theme_generator" defaultChecked={featureAccess[editingSite.id]?.includes("ai_theme_generator")} className="size-4" />
+                   AI theme generator
+                 </label>
+                 <label className="flex items-center gap-2 text-sm">
+                   <input type="checkbox" name="feature_ai_block_assistant" defaultChecked={featureAccess[editingSite.id]?.includes("ai_block_assistant")} className="size-4" />
+                   AI block assistant
+                 </label>
+               </div>
+               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}
               </Button>
             </form>

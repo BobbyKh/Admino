@@ -9,6 +9,7 @@ import { createDefaultHomepage } from "@/lib/default-homepage";
 import { createDefaultNavigation } from "@/lib/default-navigation";
 import { createEcommerceTemplate } from "@/lib/default-ecommerce";
 import type { AdminActionState } from "./types";
+import { getTenantFeatureAccess, setTenantFeatureAccess, TENANT_FEATURES, type TenantFeature } from "@/lib/tenant-features";
 
 function getPlatformDomain() {
   const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
@@ -79,6 +80,7 @@ export async function updateSite(
   const description = String(formData.get("description") ?? "").trim() || null;
   const published = formData.get("published") === "on";
   const customDomain = normalizeDomain(formData.get("domain"));
+  const enabledFeatures = TENANT_FEATURES.filter((feature) => formData.get(`feature_${feature}`) === "on");
 
   if (!id || !name) return { message: "Site ID and name are required." };
 
@@ -95,6 +97,7 @@ export async function updateSite(
     .update(sites)
     .set({ name, description, domain, published, updatedAt: new Date().toISOString() })
     .where(eq(sites.id, id));
+  await setTenantFeatureAccess(id, enabledFeatures);
   revalidatePath("/admin/sites");
   return { success: true, message: "Site updated." };
 }
@@ -108,4 +111,11 @@ export async function deleteSite(id: number) {
 export async function getSites() {
   await requireRole("super_admin");
   return db.select().from(sites);
+}
+
+export async function getAllTenantFeatureAccess() {
+  await requireRole("super_admin");
+  const allSites = await db.select({ id: sites.id }).from(sites);
+  const access = await Promise.all(allSites.map(async (site) => ({ siteId: site.id, features: await getTenantFeatureAccess(site.id) })));
+  return Object.fromEntries(access.map(({ siteId, features }) => [siteId, features])) as Record<number, TenantFeature[]>;
 }

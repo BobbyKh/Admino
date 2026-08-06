@@ -381,9 +381,13 @@ function AiThemeGenerator({ onThemeApply }: { onThemeApply: (colors: Record<stri
   function generate() {
     startTransition(async () => {
       try {
-        const theme = await generateThemeFromPrompt(prompt);
-        setGenerated(theme);
-        toast.success(`Generated ${theme.name}.`);
+        const result = await generateThemeFromPrompt(prompt);
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        setGenerated(result.theme);
+        toast.success(`Generated ${result.theme.name}.`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Unable to generate theme.");
       }

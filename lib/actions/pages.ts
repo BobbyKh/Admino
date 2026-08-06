@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { pages, pageBlocks } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
+import { validateBlockConfig, validateBlockType } from "@/lib/block-config-validation";
 import type { AdminActionState } from "./types";
 
 const LEGAL_TEMPLATE_CONTENT: Record<string, string> = {
@@ -170,6 +171,11 @@ export async function addPageBlock(
   const title = String(formData.get("title") ?? "").trim() || null;
 
   if (!pageId || !type) return { message: "Page ID and block type are required." };
+  try {
+    validateBlockType(type);
+  } catch (error) {
+    return { message: error instanceof Error ? error.message : "Invalid block type." };
+  }
   const page = await requirePageAccess(pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) return { message: "You don't have permission to update page blocks." };
@@ -220,7 +226,11 @@ export async function updatePageBlock(
     updates.visible = formData.get("visible") === "on";
   }
   if (formData.has("config")) {
-    updates.config = String(formData.get("config") ?? "").trim() || null;
+    try {
+      updates.config = validateBlockConfig(block.type, String(formData.get("config") ?? "").trim() || null);
+    } catch (error) {
+      return { message: error instanceof Error ? error.message : "Invalid block config." };
+    }
   }
 
   await db
