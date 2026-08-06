@@ -31,6 +31,7 @@ import type { Site } from "@/lib/db/schema";
 import {
   TENANT_FEATURE_METADATA,
   FEATURE_CATEGORIES,
+  type TenantFeature,
 } from "@/lib/tenant-features-constants";
 import {
   createSite,
@@ -58,6 +59,7 @@ export default function SitesPage() {
   const [sites, setSites] = useState<Site[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
+  const [draftFeatures, setDraftFeatures] = useState<TenantFeature[]>([]);
   const [featureAccess, setFeatureAccess] = useState<Record<number, string[]>>({});
   const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
@@ -105,6 +107,11 @@ export default function SitesPage() {
     await navigator.clipboard.writeText(url);
     setCopiedSiteId(site.id);
     window.setTimeout(() => setCopiedSiteId(null), 2000);
+  }
+
+  function openSiteEdit(site: Site) {
+    setEditingSite(site);
+    setDraftFeatures(featureAccess[site.id] ?? []);
   }
 
   return (
@@ -256,7 +263,7 @@ export default function SitesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditingSite(site)}
+                    onClick={() => openSiteEdit(site)}
                   >
                     <Pencil className="mr-1 size-3" />
                     Edit
@@ -360,11 +367,31 @@ export default function SitesPage() {
                      (meta) => meta.category === category
                    );
                    if (features.length === 0) return null;
+                   const categoryKeys = features.map((meta) => meta.key);
+                   const allSelected = categoryKeys.every((key) => draftFeatures.includes(key));
+                   const toggleCategory = () => {
+                     setDraftFeatures((prev) =>
+                       allSelected
+                         ? prev.filter((key) => !categoryKeys.includes(key))
+                         : [...new Set([...prev, ...categoryKeys])]
+                     );
+                   };
                    return (
                      <div key={category}>
-                       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                         {category}
-                       </p>
+                       <div className="mb-1.5 flex items-center justify-between">
+                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                           {category}
+                         </p>
+                         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                           <input
+                             type="checkbox"
+                             checked={allSelected}
+                             onChange={toggleCategory}
+                             className="size-3.5"
+                           />
+                           Select all
+                         </label>
+                       </div>
                        <div className="grid gap-2 sm:grid-cols-2">
                          {features.map((meta) => (
                            <label
@@ -374,7 +401,14 @@ export default function SitesPage() {
                              <input
                                type="checkbox"
                                name={`feature_${meta.key}`}
-                               defaultChecked={featureAccess[editingSite.id]?.includes(meta.key)}
+                               checked={draftFeatures.includes(meta.key)}
+                               onChange={() =>
+                                 setDraftFeatures((prev) =>
+                                   prev.includes(meta.key)
+                                     ? prev.filter((key) => key !== meta.key)
+                                     : [...prev, meta.key]
+                                 )
+                               }
                                className="size-4 shrink-0"
                              />
                              <span className="leading-tight">{meta.label}</span>

@@ -396,11 +396,35 @@ export default function UsersPage() {
                     (meta) => meta.category === category
                   );
                   if (features.length === 0) return null;
-return (
+                  const categoryKeys = features.map((meta) => meta.key);
+                  const allSelected = categoryKeys.every((key) => accessSelected.has(key));
+                  const toggleCategory = () => {
+                    setAccessSelected((prev) => {
+                      const next = new Set(prev);
+                      if (allSelected) {
+                        categoryKeys.forEach((key) => next.delete(key));
+                      } else {
+                        categoryKeys.forEach((key) => next.add(key));
+                      }
+                      return next;
+                    });
+                  };
+                  return (
                       <div key={category}>
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
-                          {category}
-                        </p>
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                            {category}
+                          </p>
+                          <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={toggleCategory}
+                              className="size-3.5"
+                            />
+                            Select all
+                          </label>
+                        </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {features.map((meta) => {
                             const checked = accessSelected.has(meta.key);
