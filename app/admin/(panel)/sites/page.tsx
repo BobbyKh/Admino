@@ -111,7 +111,7 @@ export default function SitesPage() {
 
   function openSiteEdit(site: Site) {
     setEditingSite(site);
-    setDraftFeatures(featureAccess[site.id] ?? []);
+    setDraftFeatures(featureAccess[site.id] as TenantFeature[]);
   }
 
   return (
@@ -335,91 +335,91 @@ export default function SitesPage() {
                 <Label>Site Name *</Label>
                 <Input name="name" defaultValue={editingSite.name} required />
               </div>
-               <div className="space-y-2">
-                 <Label>Slug</Label>
-                 <Input name="slug" defaultValue={editingSite.slug} disabled />
-               </div>
-               <div className="space-y-2">
-                 <Label>Custom domain</Label>
-                 <Input name="domain" defaultValue={editingSite.domain ?? ""} placeholder="www.example.com" />
-                 <p className="text-xs text-muted-foreground">In Vercel, add this domain to the project, then point its DNS CNAME record to `cname.vercel-dns.com`.</p>
-               </div>
+              <div className="space-y-2">
+                <Label>Slug</Label>
+                <Input name="slug" defaultValue={editingSite.slug} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>Custom domain</Label>
+                <Input name="domain" defaultValue={editingSite.domain ?? ""} placeholder="www.example.com" />
+                <p className="text-xs text-muted-foreground">In Vercel, add this domain to the project, then point its DNS CNAME record to `cname.vercel-dns.com`.</p>
+              </div>
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea name="description" defaultValue={editingSite.description ?? ""} rows={2} />
               </div>
-               <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   name="published"
                   defaultChecked={editingSite.published}
                   className="size-4"
                 />
-                 <Label>Published</Label>
-               </div>
-<div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-                 <div>
-                   <Label>Tenant features</Label>
-                   <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific platform features. Leave a feature unchecked to disable it. Super admins always retain access, regardless of these toggles.</p>
-                 </div>
-                 {FEATURE_CATEGORIES.map((category) => {
-                   const features = Object.values(TENANT_FEATURE_METADATA).filter(
-                     (meta) => meta.category === category
-                   );
-                   if (features.length === 0) return null;
-                   const categoryKeys = features.map((meta) => meta.key);
-                   const allSelected = categoryKeys.every((key) => draftFeatures.includes(key));
-                   const toggleCategory = () => {
-                     setDraftFeatures((prev) =>
-                       allSelected
-                         ? prev.filter((key) => !categoryKeys.includes(key))
-                         : [...new Set([...prev, ...categoryKeys])]
-                     );
-                   };
-                   return (
-                     <div key={category}>
-                       <div className="mb-1.5 flex items-center justify-between">
-                         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                           {category}
-                         </p>
-                         <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                           <input
-                             type="checkbox"
-                             checked={allSelected}
-                             onChange={toggleCategory}
-                             className="size-3.5"
-                           />
-                           Select all
-                         </label>
-                       </div>
-                       <div className="grid gap-2 sm:grid-cols-2">
-                         {features.map((meta) => (
-                           <label
-                             key={meta.key}
-                             className="flex cursor-pointer items-center gap-2.5 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
-                           >
-                             <input
-                               type="checkbox"
-                               name={`feature_${meta.key}`}
-                               checked={draftFeatures.includes(meta.key)}
-                               onChange={() =>
-                                 setDraftFeatures((prev) =>
-                                   prev.includes(meta.key)
-                                     ? prev.filter((key) => key !== meta.key)
-                                     : [...prev, meta.key]
-                                 )
-                               }
-                               className="size-4 shrink-0"
-                             />
-                             <span className="leading-tight">{meta.label}</span>
-                           </label>
-                         ))}
-                       </div>
-                     </div>
-                   );
-                 })}
-               </div>
-               <Button type="submit" className="w-full" disabled={pending}>
+                <Label>Published</Label>
+              </div>
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <div>
+                  <Label>Tenant features</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific platform features. Leave a feature unchecked to disable it. Super admins always retain access, regardless of these toggles.</p>
+                </div>
+                {FEATURE_CATEGORIES.map((category) => {
+                  const features = Object.values(TENANT_FEATURE_METADATA).filter(
+                    (meta) => meta.category === category
+                  );
+                  if (features.length === 0) return null;
+                  const categoryKeys = features.map((meta) => meta.key);
+                  const allSelected = categoryKeys.every((key) => draftFeatures.includes(key));
+                  const toggleCategory = () => {
+                    setDraftFeatures((prev) =>
+                      allSelected
+                        ? prev.filter((key) => !categoryKeys.includes(key))
+                        : [...new Set([...prev, ...categoryKeys])]
+                    );
+                  };
+                  return (
+                    <div key={category}>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                          {category}
+                        </p>
+                        <label className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleCategory}
+                            className="size-3.5"
+                          />
+                          Select all
+                        </label>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {features.map((meta) => (
+                          <label
+                            key={meta.key}
+                            className="flex cursor-pointer items-center gap-2.5 rounded-md border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
+                          >
+                            <input
+                              type="checkbox"
+                              name={`feature_${meta.key}`}
+                              checked={draftFeatures.includes(meta.key)}
+                              onChange={() =>
+                                setDraftFeatures((prev) =>
+                                  prev.includes(meta.key)
+                                    ? prev.filter((key) => key !== meta.key)
+                                    : [...prev, meta.key]
+                                )
+                              }
+                              className="size-4 shrink-0"
+                            />
+                            <span className="leading-tight">{meta.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}
               </Button>
             </form>
