@@ -11,6 +11,7 @@ import {
   Paintbrush,
   Save,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { updateSettings, type AdminActionState } from "@/lib/actions/index";
+import { generateThemeFromPrompt, updateSettings, type AdminActionState, type AiGeneratedTheme } from "@/lib/actions/index";
 import type { SettingKey } from "@/lib/settings";
 
 const initialState: AdminActionState = {};
@@ -291,6 +292,14 @@ export function SettingsForm({
 
         {/* ========================= THEME TAB ========================= */}
         <TabsContent value="theme" className="space-y-6 pt-4">
+          <Section
+            title="AI Theme Generator"
+            hint="Describe a mood, industry, brand, or visual style. The generated palette can be previewed before you save it."
+            icon={<Sparkles className="size-4" />}
+          >
+            <AiThemeGenerator onThemeApply={applyFullPreset} />
+          </Section>
+
           {/* Preset Themes */}
           <Section
             title="Preset Themes"
@@ -363,6 +372,81 @@ export function SettingsForm({
 }
 
 /* ========================= SUB COMPONENTS ========================= */
+
+function AiThemeGenerator({ onThemeApply }: { onThemeApply: (colors: Record<string, string>) => void }) {
+  const [prompt, setPrompt] = React.useState("");
+  const [generated, setGenerated] = React.useState<AiGeneratedTheme | null>(null);
+  const [pending, startTransition] = React.useTransition();
+
+  function generate() {
+    startTransition(async () => {
+      try {
+        const theme = await generateThemeFromPrompt(prompt);
+        setGenerated(theme);
+        toast.success(`Generated ${theme.name}.`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to generate theme.");
+      }
+    });
+  }
+
+  function applyGeneratedTheme() {
+    if (!generated) return;
+    onThemeApply(generated.colors);
+    toast.success(`${generated.name} applied. Save changes to publish it.`);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="ai-theme-prompt">Theme prompt</Label>
+        <Textarea
+          id="ai-theme-prompt"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          rows={3}
+          placeholder="Luxury boutique hotel with deep navy, warm gold accents, elegant editorial feel"
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" onClick={generate} disabled={pending || prompt.trim().length < 8} className="gap-2">
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+          Generate theme
+        </Button>
+        {generated && (
+          <Button type="button" variant="outline" onClick={applyGeneratedTheme}>
+            Apply generated theme
+          </Button>
+        )}
+      </div>
+
+      {generated && (
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">{generated.name}</p>
+              {generated.rationale && <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{generated.rationale}</p>}
+            </div>
+            <Button type="button" size="sm" onClick={applyGeneratedTheme}>Apply</Button>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {Object.entries(generated.colors).map(([key, value]) => (
+              <div key={key} className="rounded-lg border bg-background p-2">
+                <div className="h-10 rounded-md border" style={{ backgroundColor: value }} />
+                <p className="mt-2 truncate text-xs font-medium">{formatThemeKey(key)}</p>
+                <p className="truncate font-mono text-[10px] text-muted-foreground">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatThemeKey(key: string) {
+  return key.replace(/^theme/, "").replace(/([A-Z])/g, " $1").trim();
+}
 
 function Section({
   title,

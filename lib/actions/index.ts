@@ -15,3 +15,4 @@ export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentC
 export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
 export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
 export { addStoreCartItem, completeStoreCheckout, getStoreCart, getStorePaymentMethods, updateStoreCartItem } from "./storefront-commerce";
+export { generateThemeFromPrompt, type AiGeneratedTheme } from "./theme-ai";
