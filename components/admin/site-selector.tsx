@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Globe } from "lucide-react";
 
 type Site = { id: number; name: string; slug: string };
@@ -9,10 +9,6 @@ type Site = { id: number; name: string; slug: string };
 export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentSiteId: number | null }) {
   const router = useRouter();
   const [value, setValue] = useState<string>(currentSiteId ? String(currentSiteId) : "");
-
-  useEffect(() => {
-    if (currentSiteId) setValue(String(currentSiteId));
-  }, [currentSiteId]);
 
   function handleChange(siteId: string) {
     setValue(siteId);

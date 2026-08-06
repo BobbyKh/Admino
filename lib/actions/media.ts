@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, desc, ilike, and } from "drizzle-orm";
+import { count, eq, desc, ilike, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
 import { v2 as cloudinary } from "cloudinary";
 import type { MediaUploadState } from "./types";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function uploadMedia(
   formData: FormData,
@@ -25,9 +27,12 @@ export async function uploadMedia(
   if (!isImage && !isVideo) {
     return { error: "Only image and video files are allowed." };
   }
+  if (file.size > MAX_FILE_SIZE) {
+    return { error: `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.` };
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const uploadFolder = folder || "maiti/media";
+  const uploadFolder = sanitizeFolder(folder || "maiti/media");
   const resourceType = isVideo ? "video" : "image";
 
   try {
@@ -98,7 +103,7 @@ export async function getMediaItems(options?: {
   const offset = options?.offset ?? 0;
 
   const [countResult] = await db
-    .select({ count: media.id })
+    .select({ value: count() })
     .from(media)
     .where(where);
 
@@ -112,8 +117,13 @@ export async function getMediaItems(options?: {
 
   return {
     items: items.filter((item) => !item.filename.startsWith(".keep-")),
-    total: countResult?.count ?? 0,
+    total: countResult?.value ?? 0,
   };
+}
+
+function sanitizeFolder(value: string) {
+  const folder = value.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
+  return folder || "maiti/media";
 }
 
 export async function getMediaFolders() {

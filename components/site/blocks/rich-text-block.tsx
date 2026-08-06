@@ -5,13 +5,13 @@ function parseConfig(raw: string | null): Record<string, string> {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
-export function RichTextBlock({ config }: { config: string | null }) {
+export function RichTextBlock({ config, compact = false }: { config: string | null; compact?: boolean }) {
   const c = parseConfig(config);
   const html = c.html || c.content || "";
 
   if (!html) {
     return (
-      <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <section className={compact ? "" : "mx-auto max-w-3xl px-4 py-8 sm:px-6"}>
         <p className="text-center text-sm text-muted-foreground">
           No content configured. Add HTML content in the block config.
         </p>
@@ -20,7 +20,7 @@ export function RichTextBlock({ config }: { config: string | null }) {
   }
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <section className={compact ? "" : "mx-auto max-w-3xl px-4 py-8 sm:px-6"}>
       <div
         className="prose prose-neutral dark:prose-invert max-w-none"
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}

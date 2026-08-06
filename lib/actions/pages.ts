@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, asc } from "drizzle-orm";
+import { and, eq, asc, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pages, pageBlocks } from "@/lib/db/schema";
-import { requireRole } from "@/lib/auth";
+import { hasMinRole, type Role } from "@/lib/auth";
+import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 const LEGAL_TEMPLATE_CONTENT: Record<string, string> = {
@@ -13,18 +14,20 @@ const LEGAL_TEMPLATE_CONTENT: Record<string, string> = {
 };
 
 export async function getPages(siteId: number) {
-  await requireRole("super_admin");
+  await requireSiteAccess(siteId);
   return db.select().from(pages).where(eq(pages.siteId, siteId)).orderBy(asc(pages.sortOrder));
 }
 
 export async function getPage(id: number) {
-  await requireRole("super_admin");
   try {
-    const [page] = await db.select().from(pages).where(eq(pages.id, id));
-    return page ?? null;
+    return await requirePageAccess(id);
   } catch {
     return null;
   }
+}
+
+function canWritePage(role: string) {
+  return hasMinRole((role as Role) ?? "viewer", "editor");
 }
 
 export async function createPage(
@@ -44,13 +47,14 @@ export async function createPage(
   const template = String(formData.get("template") ?? "default").trim();
 
   if (!siteId || !title) return { message: "Site ID and title are required." };
-  await requireRole("super_admin");
+  const user = await requireSiteAccess(siteId);
+  if (!canWritePage(user.role)) return { message: "You don't have permission to create pages." };
 
   const [existing] = await db
     .select()
     .from(pages)
-    .where(eq(pages.siteId, siteId));
-  if (existing && existing.slug === slug) {
+    .where(and(eq(pages.siteId, siteId), eq(pages.slug, slug)));
+  if (existing) {
     return { message: "A page with this slug already exists." };
   }
 
@@ -101,11 +105,24 @@ export async function updatePage(
   const published = formData.get("published") === "on";
 
   if (!id || !title) return { message: "Page ID and title are required." };
-  await requireRole("super_admin");
+  const page = await requirePageAccess(id);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) return { message: "You don't have permission to update pages." };
+
+  const normalizedSlug = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  if (!normalizedSlug) return { message: "Slug is required." };
+  const [existing] = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(eq(pages.siteId, page.siteId), eq(pages.slug, normalizedSlug), ne(pages.id, id)));
+  if (existing) return { message: "A page with this slug already exists." };
 
   await db
     .update(pages)
-    .set({ title, slug, description, template, published, updatedAt: new Date().toISOString() })
+    .set({ title, slug: normalizedSlug, description, template, published, updatedAt: new Date().toISOString() })
     .where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
@@ -113,14 +130,21 @@ export async function updatePage(
 }
 
 export async function deletePage(id: number) {
-  await requireRole("super_admin");
+  const page = await requirePageAccess(id);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) throw new Error("Forbidden");
   await db.delete(pages).where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
 }
 
 export async function reorderPages(orderedIds: number[]) {
-  await requireRole("super_admin");
+  if (orderedIds.length === 0) return;
+  const rows = await db.select({ id: pages.id, siteId: pages.siteId }).from(pages).where(inArray(pages.id, orderedIds));
+  const siteId = rows[0]?.siteId;
+  if (!siteId || rows.length !== orderedIds.length || rows.some((row) => row.siteId !== siteId)) throw new Error("Invalid page order.");
+  const user = await requireSiteAccess(siteId);
+  if (!canWritePage(user.role)) throw new Error("Forbidden");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(pages).set({ sortOrder: i }).where(eq(pages.id, orderedIds[i]));
@@ -132,7 +156,7 @@ export async function reorderPages(orderedIds: number[]) {
 // ─── Page Blocks ──────────────────────────────────────────────────────────────
 
 export async function getPageBlocks(pageId: number) {
-  await requireRole("super_admin");
+  await requirePageAccess(pageId);
   return db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
 }
 
@@ -146,7 +170,9 @@ export async function addPageBlock(
   const title = String(formData.get("title") ?? "").trim() || null;
 
   if (!pageId || !type) return { message: "Page ID and block type are required." };
-  await requireRole("super_admin");
+  const page = await requirePageAccess(pageId);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) return { message: "You don't have permission to update page blocks." };
 
   const maxSort = await db
     .select({ sortOrder: pageBlocks.sortOrder })
@@ -177,7 +203,10 @@ export async function updatePageBlock(
   const id = Number(formData.get("id"));
 
   if (!id) return { message: "Block ID is required." };
-  await requireRole("super_admin");
+  const block = await requirePageBlockAccess(id);
+  const page = await requirePageAccess(block.pageId);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) return { message: "You don't have permission to update page blocks." };
 
   // Callers update one block property at a time. Preserve every omitted field
   // rather than treating it as an empty value.
@@ -205,14 +234,23 @@ export async function updatePageBlock(
 }
 
 export async function deletePageBlock(id: number) {
-  await requireRole("super_admin");
+  const block = await requirePageBlockAccess(id);
+  const page = await requirePageAccess(block.pageId);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) throw new Error("Forbidden");
   await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
 }
 
 export async function reorderPageBlocks(orderedIds: number[]) {
-  await requireRole("super_admin");
+  if (orderedIds.length === 0) return;
+  const rows = await db.select({ id: pageBlocks.id, pageId: pageBlocks.pageId }).from(pageBlocks).where(inArray(pageBlocks.id, orderedIds));
+  const pageId = rows[0]?.pageId;
+  if (!pageId || rows.length !== orderedIds.length || rows.some((row) => row.pageId !== pageId)) throw new Error("Invalid block order.");
+  const page = await requirePageAccess(pageId);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) throw new Error("Forbidden");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));

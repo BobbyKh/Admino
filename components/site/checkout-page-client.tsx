@@ -21,21 +21,25 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
   const homeHref = siteSlug ? `/?site=${encodeURIComponent(siteSlug)}` : "/";
   const selectedMethod = methods.find((method) => method.id === provider);
 
-  const loadCheckout = React.useEffectEvent(async () => {
-    try {
-      const [nextCart, nextMethods] = await Promise.all([
-        getStoreCart(window.localStorage.getItem("store-cart-token")),
-        getStorePaymentMethods(),
-      ]);
-      setCart(nextCart);
-      setMethods(nextMethods);
-      setProvider((current) => current || nextMethods[0]?.id || "");
-    } catch {
-      toast.error("Unable to load checkout.");
+  React.useEffect(() => {
+    let active = true;
+    async function run() {
+      try {
+        const [nextCart, nextMethods] = await Promise.all([
+          getStoreCart(window.localStorage.getItem("store-cart-token")),
+          getStorePaymentMethods(),
+        ]);
+        if (!active) return;
+        setCart(nextCart);
+        setMethods(nextMethods);
+        setProvider((current) => current || nextMethods[0]?.id || "");
+      } catch {
+        toast.error("Unable to load checkout.");
+      }
     }
-  });
-
-  React.useEffect(() => { void loadCheckout(); }, []);
+    void run();
+    return () => { active = false; };
+  }, []);
 
   function submit(formData: FormData) {
     const token = window.localStorage.getItem("store-cart-token");

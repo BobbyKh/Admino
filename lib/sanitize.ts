@@ -15,19 +15,17 @@ export function sanitizeHtml(html: string): string {
       "blockquote", "pre", "code", "kbd", "samp",
       "div", "span", "section", "article", "aside", "header", "footer", "nav", "main",
       "details", "summary",
-      "video", "audio", "source", "iframe", "embed", "object",
-      "svg", "path", "circle", "rect", "line", "polyline", "polygon",
-      "style", "link", "meta",
+      "video", "audio", "source",
     ],
     ALLOWED_ATTR: [
       "href", "src", "alt", "title", "width", "height", "loading",
-      "class", "id", "style", "data-*", "target", "rel",
+      "class", "id", "target", "rel",
       "colspan", "rowspan", "headers", "scope", "align", "valign",
       "viewBox", "fill", "stroke", "stroke-width", "d",
-      "controls", "autoplay", "loop", "muted", "poster",
-      "type", "name", "content", "charset", "media",
+      "controls", "loop", "muted", "poster",
+      "type", "name",
     ],
-    ALLOW_DATA_ATTR: true,
+    ALLOW_DATA_ATTR: false,
   });
 }
 

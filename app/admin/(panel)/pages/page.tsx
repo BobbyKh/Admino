@@ -7,14 +7,10 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
-  EyeOff,
-  GripVertical,
-  ArrowLeft,
   Blocks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,9 +51,7 @@ export default function PagesPage() {
   const siteIdParam = searchParams.get("siteId");
   const [sites, setSites] = useState<Site[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
-  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(
-    siteIdParam ? Number(siteIdParam) : null
-  );
+  const selectedSiteId = siteIdParam ? Number(siteIdParam) : sites[0]?.id ?? null;
   const [createOpen, setCreateOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<Page | null>(null);
   const [pending, startTransition] = useTransition();
@@ -77,29 +71,25 @@ export default function PagesPage() {
     }
   }, [selectedSiteId]);
 
-  // Auto-select first site if none selected
-  useEffect(() => {
-    if (!selectedSiteId && sites.length > 0) {
-      setSelectedSiteId(sites[0].id);
-      router.push(`/admin/pages?siteId=${sites[0].id}`);
-    }
-  }, [sites, selectedSiteId, router]);
-
   const selectedSite = sites.find((s) => s.id === selectedSiteId);
 
   // Handle create success
   useEffect(() => {
     if (createState?.success && selectedSiteId) {
-      getPages(selectedSiteId).then(setPages);
-      setCreateOpen(false);
+      getPages(selectedSiteId).then((updated) => {
+        setPages(updated);
+        setCreateOpen(false);
+      });
     }
   }, [createState, selectedSiteId]);
 
   // Handle update success
   useEffect(() => {
     if (updateState?.success && selectedSiteId) {
-      getPages(selectedSiteId).then(setPages);
-      setEditingPage(null);
+      getPages(selectedSiteId).then((updated) => {
+        setPages(updated);
+        setEditingPage(null);
+      });
     }
   }, [updateState, selectedSiteId]);
 
@@ -179,7 +169,6 @@ export default function PagesPage() {
           value={selectedSiteId ?? ""}
           onChange={(e) => {
             const id = Number(e.target.value);
-            setSelectedSiteId(id);
             router.push(`/admin/pages?siteId=${id}`);
           }}
           className="w-full max-w-xs rounded-md border bg-background px-3 py-2 text-sm"

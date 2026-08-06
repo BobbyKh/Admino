@@ -15,12 +15,24 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
   const cartToken = typeof window === "undefined" ? null : window.localStorage.getItem("store-cart-token");
   const checkoutHref = siteSlug ? `/checkout?site=${encodeURIComponent(siteSlug)}` : "/checkout";
 
-  const loadCart = React.useEffectEvent(async () => {
+  async function loadCart() {
     try { setCart(await getStoreCart(window.localStorage.getItem("store-cart-token"))); }
     catch { toast.error("Unable to load your cart."); }
-  });
+  }
 
-  React.useEffect(() => { void loadCart(); }, []);
+  React.useEffect(() => {
+    let active = true;
+    async function run() {
+      try {
+        const nextCart = await getStoreCart(window.localStorage.getItem("store-cart-token"));
+        if (active) setCart(nextCart);
+      } catch {
+        toast.error("Unable to load your cart.");
+      }
+    }
+    void run();
+    return () => { active = false; };
+  }, []);
 
   async function update(productId: number, quantity: number) {
     if (!cartToken) return;

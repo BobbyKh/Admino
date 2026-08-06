@@ -14,7 +14,7 @@ import type { Site } from "@/lib/db/schema";
  * 1. x-site-slug header (?site= query param in URL)
  * 2. Preview cookie (persists localhost/Vercel tenant previews across links)
  * 3. x-request-host header (hostname lookup)
- * 4. Fallback: first site in DB (default tenant)
+ * 4. Localhost fallback: first site in DB for development convenience
  *
  * Returns null only if no sites exist at all.
  */
@@ -48,7 +48,10 @@ export async function getSiteForRequest(host: string, siteSlug?: string | null):
     if (site) return site;
   }
 
-  // 3. Fallback: return the first site (default tenant)
+  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "";
+  if (!isLocalHost) return null;
+
+  // 3. Local development fallback: return the first site.
   const [site] = await db
     .select()
     .from(sites)

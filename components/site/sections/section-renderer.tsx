@@ -1,4 +1,5 @@
 import type { GalleryImage, MenuItem, Product, Service, ServiceCategory } from "@/lib/db/schema";
+import Image from "next/image";
 import type { Feature, SiteSettings } from "@/lib/settings";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
@@ -142,6 +143,33 @@ export function SectionRenderer({
       return <CustomHtmlSection config={getStringConfig(config)} />;
 
     // Page builder blocks (use config)
+    case "text":
+      return <RichTextBlock config={cfg} />;
+    case "image": {
+      const src = getString(config, "src");
+      if (!src) return null;
+      return (
+        <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <figure className="overflow-hidden rounded-xl">
+            <Image src={src} alt={getString(config, "alt") ?? ""} width={1400} height={900} unoptimized className="h-auto w-full object-cover" />
+            {getString(config, "caption") && <figcaption className="mt-3 text-center text-sm text-muted-foreground">{getString(config, "caption")}</figcaption>}
+          </figure>
+        </section>
+      );
+    }
+    case "columns": {
+      const columns = Array.isArray(config.columns) ? config.columns : [];
+      return (
+        <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {(columns.length ? columns : [{}, {}]).map((column, index) => {
+              const content = typeof column === "object" && column && "content" in column && typeof column.content === "string" ? column.content : "";
+              return <div key={index} className="rounded-xl border bg-card p-6"><RichTextBlock compact config={JSON.stringify({ html: content || "<p>Add column content.</p>" })} /></div>;
+            })}
+          </div>
+        </section>
+      );
+    }
     case "authForm":
       return <AuthFormBlock config={cfg} />;
     case "contactForm":

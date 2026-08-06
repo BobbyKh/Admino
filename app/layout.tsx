@@ -44,24 +44,25 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const settings = await getResolvedSiteSettings();
+  const color = (value: string | undefined, fallback: string) => sanitizeCssColor(value, fallback);
 
   const themeCss = `
     :root {
-      --primary: ${settings.themePrimary || "oklch(0.5 0.11 155)"};
-      --primary-foreground: ${settings.themePrimaryForeground || "oklch(0.985 0 0)"};
-      --secondary: ${settings.themeSecondary || "oklch(0.945 0.02 140)"};
-      --secondary-foreground: ${settings.themeSecondaryForeground || "oklch(0.3 0.05 150)"};
-      --accent: ${settings.themeAccent || "oklch(0.93 0.03 90)"};
-      --accent-foreground: ${settings.themeAccentForeground || "oklch(0.3 0.06 90)"};
-      --background: ${settings.themeBackground || "oklch(0.985 0.005 120)"};
-      --foreground: ${settings.themeForeground || "oklch(0.16 0.02 145)"};
-      --muted: ${settings.themeMuted || "oklch(0.955 0.01 140)"};
-      --muted-foreground: ${settings.themeMutedForeground || "oklch(0.5 0.02 145)"};
-      --border: ${settings.themeBorder || "oklch(0.9 0.015 140)"};
-      --ring: ${settings.themeRing || "oklch(0.5 0.11 155)"};
-      --destructive: ${settings.themeDestructive || "oklch(0.577 0.245 27.325)"};
-      --card: ${settings.themeCard || "oklch(1 0 0)"};
-      --card-foreground: ${settings.themeCardForeground || "oklch(0.16 0.02 145)"};
+      --primary: ${color(settings.themePrimary, "oklch(0.5 0.11 155)")};
+      --primary-foreground: ${color(settings.themePrimaryForeground, "oklch(0.985 0 0)")};
+      --secondary: ${color(settings.themeSecondary, "oklch(0.945 0.02 140)")};
+      --secondary-foreground: ${color(settings.themeSecondaryForeground, "oklch(0.3 0.05 150)")};
+      --accent: ${color(settings.themeAccent, "oklch(0.93 0.03 90)")};
+      --accent-foreground: ${color(settings.themeAccentForeground, "oklch(0.3 0.06 90)")};
+      --background: ${color(settings.themeBackground, "oklch(0.985 0.005 120)")};
+      --foreground: ${color(settings.themeForeground, "oklch(0.16 0.02 145)")};
+      --muted: ${color(settings.themeMuted, "oklch(0.955 0.01 140)")};
+      --muted-foreground: ${color(settings.themeMutedForeground, "oklch(0.5 0.02 145)")};
+      --border: ${color(settings.themeBorder, "oklch(0.9 0.015 140)")};
+      --ring: ${color(settings.themeRing, "oklch(0.5 0.11 155)")};
+      --destructive: ${color(settings.themeDestructive, "oklch(0.577 0.245 27.325)")};
+      --card: ${color(settings.themeCard, "oklch(1 0 0)")};
+      --card-foreground: ${color(settings.themeCardForeground, "oklch(0.16 0.02 145)")};
     }
   `;
 
@@ -79,4 +80,13 @@ export default async function RootLayout({
       </body>
     </html>
   );
+}
+
+function sanitizeCssColor(value: string | undefined, fallback: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return fallback;
+  if (trimmed.length > 80) return fallback;
+  if (!/^[#a-zA-Z0-9\s.,%()+/-]+$/.test(trimmed)) return fallback;
+  if (/url|expression|import|javascript/i.test(trimmed)) return fallback;
+  return trimmed;
 }

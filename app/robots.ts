@@ -1,14 +1,17 @@
 import type { MetadataRoute } from "next";
+import { getResolvedSite } from "@/lib/site-context";
 
-const BASE = process.env.SITE_URL ?? "http://localhost:3000";
+export const dynamic = "force-dynamic";
 
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const site = await getResolvedSite();
+  const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL ?? "http://localhost:3000";
   return {
     rules: {
       userAgent: "*",
       allow: "/",
       disallow: ["/admin", "/api"],
     },
-    sitemap: `${BASE}/sitemap.xml`,
+    sitemap: `${base}/sitemap.xml`,
   };
 }
