@@ -8,6 +8,7 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  ExternalLink,
   GripVertical,
   ChevronDown,
   ChevronUp,
@@ -675,6 +676,8 @@ export default function BlockEditorPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [blockSearch, setBlockSearch] = useState("");
   const [, setPending] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const configSaveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
 
   // Load page and blocks
@@ -698,10 +701,20 @@ export default function BlockEditorPage() {
       formData.set("pageId", String(pageId));
       formData.set("type", type);
       setPending(true);
-      await addPageBlock({}, formData);
-      const updated = await getPageBlocks(pageId);
-      setBlocks(updated);
-      setPending(false);
+      setSaveStatus("saving");
+      setSaveError(null);
+      try {
+        const result = await addPageBlock({}, formData);
+        if (!result.success) throw new Error(result.message || "Unable to add block.");
+        const updated = await getPageBlocks(pageId);
+        setBlocks(updated);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to add block.");
+      } finally {
+        setPending(false);
+      }
     },
     [pageId]
   );
@@ -714,16 +727,28 @@ export default function BlockEditorPage() {
       if (updates.visible !== undefined) formData.set("visible", updates.visible ? "on" : "");
       if (updates.config !== undefined) formData.set("config", updates.config);
       setPending(true);
-      await updatePageBlock({}, formData);
-      const updated = await getPageBlocks(pageId);
-      setBlocks(updated);
-      setPending(false);
+      setSaveStatus("saving");
+      setSaveError(null);
+      try {
+        const result = await updatePageBlock({}, formData);
+        if (!result.success) throw new Error(result.message || "Unable to save block.");
+        const updated = await getPageBlocks(pageId);
+        setBlocks(updated);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to save block.");
+      } finally {
+        setPending(false);
+      }
     },
     [pageId]
   );
 
   const handleConfigChange = useCallback((blockId: number, config: string) => {
     setBlocks((previous) => previous.map((block) => block.id === blockId ? { ...block, config } : block));
+    setSaveStatus("saving");
+    setSaveError(null);
     const existingTimer = configSaveTimers.current.get(blockId);
     if (existingTimer) clearTimeout(existingTimer);
     configSaveTimers.current.set(blockId, setTimeout(() => {
@@ -739,10 +764,19 @@ export default function BlockEditorPage() {
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
       setPending(true);
-      await deletePageBlock(blockId);
-      setBlocks((prev) => prev.filter((b) => b.id !== blockId));
-      if (expandedId === blockId) setExpandedId(null);
-      setPending(false);
+      setSaveStatus("saving");
+      setSaveError(null);
+      try {
+        await deletePageBlock(blockId);
+        setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+        if (expandedId === blockId) setExpandedId(null);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to delete block.");
+      } finally {
+        setPending(false);
+      }
     },
     [expandedId]
   );
@@ -756,8 +790,17 @@ export default function BlockEditorPage() {
       setBlocks(newBlocks);
       const orderedIds = newBlocks.map((b) => b.id);
       setPending(true);
-      await reorderPageBlocks(orderedIds);
-      setPending(false);
+      setSaveStatus("saving");
+      setSaveError(null);
+      try {
+        await reorderPageBlocks(orderedIds);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to reorder blocks.");
+      } finally {
+        setPending(false);
+      }
     },
     [blocks]
   );
@@ -812,9 +855,20 @@ export default function BlockEditorPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <span className={`text-xs ${saveStatus === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+            {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? saveError ?? "Save failed" : "Autosave on"}
+          </span>
           <Badge variant={page.published ? "default" : "secondary"}>
             {page.published ? "Published" : "Draft"}
           </Badge>
+          {page.published && (
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <a href={page.slug === "home" ? "/" : `/${page.slug}`} target="_blank" rel="noreferrer">
+                <ExternalLink className="size-3.5" />
+                Preview
+              </a>
+            </Button>
+          )}
         </div>
       </div>
 

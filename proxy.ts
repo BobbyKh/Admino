@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Middleware resolves the current site from the request hostname
- * and stores the result in request headers for server components.
+ * Proxy resolves the current site from the request hostname and stores the
+ * result in request headers for server components.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip admin, API, static files, and internal Next.js paths
@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const host = request.headers.get("host") ?? "";
-  const hostname = host.split(":")[0]; // strip port
+  const hostname = host.split(":")[0];
 
   // Local development and Vercel deployment URLs can preview any public tenant.
   // Custom domains continue to resolve by hostname and do not need this override.

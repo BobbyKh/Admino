@@ -2,28 +2,24 @@
 
 ## Verdict
 
-Admino is not ready for public market launch yet. It is suitable for internal demo or private alpha after the production build is fixed.
+Admino has moved from internal MVP toward private alpha readiness. It still needs broader e2e coverage, payment-positioning decisions, and a full multi-tenant security review before public market launch.
 
-## Tomorrow Checklist
+## Completed
 
-1. Fix the production build failure in `app/admin/(panel)/sites/page.tsx`.
-2. Replace deprecated Next.js `middleware.ts` convention with the current proxy convention.
-3. Add login rate limiting to `app/admin/login/actions.ts` using the existing `lib/rate-limit.ts` utility or a production-safe equivalent.
-4. Harden uploads in `app/api/upload/route.ts` with stronger file validation and feature/permission checks.
-5. Add automated smoke tests for login, site selection, page creation, block editing, publishing, uploads, checkout, and tenant isolation.
-6. Improve builder UX safeguards: visible save status, autosave failure handling, preview, and revision/undo strategy.
-7. Decide whether ecommerce is production payments or manual/test payments, then update UI/docs accordingly.
-8. Run a multi-tenant security review before accepting untrusted customer content.
+1. Fixed the production build type issue in `app/admin/(panel)/sites/page.tsx` by typing tenant feature access as `TenantFeature[]`.
+2. Replaced deprecated `middleware.ts` with `proxy.ts` and renamed the exported function to `proxy` for Next.js 16.
+3. Added admin login rate limiting in `app/admin/login/actions.ts` using the existing rate-limit utility.
+4. Hardened uploads with shared content-signature validation in `lib/upload-validation.ts`, folder sanitization, SVG rejection, and tenant media-feature enforcement.
+5. Added a dependency-free smoke test foundation with `npm test` and tests for upload validation and block config safety.
+6. Improved the page builder editor with visible autosave status, save error display, and a published-page preview link.
 
-## Current Release Blockers
+## Remaining Before Public Launch
 
-- `npm run build` fails TypeScript checking at `app/admin/(panel)/sites/page.tsx:114` because `string[]` is assigned to `TenantFeature[]` state.
-- No unit, integration, or e2e test suite exists.
-- Admin login currently has no rate limiting.
-- Builder editor is functional but MVP-level: autosave-only, no revision history, no undo/redo, and no full live preview.
-- Uploads rely on browser-reported MIME type and do not perform deep file/content validation.
-- Ecommerce payment flow is still lightweight/manual/test-oriented.
-- Next.js reports the `middleware` file convention is deprecated and should move to the proxy convention.
+1. Add full e2e tests for login, site selection, page creation, block editing, publishing, uploads, checkout, and tenant isolation.
+2. Add revision history or undo/redo for builder edits.
+3. Decide whether ecommerce is production payments or manual/test payments, then update UI/docs accordingly.
+4. Run a full multi-tenant security review before accepting untrusted customer content.
+5. Replace in-memory login rate limiting with a shared production store if deployed across multiple instances.
 
 ## Positive Foundation
 
@@ -32,3 +28,4 @@ Admino is not ready for public market launch yet. It is suitable for internal de
 - Block config has size/type validation.
 - Rich text and custom HTML are sanitized before rendering.
 - `npm run lint` passes with warnings only.
+- `npm test` covers critical upload and block-config validation paths.

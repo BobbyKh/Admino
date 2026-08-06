@@ -7,6 +7,7 @@ import { media } from "@/lib/db/schema";
 import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
 import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
 import { v2 as cloudinary } from "cloudinary";
+import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
 import type { MediaUploadState } from "./types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -23,18 +24,18 @@ export async function uploadMedia(
     return { error: "Please choose a file." };
   }
 
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
-  if (!isImage && !isVideo) {
-    return { error: "Only image and video files are allowed." };
-  }
   if (file.size > MAX_FILE_SIZE) {
     return { error: `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.` };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const uploadFolder = sanitizeFolder(folder || "maiti/media");
-  const resourceType = isVideo ? "video" : "image";
+  const uploadFolder = sanitizeUploadFolder(folder || "maiti/media");
+  let resourceType: "image" | "video";
+  try {
+    resourceType = validateUploadBuffer(buffer, file.type);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Invalid upload file." };
+  }
 
   try {
     const result = await uploadImageToCloudinary(buffer, uploadFolder, resourceType);
@@ -120,11 +121,6 @@ export async function getMediaItems(options?: {
     items: items.filter((item) => !item.filename.startsWith(".keep-")),
     total: countResult?.value ?? 0,
   };
-}
-
-function sanitizeFolder(value: string) {
-  const folder = value.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
-  return folder || "maiti/media";
 }
 
 export async function getMediaFolders() {

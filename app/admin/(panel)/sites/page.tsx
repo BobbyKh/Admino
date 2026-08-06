@@ -60,7 +60,7 @@ export default function SitesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [draftFeatures, setDraftFeatures] = useState<TenantFeature[]>([]);
-  const [featureAccess, setFeatureAccess] = useState<Record<number, string[]>>({});
+  const [featureAccess, setFeatureAccess] = useState<Record<number, TenantFeature[]>>({});
   const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -111,7 +111,7 @@ export default function SitesPage() {
 
   function openSiteEdit(site: Site) {
     setEditingSite(site);
-    setDraftFeatures(featureAccess[site.id] as TenantFeature[]);
+    setDraftFeatures(featureAccess[site.id] ?? []);
   }
 
   return (

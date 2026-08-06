@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, type Role } from "@/lib/auth";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { requireTenantFeature } from "@/lib/tenant-features";
+import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
 
 export const runtime = "nodejs";
 
@@ -16,10 +18,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const siteId = await getAdminSiteId();
+    await requireTenantFeature(siteId, "media", { role: user.role as Role, userId: user.id });
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const folder = (formData.get("folder") as string) || "maiti/media";
+    const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "maiti/media"));
 
     if (!file || file.size === 0) {
       return NextResponse.json({ error: "Please choose a file." }, { status: 400 });
@@ -32,14 +35,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-    if (!isImage && !isVideo) {
-      return NextResponse.json({ error: "Only image and video files are allowed." }, { status: 400 });
-    }
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    const resourceType = isVideo ? "video" : "image";
+    let resourceType: "image" | "video";
+    try {
+      resourceType = validateUploadBuffer(buffer, file.type);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid upload file." }, { status: 400 });
+    }
     const result = await uploadImageToCloudinary(buffer, folder, resourceType);
 
     const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
