@@ -110,6 +110,7 @@ export async function createPage(
   if (!slug) slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   if (!slug) slug = `page-${Date.now()}`;
   const description = String(formData.get("description") ?? "").trim() || null;
+  const published = formData.get("published") === "on";
   let seo: ReturnType<typeof pageSeoInput>;
   try { seo = pageSeoInput(formData); } catch (error) { return { message: error instanceof Error ? error.message : "Invalid SEO settings." }; }
   const template = String(formData.get("template") ?? "default").trim();
@@ -143,7 +144,7 @@ const user = await requireSiteAccess(siteId);
       description,
       ...seo,
       template,
-      published: false,
+      published,
       sortOrder,
     })
     .returning({ id: pages.id });

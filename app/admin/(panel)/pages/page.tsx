@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   FileText,
+  ExternalLink,
   Plus,
   Pencil,
   Trash2,
@@ -75,6 +76,10 @@ export default function PagesPage() {
   }, [selectedSiteId]);
 
   const selectedSite = sites.find((s) => s.id === selectedSiteId);
+  const publicHref = (slug: string) => {
+    const path = slug === "home" ? "/" : `/${slug}`;
+    return selectedSite ? `${path}?site=${encodeURIComponent(selectedSite.slug)}` : path;
+  };
 
   // Handle create success
   useEffect(() => {
@@ -168,6 +173,9 @@ export default function PagesPage() {
                     <option value="terms">Terms of Service</option>
                   </select>
                 </div>
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" name="published" defaultChecked /> Published
+                </label>
                 <Button type="submit" className="w-full" disabled={pending}>
                   {pending ? "Creating..." : "Create Page"}
                 </Button>
@@ -242,6 +250,17 @@ export default function PagesPage() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  disabled={!page.published}
+                  title={page.published ? "View public page" : "Publish this page before viewing"}
+                >
+                  <a href={publicHref(page.slug)} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="size-4" />
+                  </a>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
