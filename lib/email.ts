@@ -1,11 +1,11 @@
 import "server-only";
 
 import { cache } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
-import { adminUsers } from "@/lib/db/schema";
-import type { Booking } from "@/lib/db/schema";
+import { adminUsers, settings } from "@/lib/db/schema";
+import type { Booking, Order, OrderItem } from "@/lib/db/schema";
 import { formatBookingDate } from "@/lib/format";
 import { getSettingsRows } from "@/lib/settings-admin";
 import { escapeHtml } from "@/lib/sanitize";
@@ -163,6 +163,69 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   const result = await sendMail(to, "Reset your Admino password", html);
   if (result.skipped) console.log(`[password-reset:url] ${resetUrl}`);
   return result;
+}
+
+export async function sendOrderConfirmationEmail(order: Order, items: OrderItem[]) {
+  const siteName = await getSiteName(order.siteId);
+  const html = orderEmailHtml({
+    title: `Order received — ${siteName}`,
+    intro: `Thanks for your order. We received <strong>${escapeHtml(order.orderNumber)}</strong> and will update you when payment is confirmed.`,
+    order,
+    items,
+    siteName,
+  });
+  return sendMail(order.email, `Order received — ${siteName}`, html);
+}
+
+export async function sendOrderAdminAlert(order: Order, items: OrderItem[]) {
+  const siteName = await getSiteName(order.siteId);
+  const html = orderEmailHtml({
+    title: `New order — ${siteName}`,
+    intro: `A new order needs review in Admino. Payment status: <strong>${escapeHtml(order.paymentStatus)}</strong>.`,
+    order,
+    items,
+    siteName,
+    adminLink: `${process.env.SITE_URL ?? "http://localhost:3000"}/admin/commerce/orders`,
+  });
+  const { notifyTo } = await getSmtpConfig();
+  return sendMail(notifyTo, `New order ${order.orderNumber} — ${siteName}`, html);
+}
+
+export async function sendOrderPaymentStatusEmail(order: Order, items: OrderItem[], status: "paid" | "failed" | "fulfilled") {
+  const siteName = await getSiteName(order.siteId);
+  const intro = status === "paid"
+    ? `Payment for <strong>${escapeHtml(order.orderNumber)}</strong> is confirmed.`
+    : status === "fulfilled"
+      ? `Your order <strong>${escapeHtml(order.orderNumber)}</strong> has been marked fulfilled.`
+      : `Payment for <strong>${escapeHtml(order.orderNumber)}</strong> could not be verified. Please contact the store if this is incorrect.`;
+  const html = orderEmailHtml({ title: `Order ${status} — ${siteName}`, intro, order, items, siteName });
+  return sendMail(order.email, `Order ${status} — ${siteName}`, html);
+}
+
+function orderEmailHtml({ title, intro, order, items, siteName, adminLink }: { title: string; intro: string; order: Order; items: OrderItem[]; siteName: string; adminLink?: string }) {
+  const rows = items.map((item) => `<tr><td style="border:1px solid #ddd">${escapeHtml(item.title)} × ${item.quantity}</td><td style="border:1px solid #ddd;text-align:right">${formatMoney(item.unitPrice * item.quantity, order.currency)}</td></tr>`).join("");
+  return `
+  <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+    <h2 style="color:#166534">${escapeHtml(title)}</h2>
+    <p>${intro}</p>
+    <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
+      <tr><td style="border:1px solid #ddd"><strong>Order</strong></td><td style="border:1px solid #ddd">${escapeHtml(order.orderNumber)}</td></tr>
+      <tr><td style="border:1px solid #ddd"><strong>Payment</strong></td><td style="border:1px solid #ddd">${escapeHtml(order.paymentStatus)} via ${escapeHtml(order.paymentProvider ?? "manual")}</td></tr>
+      ${rows}
+      <tr><td style="border:1px solid #ddd"><strong>Total</strong></td><td style="border:1px solid #ddd;text-align:right"><strong>${formatMoney(order.total, order.currency)}</strong></td></tr>
+    </table>
+    ${adminLink ? `<p><a href="${escapeHtml(adminLink)}">Open order admin</a></p>` : ""}
+    <p style="color:#666;font-size:12px">${escapeHtml(siteName)}</p>
+  </div>`;
+}
+
+async function getSiteName(siteId: number) {
+  const [row] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, "siteName")));
+  return row?.value || "Store";
+}
+
+function formatMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat("en", { style: "currency", currency: currency.toUpperCase() }).format(amount / 100);
 }
 
 // ─── Activity Notifications ──────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { carts, cartItems, orderItems, orders, paymentConfigurations, products, settings } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { isTestPaymentProvider, testPaymentProviderRegistry, type TestPaymentProvider } from "@/lib/commerce/providers";
+import { sendOrderAdminAlert, sendOrderConfirmationEmail } from "@/lib/email";
 
 const tokenSchema = z.string().uuid();
 
@@ -97,6 +98,7 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
   const [prefixSetting] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, "commerce_order_prefix")));
   const prefix = prefixSetting?.value?.replace(/[^A-Z0-9-]/gi, "").slice(0, 12).toUpperCase() || "ORD";
   const orderNumber = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+  let createdOrderId = 0;
   await db.transaction(async (tx) => {
     for (const item of items.items) {
       const [product] = await tx.select().from(products).where(and(eq(products.id, item.productId), eq(products.siteId, siteId), eq(products.status, "active")));
@@ -105,9 +107,20 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
     }
     const paymentStatus = input.data.provider === "qr" ? "awaiting_verification" : "payment_pending";
     const [order] = await tx.insert(orders).values({ siteId, orderNumber, email: input.data.email, currency: cart.currency, subtotal: items.subtotal, total: items.subtotal, status: "pending", paymentStatus, paymentProvider: input.data.provider, providerPaymentId: input.data.paymentReference || null, updatedAt: new Date().toISOString() }).returning();
+    createdOrderId = order.id;
     await tx.insert(orderItems).values(items.items.map((item) => ({ orderId: order.id, productId: item.productId, title: item.title, quantity: item.quantity, unitPrice: item.price })));
     await tx.delete(carts).where(eq(carts.id, cart.id));
   });
+  const [createdOrder, createdItems] = await Promise.all([
+    db.select().from(orders).where(and(eq(orders.id, createdOrderId), eq(orders.siteId, siteId))).then((rows) => rows[0]),
+    db.select().from(orderItems).where(eq(orderItems.orderId, createdOrderId)),
+  ]);
+  if (createdOrder) {
+    void Promise.allSettled([
+      sendOrderConfirmationEmail(createdOrder, createdItems),
+      sendOrderAdminAlert(createdOrder, createdItems),
+    ]);
+  }
   revalidatePath("/", "layout");
   return { orderNumber, provider: input.data.provider };
 }

@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { orderItems, orders, paymentConfigurations, products, settings } from "@/lib/db/schema";
 import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/secrets";
+import { sendOrderPaymentStatusEmail } from "@/lib/email";
 
 const productSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -263,6 +264,8 @@ export async function approveOrderPayment(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "pending" || !["awaiting_verification", "payment_pending"].includes(order.paymentStatus)) throw new Error("This order cannot be approved.");
   await db.update(orders).set({ status: "paid", paymentStatus: "paid", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  void sendOrderPaymentStatusEmail({ ...order, status: "paid", paymentStatus: "paid" }, items, "paid").catch((error) => console.error("Failed to send order paid email:", error));
   revalidateCommerce();
 }
 
@@ -276,6 +279,8 @@ export async function rejectOrderPayment(orderId: number) {
     }
     await tx.update(orders).set({ status: "cancelled", paymentStatus: "failed", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   });
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  void sendOrderPaymentStatusEmail({ ...order, status: "cancelled", paymentStatus: "failed" }, items, "failed").catch((error) => console.error("Failed to send order failed email:", error));
   revalidateCommerce();
 }
 
@@ -283,5 +288,7 @@ export async function fulfillOrder(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "paid" || order.paymentStatus !== "paid") throw new Error("Approve payment before marking an order delivered.");
   await db.update(orders).set({ status: "fulfilled", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  void sendOrderPaymentStatusEmail({ ...order, status: "fulfilled" }, items, "fulfilled").catch((error) => console.error("Failed to send order fulfilled email:", error));
   revalidateCommerce();
 }

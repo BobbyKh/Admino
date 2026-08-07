@@ -3,7 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { decryptCommerceSecrets } from "@/lib/commerce/secrets";
-import { orders, paymentConfigurations, settings, sites } from "@/lib/db/schema";
+import { orderItems, orders, paymentConfigurations, settings, sites } from "@/lib/db/schema";
+import { sendOrderPaymentStatusEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const encoded = request.nextUrl.searchParams.get("data");
@@ -27,7 +28,12 @@ export async function GET(request: NextRequest) {
   const expectedTotal = (order.total / 100).toFixed(2);
   const amountMatches = Number(payload.total_amount).toFixed(2) === expectedTotal;
   const isComplete = payload.status === "COMPLETE" && payload.product_code === config.merchantId && amountMatches && validSignature;
-  if (isComplete) await db.update(orders).set({ status: "paid", paymentStatus: "paid", providerPaymentId: payload.transaction_code || `${config.mode}:${payload.transaction_uuid}`, updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+  if (isComplete) {
+    const paidOrder = { ...order, status: "paid", paymentStatus: "paid", providerPaymentId: payload.transaction_code || `${config.mode}:${payload.transaction_uuid}` };
+    await db.update(orders).set({ status: paidOrder.status, paymentStatus: paidOrder.paymentStatus, providerPaymentId: paidOrder.providerPaymentId, updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+    void sendOrderPaymentStatusEmail(paidOrder, items, "paid").catch((error) => console.error("Failed to send eSewa paid email:", error));
+  }
   const status = isComplete ? "success" : "failed";
   return NextResponse.redirect(new URL(`/?site=${encodeURIComponent(site.slug)}&payment=${status}&order=${encodeURIComponent(order.orderNumber)}`, request.url));
 }
