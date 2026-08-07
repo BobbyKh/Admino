@@ -110,6 +110,8 @@ export async function createPage(
   if (!slug) slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   if (!slug) slug = `page-${Date.now()}`;
   const description = String(formData.get("description") ?? "").trim() || null;
+  let seo: ReturnType<typeof pageSeoInput>;
+  try { seo = pageSeoInput(formData); } catch (error) { return { message: error instanceof Error ? error.message : "Invalid SEO settings." }; }
   const template = String(formData.get("template") ?? "default").trim();
 
   if (!siteId || !title) return { message: "Site ID and title are required." };
@@ -139,6 +141,7 @@ const user = await requireSiteAccess(siteId);
       title,
       slug,
       description,
+      ...seo,
       template,
       published: false,
       sortOrder,
@@ -168,6 +171,8 @@ export async function updatePage(
   const title = String(formData.get("title") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
+  let seo: ReturnType<typeof pageSeoInput>;
+  try { seo = pageSeoInput(formData); } catch (error) { return { message: error instanceof Error ? error.message : "Invalid SEO settings." }; }
   const template = String(formData.get("template") ?? "default").trim();
   const published = formData.get("published") === "on";
 
@@ -190,7 +195,7 @@ export async function updatePage(
 
   await db
     .update(pages)
-    .set({ title, slug: normalizedSlug, description, template, published, updatedAt: new Date().toISOString() })
+    .set({ title, slug: normalizedSlug, description, ...seo, template, published, updatedAt: new Date().toISOString() })
     .where(eq(pages.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
@@ -230,6 +235,16 @@ export async function getPageBlocks(pageId: number) {
   const user = await requireSiteAccess(page.siteId);
   await requirePagesFeature(user, page.siteId);
   return db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
+}
+
+function pageSeoInput(formData: FormData) {
+  const metaTitle = String(formData.get("metaTitle") ?? "").trim().slice(0, 80) || null;
+  const metaDescription = String(formData.get("metaDescription") ?? "").trim().slice(0, 180) || null;
+  const ogImage = String(formData.get("ogImage") ?? "").trim() || null;
+  const canonicalUrl = String(formData.get("canonicalUrl") ?? "").trim() || null;
+  if (ogImage && !/^https?:\/\//i.test(ogImage)) throw new Error("OpenGraph image must be an absolute URL.");
+  if (canonicalUrl && !/^https?:\/\//i.test(canonicalUrl)) throw new Error("Canonical URL must be an absolute URL.");
+  return { metaTitle, metaDescription, ogImage, canonicalUrl, noindex: formData.get("noindex") === "on" };
 }
 
 export async function addPageBlock(

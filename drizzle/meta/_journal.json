@@ -29,6 +29,13 @@
       "when": 1786118520000,
       "tag": "0003_domain_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786118580000,
+      "tag": "0004_page_seo",
+      "breakpoints": true
     }
   ]
 }

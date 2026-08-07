@@ -10,15 +10,26 @@ import {
   getActiveServiceCatalog,
 } from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
+import { getResolvedSite } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getResolvedSiteSettings();
+  const [settings, site, siteId] = await Promise.all([getResolvedSiteSettings(), getResolvedSite(), getResolvedSiteId()]);
+  const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
+  const title = homepage?.metaTitle || (settings.siteName ? `${settings.siteName} — ${settings.tagline || "Welcome"}` : undefined);
+  const description = homepage?.metaDescription || settings.description?.slice(0, 160) || undefined;
+  const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL;
+  const canonical = homepage?.canonicalUrl || base;
+  const image = homepage?.ogImage || settings.logo || undefined;
   return {
-    title: settings.siteName ? `${settings.siteName} — ${settings.tagline || "Welcome"}` : undefined,
-    description: settings.description?.slice(0, 160) || undefined,
+    title,
+    description,
+    alternates: canonical ? { canonical } : undefined,
+    robots: homepage?.noindex ? { index: false, follow: false } : undefined,
+    openGraph: { title, description, url: canonical, images: image ? [{ url: image, alt: title || settings.siteName }] : undefined },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, images: image ? [image] : undefined },
   };
 }
 

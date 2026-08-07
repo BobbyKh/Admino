@@ -10,6 +10,7 @@ import {
   getActiveServiceCatalog,
 } from "@/lib/data";
 import { getResolvedSiteId } from "@/lib/site-context";
+import { getResolvedSite } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
 
 export const revalidate = 300;
@@ -22,11 +23,30 @@ export async function generateMetadata({
   const { slug } = await params;
   const siteId = await getResolvedSiteId();
   if (!siteId) return {};
-  const page = await getPageBySlug(siteId, slug);
+  const [page, site, settings] = await Promise.all([getPageBySlug(siteId, slug), getResolvedSite(), getResolvedSiteSettings()]);
   if (!page || !page.published) return {};
+  const title = page.metaTitle || page.title;
+  const description = page.metaDescription || page.description || undefined;
+  const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL;
+  const canonical = page.canonicalUrl || (base ? `${base}/${page.slug}` : undefined);
+  const image = page.ogImage || settings.logo || undefined;
   return {
-    title: page.title,
-    description: page.description || undefined,
+    title,
+    description,
+    alternates: canonical ? { canonical } : undefined,
+    robots: page.noindex ? { index: false, follow: false } : undefined,
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      images: image ? [{ url: image, alt: title }] : undefined,
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
   };
 }
 

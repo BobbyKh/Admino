@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,8 @@ export default function PagesPage() {
   const selectedSiteId = siteIdParam ? Number(siteIdParam) : sites[0]?.id ?? null;
   const [createOpen, setCreateOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<Page | null>(null);
+  const [createOgImage, setCreateOgImage] = useState("");
+  const [editingOgImage, setEditingOgImage] = useState("");
   const [pending, startTransition] = useTransition();
 
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createPage, {});
@@ -79,6 +82,7 @@ export default function PagesPage() {
       getPages(selectedSiteId).then((updated) => {
         setPages(updated);
         setCreateOpen(false);
+        setCreateOgImage("");
       });
     }
   }, [createState, selectedSiteId]);
@@ -137,6 +141,17 @@ export default function PagesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea id="description" name="description" rows={2} />
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">SEO</p>
+                    <p className="text-xs text-muted-foreground">Optional overrides. Defaults use page title and description.</p>
+                  </div>
+                  <Input name="metaTitle" placeholder="Meta title" maxLength={80} />
+                  <Textarea name="metaDescription" placeholder="Meta description" rows={2} maxLength={180} />
+                  <ImageUploadField name="ogImage" label="OpenGraph image" value={createOgImage} onChange={setCreateOgImage} />
+                  <Input name="canonicalUrl" placeholder="Canonical URL (https://...)" />
+                  <label className="flex items-center gap-2 text-sm font-medium"><input name="noindex" type="checkbox" /> Hide from search engines</label>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="template">Template</Label>
@@ -238,7 +253,7 @@ export default function PagesPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setEditingPage(page)}
+                  onClick={() => { setEditingPage(page); setEditingOgImage(page.ogImage ?? ""); }}
                   title="Page settings"
                 >
                   <Pencil className="size-4" />
@@ -308,6 +323,26 @@ export default function PagesPage() {
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea name="description" defaultValue={editingPage.description ?? ""} rows={2} />
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                <div>
+                  <Label>SEO</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Control how this page appears in search and social previews.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Meta title</Label>
+                  <Input name="metaTitle" defaultValue={editingPage.metaTitle ?? ""} maxLength={80} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Meta description</Label>
+                  <Textarea name="metaDescription" defaultValue={editingPage.metaDescription ?? ""} rows={2} maxLength={180} />
+                </div>
+                <ImageUploadField name="ogImage" label="OpenGraph image" value={editingOgImage} onChange={setEditingOgImage} />
+                <div className="space-y-2">
+                  <Label>Canonical URL</Label>
+                  <Input name="canonicalUrl" defaultValue={editingPage.canonicalUrl ?? ""} placeholder="https://example.com/page" />
+                </div>
+                <label className="flex items-center gap-2 text-sm font-medium"><input name="noindex" type="checkbox" defaultChecked={editingPage.noindex} /> Hide from search engines</label>
               </div>
               <div className="space-y-2">
                 <Label>Template</Label>

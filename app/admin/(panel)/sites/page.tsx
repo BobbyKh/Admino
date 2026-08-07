@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,6 +155,7 @@ export default function SitesPage() {
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Button asChild variant="outline" className="mr-2"><Link href="/admin/onboarding">Guided setup</Link></Button>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 size-4" />

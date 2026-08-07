@@ -75,6 +75,65 @@ export async function createSite(
   return { success: true, message: "Site created." };
 }
 
+export async function onboardSite(
+  _prev: AdminActionState,
+  formData: FormData
+): Promise<AdminActionState & { data?: { siteId?: number } }> {
+  await requireRole("super_admin");
+  const name = String(formData.get("name") ?? "").trim();
+  let slug = String(formData.get("slug") ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!slug) slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  if (!slug) slug = `site-${Date.now()}`;
+  const template = String(formData.get("template") ?? "blank").trim();
+  const description = String(formData.get("description") ?? "").trim() || null;
+  let customDomain: string | null;
+  try { customDomain = normalizeDomain(formData.get("domain")); } catch (error) { return { message: error instanceof Error ? error.message : "Invalid domain." }; }
+  const domain = customDomain ?? (getPlatformDomain() ? `${slug}.${getPlatformDomain()}` : null);
+  if (!name) return { message: "Site name is required." };
+
+  const [existing] = await db.select({ id: sites.id }).from(sites).where(eq(sites.slug, slug));
+  if (existing) return { message: "A site with this slug already exists." };
+
+  const [site] = await db.insert(sites).values({
+    name,
+    slug,
+    template,
+    description,
+    domain,
+    domainStatus: domain ? "pending_dns" : "not_configured",
+    domainError: domain ? "Domain has not been verified yet." : null,
+    published: false,
+  }).returning({ id: sites.id });
+
+  const now = new Date().toISOString();
+  const settingValues: Record<string, string> = {
+    siteName: name,
+    tagline: String(formData.get("tagline") ?? "").trim(),
+    description: description ?? "",
+    logo: String(formData.get("logo") ?? "").trim(),
+    favicon: String(formData.get("favicon") ?? "").trim(),
+    address: String(formData.get("address") ?? "").trim(),
+    phone: String(formData.get("phone") ?? "").trim(),
+    email: String(formData.get("email") ?? "").trim(),
+    adminNotifyEmail: String(formData.get("adminNotifyEmail") ?? formData.get("email") ?? "").trim(),
+  };
+  for (const [key, value] of Object.entries(settingValues)) {
+    await db.insert(settings).values({ siteId: site.id, key, value, updatedAt: now }).onConflictDoUpdate({ target: [settings.key, settings.siteId], set: { value, updatedAt: now } });
+  }
+
+  if (template === "ecommerce") await createEcommerceTemplate(site.id, name);
+  else {
+    await createDefaultHomepage(site.id);
+    await createDefaultNavigation(site.id, template);
+  }
+
+  const enabledFeatures = TENANT_FEATURES.filter((feature) => formData.get(`feature_${feature}`) === "on");
+  await setTenantFeatureAccess(site.id, enabledFeatures.length ? enabledFeatures : TENANT_FEATURES.filter((feature) => !feature.startsWith("ai_")));
+  revalidatePath("/admin/sites");
+  revalidatePath("/admin/onboarding");
+  return { success: true, message: "Site onboarded.", data: { siteId: site.id } };
+}
+
 export async function updateSite(
   _prev: AdminActionState,
   formData: FormData
