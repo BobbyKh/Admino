@@ -113,6 +113,14 @@ export const getActiveProducts = cache(async (siteId?: number | null) => {
     .orderBy(desc(products.featured), desc(products.createdAt));
 });
 
+export const getActiveProductBySlug = cache(async (siteId: number, slug: string) => {
+  const [product] = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.siteId, siteId), eq(products.slug, slug), eq(products.status, "active")));
+  return product ?? null;
+});
+
 export const getActiveServiceCatalog = cache(async (siteId?: number | null) => {
   if (!siteId) return { categories: [], services: [] };
   const [categories, serviceList] = await Promise.all([
