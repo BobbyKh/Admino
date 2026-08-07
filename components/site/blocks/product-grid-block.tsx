@@ -53,6 +53,9 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
   const productLimit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : source === "featured" ? 4 : 0;
   const sourceCatalogProducts = source === "all" ? catalogProducts : catalogProducts.filter((product) => product.featured);
   const displayedCatalogProducts = productLimit > 0 ? sourceCatalogProducts.slice(0, productLimit) : sourceCatalogProducts;
+  const title = typeof c.title === "string" && c.title ? c.title : "Our Products";
+  const subtitle = typeof c.subtitle === "string" ? c.subtitle : "";
+  const badge = typeof c.badge === "string" ? c.badge : "";
   const products: Product[] = catalogProducts.length > 0
     ? displayedCatalogProducts.map((product) => ({
       name: product.title,
@@ -88,12 +91,12 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
   return (
     <section id="shop" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
-        {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
+        {badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-          {c.title || "Our Products"}
+          {title}
         </h2>
-        {c.subtitle && (
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
+        {subtitle && (
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{subtitle}</p>
         )}
       </div>
       {showFilters && products.length > 0 && (
