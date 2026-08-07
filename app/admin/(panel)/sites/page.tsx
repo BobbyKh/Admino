@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, Copy, ExternalLink, FileText, Globe, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
   createSite,
   updateSite,
   deleteSite,
+  checkSiteDomain,
   getAllTenantFeatureAccess,
   getSitePublishReadiness,
   getSites,
@@ -56,6 +57,14 @@ const TEMPLATES = [
   { value: "landing", label: "Landing Page" },
 ];
 
+function domainStatusLabel(status: string) {
+  return status === "verified" ? "Verified" : status === "error" ? "DNS error" : status === "pending_dns" ? "Pending DNS" : "Not configured";
+}
+
+function domainStatusVariant(status: string) {
+  return status === "verified" ? "default" : "secondary";
+}
+
 export default function SitesPage() {
   const router = useRouter();
   const [sites, setSites] = useState<Site[]>([]);
@@ -65,14 +74,19 @@ export default function SitesPage() {
   const [featureAccess, setFeatureAccess] = useState<Record<number, TenantFeature[]>>({});
   const [readiness, setReadiness] = useState<Record<number, SitePublishReadiness>>({});
   const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
+  const [domainMessages, setDomainMessages] = useState<Record<number, string>>({});
   const [pending, startTransition] = useTransition();
 
+  async function refreshSites() {
+    const [nextSites, access, nextReadiness] = await Promise.all([getSites(), getAllTenantFeatureAccess(), getSitePublishReadiness()]);
+    setSites(nextSites);
+    setFeatureAccess(access);
+    setReadiness(nextReadiness);
+    setEditingSite((current) => current ? nextSites.find((site) => site.id === current.id) ?? current : current);
+  }
+
   useEffect(() => {
-    Promise.all([getSites(), getAllTenantFeatureAccess(), getSitePublishReadiness()]).then(([nextSites, access, nextReadiness]) => {
-      setSites(nextSites);
-      setFeatureAccess(access);
-      setReadiness(nextReadiness);
-    });
+    refreshSites();
   }, []);
 
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createSite, {});
@@ -116,6 +130,18 @@ export default function SitesPage() {
   function openSiteEdit(site: Site) {
     setEditingSite(site);
     setDraftFeatures(featureAccess[site.id] ?? []);
+  }
+
+  function handleCheckDomain(siteId: number) {
+    startTransition(async () => {
+      try {
+        const result = await checkSiteDomain(siteId);
+        setDomainMessages((prev) => ({ ...prev, [siteId]: result.message }));
+      } catch (error) {
+        setDomainMessages((prev) => ({ ...prev, [siteId]: error instanceof Error ? error.message : "Unable to check domain." }));
+      }
+      await refreshSites();
+    });
   }
 
   return (
@@ -270,10 +296,12 @@ export default function SitesPage() {
                     {site.published ? "Add a domain to enable the live site link." : "Publish this site to enable its public link."}
                   </p>
                 )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {site.domain ? `Primary domain: ${site.domain}` : "No custom domain connected."}
-                </p>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>{site.domain ? `Primary domain: ${site.domain}` : "No custom domain connected."}</span>
+                  <Badge variant={domainStatusVariant(site.domainStatus)}>{domainStatusLabel(site.domainStatus)}</Badge>
+                </div>
+                {site.domainError && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{site.domainError}</p>}
+                <div className="mt-4 flex flex-wrap gap-2">
                   {site.published && getSiteUrl(site) && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={getSiteUrl(site)!} target="_blank" rel="noreferrer">
@@ -298,6 +326,12 @@ export default function SitesPage() {
                     <FileText className="mr-1 size-3" />
                     Pages
                   </Button>
+                  {site.domain && (
+                    <Button variant="outline" size="sm" disabled={pending} onClick={() => handleCheckDomain(site.id)}>
+                      <RefreshCw className="mr-1 size-3" />
+                      Check DNS
+                    </Button>
+                  )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
@@ -364,7 +398,22 @@ export default function SitesPage() {
               <div className="space-y-2">
                 <Label>Custom domain</Label>
                 <Input name="domain" defaultValue={editingSite.domain ?? ""} placeholder="www.example.com" />
-                <p className="text-xs text-muted-foreground">In Vercel, add this domain to the project, then point its DNS CNAME record to `cname.vercel-dns.com`.</p>
+                <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p>Point DNS CNAME to <code className="rounded bg-background px-1 py-0.5">cname.vercel-dns.com</code>.</p>
+                    <Badge variant={domainStatusVariant(editingSite.domainStatus)}>{domainStatusLabel(editingSite.domainStatus)}</Badge>
+                  </div>
+                  {editingSite.domainLastCheckedAt && <p className="mt-2">Last checked {new Date(editingSite.domainLastCheckedAt).toLocaleString()}</p>}
+                  {editingSite.domainVerifiedAt && <p className="mt-1 text-primary">Verified {new Date(editingSite.domainVerifiedAt).toLocaleString()}</p>}
+                  {editingSite.domainError && <p className="mt-1 text-amber-700 dark:text-amber-300">{editingSite.domainError}</p>}
+                  {domainMessages[editingSite.id] && <p className="mt-1 text-foreground">{domainMessages[editingSite.id]}</p>}
+                  {editingSite.domain && (
+                    <Button type="button" variant="outline" size="sm" className="mt-3" disabled={pending} onClick={() => handleCheckDomain(editingSite.id)}>
+                      <RefreshCw className="mr-1 size-3" />
+                      Check DNS now
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>

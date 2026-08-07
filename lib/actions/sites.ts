@@ -1,5 +1,6 @@
 "use server";
 
+import { resolve4, resolveCname } from "node:dns/promises";
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -15,6 +16,10 @@ function getPlatformDomain() {
   const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
   if (!domain) return null;
   return domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+}
+
+function getExpectedCnameTarget() {
+  return (process.env.DOMAIN_CNAME_TARGET || "cname.vercel-dns.com").trim().toLowerCase().replace(/\.$/, "");
 }
 
 function normalizeDomain(value: FormDataEntryValue | null) {
@@ -84,9 +89,10 @@ export async function updateSite(
 
   if (!id || !name) return { message: "Site ID and name are required." };
 
-  const [currentSite] = await db.select({ slug: sites.slug }).from(sites).where(eq(sites.id, id));
+  const [currentSite] = await db.select({ slug: sites.slug, domain: sites.domain, domainStatus: sites.domainStatus, domainVerifiedAt: sites.domainVerifiedAt }).from(sites).where(eq(sites.id, id));
   if (!currentSite) return { message: "Site not found." };
   const domain = customDomain ?? (getPlatformDomain() ? `${currentSite.slug}.${getPlatformDomain()}` : null);
+  const domainChanged = domain !== currentSite.domain;
 
   if (domain) {
     const [existingDomain] = await db.select({ id: sites.id }).from(sites).where(and(eq(sites.domain, domain), ne(sites.id, id)));
@@ -95,7 +101,17 @@ export async function updateSite(
 
   await db
     .update(sites)
-    .set({ name, description, domain, published, updatedAt: new Date().toISOString() })
+    .set({
+      name,
+      description,
+      domain,
+      domainStatus: domainChanged ? (domain ? "pending_dns" : "not_configured") : currentSite.domainStatus,
+      domainVerifiedAt: domainChanged ? null : currentSite.domainVerifiedAt,
+      domainLastCheckedAt: domainChanged && domain ? new Date().toISOString() : undefined,
+      domainError: domainChanged ? (domain ? "Domain has not been verified yet." : null) : undefined,
+      published,
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(sites.id, id));
   await setTenantFeatureAccess(id, enabledFeatures);
   revalidatePath("/admin/sites");
@@ -111,6 +127,60 @@ export async function deleteSite(id: number) {
 export async function getSites() {
   await requireRole("super_admin");
   return db.select().from(sites);
+}
+
+export async function checkSiteDomain(siteId: number) {
+  await requireRole("super_admin");
+  if (!Number.isInteger(siteId) || siteId < 1) throw new Error("Invalid site.");
+  const [site] = await db.select({ id: sites.id, domain: sites.domain }).from(sites).where(eq(sites.id, siteId));
+  if (!site) throw new Error("Site not found.");
+  if (!site.domain) {
+    await updateDomainStatus(site.id, "not_configured", "Add a custom domain before checking DNS.");
+    return { status: "not_configured", message: "Add a custom domain before checking DNS." };
+  }
+
+  const domain = site.domain.toLowerCase();
+  const expectedCname = getExpectedCnameTarget();
+  try {
+    const cnames = await resolveCname(domain).catch(() => []);
+    const normalizedCnames = cnames.map((entry) => entry.toLowerCase().replace(/\.$/, ""));
+    const cnameOk = normalizedCnames.some((entry) => entry === expectedCname || entry.endsWith(`.${expectedCname}`));
+    if (cnameOk) {
+      await updateDomainStatus(site.id, "verified", null);
+      return { status: "verified", message: "Domain CNAME is verified." };
+    }
+
+    const addresses = await resolve4(domain).catch(() => []);
+    if (addresses.length > 0 && process.env.DOMAIN_A_RECORDS) {
+      const expectedAddresses = process.env.DOMAIN_A_RECORDS.split(",").map((entry) => entry.trim()).filter(Boolean);
+      if (addresses.some((address) => expectedAddresses.includes(address))) {
+        await updateDomainStatus(site.id, "verified", null);
+        return { status: "verified", message: "Domain A record is verified." };
+      }
+    }
+
+    const message = normalizedCnames.length > 0
+      ? `Expected CNAME ${expectedCname}, found ${normalizedCnames.join(", ")}.`
+      : "No matching CNAME record found.";
+    await updateDomainStatus(site.id, "error", message);
+    return { status: "error", message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to check DNS.";
+    await updateDomainStatus(site.id, "error", message);
+    return { status: "error", message };
+  }
+}
+
+async function updateDomainStatus(siteId: number, status: "not_configured" | "pending_dns" | "verified" | "error", error: string | null) {
+  const now = new Date().toISOString();
+  await db.update(sites).set({
+    domainStatus: status,
+    domainVerifiedAt: status === "verified" ? now : null,
+    domainLastCheckedAt: now,
+    domainError: error,
+    updatedAt: now,
+  }).where(eq(sites.id, siteId));
+  revalidatePath("/admin/sites");
 }
 
 export async function getAllTenantFeatureAccess() {
@@ -146,7 +216,7 @@ export async function getSitePublishReadiness(): Promise<Record<number, SitePubl
       { key: "homepage", label: "Published homepage", complete: sitePages.some((page) => page.slug === "home" && page.published), helper: "Publish the home page before launch." },
       { key: "pages", label: "Published pages", complete: sitePages.some((page) => page.published), helper: "Publish at least one public page." },
       { key: "navigation", label: "Visible navigation", complete: siteNavLinks.length > 0, helper: "Add at least one visible navigation link." },
-      { key: "domain", label: "Custom domain", complete: Boolean(site.domain), helper: "Connect a custom domain or use the preview URL intentionally." },
+      { key: "domain", label: "Verified custom domain", complete: Boolean(site.domain && site.domainStatus === "verified"), helper: "Connect and verify a custom domain, or use the preview URL intentionally." },
       ...(hasCommerce ? [
         { key: "products", label: "Active products", complete: activeProducts.length > 0, helper: "Add active products before enabling commerce." },
         { key: "payments", label: "Payment method", complete: enabledPayments.length > 0, helper: "Enable at least one manual/test payment method." },
