@@ -15,6 +15,7 @@ import {
   Mail,
   FileText,
   ScrollText,
+  Download,
   Settings,
   LayoutPanelTop,
   Users,
@@ -93,6 +94,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
+      { href: "/admin/export", label: "Export", icon: Download, minRole: "admin" },
     ],
   },
 ];

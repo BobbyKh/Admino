@@ -17,3 +17,4 @@ export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from ".
 export { addStoreCartItem, completeStoreCheckout, getStoreCart, getStorePaymentMethods, updateStoreCartItem } from "./storefront-commerce";
 export { generateThemeFromPrompt, type AiGeneratedTheme, type GenerateThemeResult } from "./theme-ai";
 export { generateBlockConfig } from "./block-ai";
+export { exportTenantData } from "./export";
