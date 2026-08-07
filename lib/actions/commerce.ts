@@ -151,6 +151,7 @@ export async function updateCommerceSettings(formData: FormData) {
 function paymentConfigurationInput(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
   if (!isTestPaymentProvider(provider)) throw new Error("Unsupported test payment provider.");
+  const mode = formData.get("mode") === "live" ? "live" : "test";
   const testReference = String(formData.get("testReference") ?? "").trim().slice(0, 120);
   const merchantId = String(formData.get("merchantId") ?? "").trim().slice(0, 120);
   const publicKey = String(formData.get("publicKey") ?? "").trim().slice(0, 240);
@@ -162,7 +163,7 @@ function paymentConfigurationInput(formData: FormData) {
     enabled: formData.get("enabled") === "on",
     accountId: testReference || null,
     settings: JSON.stringify({
-      mode: "test",
+      mode,
       testReference: testReference || null,
       merchantId: merchantId || null,
       publicKey: publicKey || null,

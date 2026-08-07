@@ -19,7 +19,7 @@ export const testPaymentProviderRegistry: Record<
   },
   esewa: {
     label: "eSewa",
-    description: "Configure eSewa merchant details here; keep client secrets in environment variables.",
+    description: "Configure eSewa merchant details for test or live payments.",
   },
   qr: {
     label: "QR payment",

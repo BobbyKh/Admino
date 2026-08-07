@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     db.select({ slug: sites.slug }).from(sites).where(eq(sites.id, order.siteId)).then((rows) => rows[0]),
   ]);
   if (!configuration || !secretRow?.value || !site) return new NextResponse("eSewa configuration not found.", { status: 503 });
-  const merchantId = parseMerchantId(configuration.settings);
+  const config = parseSettings(configuration.settings);
   const secrets = decryptCommerceSecrets(secretRow.value);
   const signedFields = payload.signed_field_names?.split(",") ?? [];
   const message = signedFields.map((field) => `${field}=${payload[field] ?? ""}`).join(",");
@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
   const validSignature = payload.signature && Buffer.byteLength(expected) === Buffer.byteLength(payload.signature) && timingSafeEqual(Buffer.from(expected), Buffer.from(payload.signature));
   const expectedTotal = (order.total / 100).toFixed(2);
   const amountMatches = Number(payload.total_amount).toFixed(2) === expectedTotal;
-  const isComplete = payload.status === "COMPLETE" && payload.product_code === merchantId && amountMatches && validSignature;
-  if (isComplete) await db.update(orders).set({ status: "paid", paymentStatus: "paid", providerPaymentId: payload.transaction_code, updatedAt: new Date().toISOString() }).where(eq(orders.id, order.id));
+  const isComplete = payload.status === "COMPLETE" && payload.product_code === config.merchantId && amountMatches && validSignature;
+  if (isComplete) await db.update(orders).set({ status: "paid", paymentStatus: "paid", providerPaymentId: payload.transaction_code || `${config.mode}:${payload.transaction_uuid}`, updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   const status = isComplete ? "success" : "failed";
   return NextResponse.redirect(new URL(`/?site=${encodeURIComponent(site.slug)}&payment=${status}&order=${encodeURIComponent(order.orderNumber)}`, request.url));
 }
 
-function parseMerchantId(raw: string | null) { try { const value = JSON.parse(raw ?? "{}") as Record<string, unknown>; return typeof value.merchantId === "string" ? value.merchantId : ""; } catch { return ""; } }
+function parseSettings(raw: string | null) { try { const value = JSON.parse(raw ?? "{}") as Record<string, unknown>; return { merchantId: typeof value.merchantId === "string" ? value.merchantId : "", mode: value.mode === "live" ? "live" : "test" }; } catch { return { merchantId: "", mode: "test" }; } }

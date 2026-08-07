@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const config = parseSettings(configuration.settings);
   const secrets = decryptCommerceSecrets(secretRow.value);
   if (!config.merchantId || !secrets.secretKey) return new NextResponse("eSewa service code and signing key are required.", { status: 503 });
+  if (config.mode === "live" && !secrets.clientSecret) return new NextResponse("Live eSewa client secret is required.", { status: 503 });
   const amount = (order.subtotal / 100).toFixed(2);
   const totalAmount = (order.total / 100).toFixed(2);
   const hostHeaders = await headers();
@@ -31,8 +32,9 @@ export async function GET(request: NextRequest) {
   const signature = createHmac("sha256", secrets.secretKey).update(message).digest("base64");
   const fields: Record<string, string> = { amount, tax_amount: "0", total_amount: totalAmount, transaction_uuid: order.orderNumber, product_code: config.merchantId, product_service_charge: "0", product_delivery_charge: "0", success_url: `${origin}/api/payments/esewa/callback`, failure_url: `${origin}/api/payments/esewa/failure?order=${encodeURIComponent(order.orderNumber)}`, signed_field_names: signedFieldNames, signature };
   const inputs = Object.entries(fields).map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join("");
-  return new NextResponse(`<!doctype html><html><body><form id="payment" action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST">${inputs}</form><script>document.getElementById('payment').submit()</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  const endpoint = config.mode === "live" ? "https://epay.esewa.com.np/api/epay/main/v2/form" : "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
+  return new NextResponse(`<!doctype html><html><body><form id="payment" action="${endpoint}" method="POST">${inputs}</form><script>document.getElementById('payment').submit()</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 
-function parseSettings(raw: string | null) { try { const value = JSON.parse(raw ?? "{}") as Record<string, unknown>; return { merchantId: typeof value.merchantId === "string" ? value.merchantId : "" }; } catch { return { merchantId: "" }; } }
+function parseSettings(raw: string | null) { try { const value = JSON.parse(raw ?? "{}") as Record<string, unknown>; return { merchantId: typeof value.merchantId === "string" ? value.merchantId : "", mode: value.mode === "live" ? "live" : "test" }; } catch { return { merchantId: "", mode: "test" }; } }
 function escapeHtml(value: string) { return value.replace(/[&<>"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character] ?? character); }

@@ -76,7 +76,8 @@ export async function getStorePaymentMethods() {
     if (!isTestPaymentProvider(configuration.provider)) return [];
     const provider: TestPaymentProvider = configuration.provider;
     const settings = parsePaymentSettings(configuration.settings);
-    return [{ id: provider, label: testPaymentProviderRegistry[provider].label, qrImage: provider === "qr" ? settings.qrImage : null, instructions: provider === "qr" ? settings.qrInstructions : null }];
+    const modeLabel = provider === "esewa" ? ` (${settings.mode === "live" ? "Live" : "Test"})` : "";
+    return [{ id: provider, label: `${testPaymentProviderRegistry[provider].label}${modeLabel}`, qrImage: provider === "qr" ? settings.qrImage : null, instructions: provider === "qr" ? settings.qrInstructions : null }];
   });
 }
 
@@ -117,6 +118,7 @@ function parsePaymentSettings(raw: string | null) {
     return {
       qrImage: typeof value.qrImage === "string" ? value.qrImage : null,
       qrInstructions: typeof value.qrInstructions === "string" ? value.qrInstructions : null,
+      mode: value.mode === "live" ? "live" : "test",
     };
-  } catch { return { qrImage: null, qrInstructions: null }; }
+  } catch { return { qrImage: null, qrInstructions: null, mode: "test" }; }
 }
