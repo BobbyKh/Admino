@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -31,8 +31,10 @@ interface Product {
   currency?: string;
 }
 
-function parseProducts(raw: string | null): Product[] {
+function parseProducts(raw: unknown): Product[] {
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((item): item is Product => typeof item === "object" && item !== null && "name" in item && "price" in item);
+  if (typeof raw !== "string") return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -45,12 +47,14 @@ function parseProducts(raw: string | null): Product[] {
 export function ProductGridBlock({ config, products: catalogProducts }: { config: string | null; products: CatalogProduct[] }) {
   const c = parseConfig(config);
   const configuredProducts = parseProducts(c.items);
-  const featuredProductLimit = Math.max(1, Number(c.limit) || 4);
-  const featuredCatalogProducts = catalogProducts
-    .filter((product) => product.featured)
-    .slice(0, featuredProductLimit);
+  const source = c.source === "all" ? "all" : "featured";
+  const showFilters = c.showFilters === true || c.showFilters === "true" || (source === "all" && c.showFilters !== "false");
+  const configuredLimit = Number(c.limit);
+  const productLimit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : source === "featured" ? 4 : 0;
+  const sourceCatalogProducts = source === "all" ? catalogProducts : catalogProducts.filter((product) => product.featured);
+  const displayedCatalogProducts = productLimit > 0 ? sourceCatalogProducts.slice(0, productLimit) : sourceCatalogProducts;
   const products: Product[] = catalogProducts.length > 0
-    ? featuredCatalogProducts.map((product) => ({
+    ? displayedCatalogProducts.map((product) => ({
       name: product.title,
       price: formatPrice(product.price, product.currency),
       image: product.image ?? undefined,
@@ -65,7 +69,7 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
       currency: product.currency,
     }))
     : configuredProducts;
-  const columns = c.columns || "3";
+  const columns = String(c.columns || "3");
   const [category, setCategory] = React.useState("all");
   const [minPrice, setMinPrice] = React.useState("");
   const [maxPrice, setMaxPrice] = React.useState("");
@@ -92,7 +96,7 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
         )}
       </div>
-      {featuredCatalogProducts.length > 0 && (
+      {showFilters && products.length > 0 && (
         <ProductGridFilters
           categories={categories}
           category={category}

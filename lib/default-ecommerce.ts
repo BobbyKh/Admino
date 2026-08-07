@@ -81,6 +81,8 @@ export async function createEcommerceTemplate(
       title: "Featured collection",
       subtitle: "A few current favorites from our store.",
       badge: "Just in",
+      source: "featured",
+      showFilters: "false",
       columns: "4",
       items: [
         { name: "Canvas carryall", price: "$48", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80", description: "A durable everyday bag.", badge: "New" },

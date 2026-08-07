@@ -1,0 +1,13 @@
+ALTER TABLE "cart_items" ADD COLUMN "selected_options" text DEFAULT '{}' NOT NULL;
+ALTER TABLE "order_items" ADD COLUMN "selected_options" text DEFAULT '{}' NOT NULL;
+ALTER TABLE "orders" ADD COLUMN "customer_name" text;
+ALTER TABLE "orders" ADD COLUMN "phone" text;
+ALTER TABLE "orders" ADD COLUMN "address_line_1" text;
+ALTER TABLE "orders" ADD COLUMN "address_line_2" text;
+ALTER TABLE "orders" ADD COLUMN "city" text;
+ALTER TABLE "orders" ADD COLUMN "state" text;
+ALTER TABLE "orders" ADD COLUMN "postal_code" text;
+ALTER TABLE "orders" ADD COLUMN "country" text;
+ALTER TABLE "orders" ADD COLUMN "delivery_notes" text;
+DROP INDEX IF EXISTS "cart_items_cart_product_idx";
+CREATE UNIQUE INDEX IF NOT EXISTS "cart_items_cart_product_options_idx" ON "cart_items" ("cart_id", "product_id", "selected_options");

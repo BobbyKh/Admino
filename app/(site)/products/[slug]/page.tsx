@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Package, ShieldCheck, Truck } from "lucide-react";
-import { AddToCartButton } from "@/components/site/add-to-cart-button";
+import { ProductPurchaseOptions } from "@/components/site/product-purchase-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,15 +108,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           {product.description && <p className="text-base leading-7 text-muted-foreground">{product.description}</p>}
 
-          {(sizes.length > 0 || colors.length > 0) && (
-            <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
-              {sizes.length > 0 && <OptionList label="Sizes" options={sizes} />}
-              {colors.length > 0 && <OptionList label="Colors" options={colors} />}
-              <p className="text-xs text-muted-foreground">Option choices are confirmed after you contact the store or during order handling.</p>
-            </div>
-          )}
-
-          <AddToCartButton productId={product.id} available={product.inventoryQuantity > 0} />
+          <ProductPurchaseOptions productId={product.id} available={product.inventoryQuantity > 0} sizes={sizes} colors={colors} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <TrustCard icon={<Truck className="size-5" />} title="Order support" text="The store will confirm availability and fulfillment details." />
@@ -148,15 +140,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </section>
       )}
-    </div>
-  );
-}
-
-function OptionList({ label, options }: { label: string; options: string[] }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium">{label}</p>
-      <div className="flex flex-wrap gap-2">{options.map((option) => <Badge key={option} variant="outline">{option}</Badge>)}</div>
     </div>
   );
 }

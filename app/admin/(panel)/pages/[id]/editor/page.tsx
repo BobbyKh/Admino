@@ -567,6 +567,18 @@ function BlockConfigEditor({
         </div>
       );
 
+    case "productGrid":
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1"><Label>Title</Label><Input value={config.title ?? ""} onChange={(e) => updateConfig("title", e.target.value)} /></div>
+          <div className="space-y-1"><Label>Subtitle</Label><Input value={config.subtitle ?? ""} onChange={(e) => updateConfig("subtitle", e.target.value)} /></div>
+          <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><Label>Badge</Label><Input value={config.badge ?? ""} onChange={(e) => updateConfig("badge", e.target.value)} /></div><div className="space-y-1"><Label>Columns</Label><select value={config.columns ?? "3"} onChange={(e) => updateConfig("columns", e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div></div>
+          <div className="grid grid-cols-2 gap-2"><div className="space-y-1"><Label>Products to show</Label><select value={config.source ?? "all"} onChange={(e) => updateConfig("source", e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="all">All active products</option><option value="featured">Featured products only</option></select></div><div className="space-y-1"><Label>Maximum products</Label><Input value={config.limit ?? ""} type="number" min="1" placeholder="No limit" onChange={(e) => updateConfig("limit", e.target.value)} /></div></div>
+          <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={config.showFilters === true || config.showFilters === "true"} onChange={(e) => updateConfig("showFilters", e.target.checked ? "true" : "false")} />Show category and price filters</label>
+          <p className="text-xs text-muted-foreground">Use “Featured products only” for homepage sections. Use “All active products” with filters for a dedicated shop page.</p>
+        </div>
+      );
+
     case "serviceGrid":
       return (
         <div className="space-y-3">

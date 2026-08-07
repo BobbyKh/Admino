@@ -267,11 +267,11 @@ export const BLOCK_TYPES: BlockType[] = [
   },
   {
     type: "productGrid",
-    label: "Featured Product Grid",
-    description: "Latest featured product cards with images and add-to-cart",
+    label: "Product Grid",
+    description: "All or featured product cards with images, filters, and add-to-cart",
     icon: ShoppingCart,
     group: "commerce",
-    defaultConfig: { title: "Featured Products", subtitle: "", badge: "", columns: "3", limit: "4", items: [{ name: "Product 1", price: "$29", image: "", description: "Great product", badge: "New" }] },
+    defaultConfig: { title: "Shop products", subtitle: "Browse the catalog", badge: "", source: "all", showFilters: "true", columns: "3", limit: "", items: [{ name: "Product 1", price: "$29", image: "", description: "Great product", badge: "New" }] },
   },
   {
     type: "serviceGrid",

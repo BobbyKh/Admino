@@ -381,11 +381,12 @@ export const cartItems = pgTable("cart_items", {
   id: serial("id").primaryKey(),
   cartId: integer("cart_id").notNull().references(() => carts.id, { onDelete: "cascade" }),
   productId: integer("product_id").notNull().references(() => products.id, { onDelete: "restrict" }),
+  selectedOptions: text("selected_options").notNull().default("{}"),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: integer("unit_price").notNull(),
 }, (t) => ({
   cartIdIdx: index("cart_items_cart_id_idx").on(t.cartId),
-  cartProductUnique: uniqueIndex("cart_items_cart_product_idx").on(t.cartId, t.productId),
+  cartProductOptionsUnique: uniqueIndex("cart_items_cart_product_options_idx").on(t.cartId, t.productId, t.selectedOptions),
 }));
 
 export const paymentConfigurations = pgTable("payment_configurations", {
@@ -406,6 +407,15 @@ export const orders = pgTable("orders", {
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
   orderNumber: text("order_number").notNull().unique(),
   email: text("email").notNull(),
+  customerName: text("customer_name"),
+  phone: text("phone"),
+  addressLine1: text("address_line_1"),
+  addressLine2: text("address_line_2"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country"),
+  deliveryNotes: text("delivery_notes"),
   currency: text("currency").notNull(),
   subtotal: integer("subtotal").notNull(),
   total: integer("total").notNull(),
@@ -426,6 +436,7 @@ export const orderItems = pgTable("order_items", {
   orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
   productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
   title: text("title").notNull(),
+  selectedOptions: text("selected_options").notNull().default("{}"),
   quantity: integer("quantity").notNull(),
   unitPrice: integer("unit_price").notNull(),
 }, (t) => ({
