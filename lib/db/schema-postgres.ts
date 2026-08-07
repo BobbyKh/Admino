@@ -252,6 +252,20 @@ export const userFeatures = pgTable("user_features", {
   userIdIdx: index("user_features_user_id_idx").on(t.userId),
 }));
 
+export const pageRevisions = pgTable("page_revisions", {
+  id: serial("id").primaryKey(),
+  pageId: integer("page_id").notNull().references(() => pages.id, { onDelete: "cascade" }),
+  userId: integer("user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  label: text("label").notNull(),
+  snapshot: text("snapshot").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  pageIdIdx: index("page_revisions_page_id_idx").on(t.pageId),
+  createdAtIdx: index("page_revisions_created_at_idx").on(t.createdAt),
+}));
+
 // ─── Ecommerce (tenant-scoped) ──────────────────────────────────────────────
 
 export const products = pgTable("products", {
@@ -420,6 +434,15 @@ export const activityLogs = pgTable("activity_logs", {
   createdAtIdx: index("activity_logs_created_at_idx").on(t.createdAt),
 }));
 
+export const rateLimitBuckets = pgTable("rate_limit_buckets", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  resetAt: text("reset_at").notNull(),
+  updatedAt: text("updated_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 export type GalleryImage = typeof galleryImages.$inferSelect;
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type MenuItem = typeof menuItems.$inferSelect;
@@ -432,6 +455,7 @@ export type HomeSection = typeof homeSections.$inferSelect;
 export type Site = typeof sites.$inferSelect;
 export type Page = typeof pages.$inferSelect;
 export type PageBlock = typeof pageBlocks.$inferSelect;
+export type PageRevision = typeof pageRevisions.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
@@ -443,6 +467,7 @@ export type PaymentConfiguration = typeof paymentConfigurations.$inferSelect;
 export type ServiceCategory = typeof serviceCategories.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type UserFeature = typeof userFeatures.$inferSelect;
+export type RateLimitBucket = typeof rateLimitBuckets.$inferSelect;
 export type NewUserFeature = typeof userFeatures.$inferInsert;
 
 export type NewBooking = typeof bookings.$inferInsert;

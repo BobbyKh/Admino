@@ -8,6 +8,13 @@
       "when": 1785645699638,
       "tag": "0000_mysterious_jetstream",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786118400000,
+      "tag": "0001_launch_hardening",
+      "breakpoints": true
     }
   ]
 }

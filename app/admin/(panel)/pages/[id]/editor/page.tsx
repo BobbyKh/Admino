@@ -15,6 +15,7 @@ import {
   Loader2,
   Blocks,
   Sparkles,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,6 +52,8 @@ import {
   updatePageBlock,
   deletePageBlock,
   reorderPageBlocks,
+  getPageRevisions,
+  restorePageRevision,
   generateBlockConfig,
 } from "@/lib/actions/index";
 import {
@@ -672,6 +675,7 @@ export default function BlockEditorPage() {
 
   const [page, setPage] = useState<Page | null>(null);
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
+  const [revisions, setRevisions] = useState<Array<{ id: number; label: string; createdAt: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [blockSearch, setBlockSearch] = useState("");
@@ -683,12 +687,14 @@ export default function BlockEditorPage() {
   // Load page and blocks
   useEffect(() => {
     async function load() {
-      const [pageData, blocksData] = await Promise.all([
+      const [pageData, blocksData, revisionData] = await Promise.all([
         getPage(pageId),
         getPageBlocks(pageId),
+        getPageRevisions(pageId),
       ]);
       setPage(pageData);
       setBlocks(blocksData);
+      setRevisions(revisionData);
       setExpandedId(blocksData[0]?.id ?? null);
       setLoading(false);
     }
@@ -707,7 +713,9 @@ export default function BlockEditorPage() {
         const result = await addPageBlock({}, formData);
         if (!result.success) throw new Error(result.message || "Unable to add block.");
         const updated = await getPageBlocks(pageId);
+        const revisionData = await getPageRevisions(pageId);
         setBlocks(updated);
+        setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
         setSaveStatus("error");
@@ -733,7 +741,9 @@ export default function BlockEditorPage() {
         const result = await updatePageBlock({}, formData);
         if (!result.success) throw new Error(result.message || "Unable to save block.");
         const updated = await getPageBlocks(pageId);
+        const revisionData = await getPageRevisions(pageId);
         setBlocks(updated);
+        setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
         setSaveStatus("error");
@@ -768,7 +778,9 @@ export default function BlockEditorPage() {
       setSaveError(null);
       try {
         await deletePageBlock(blockId);
+        const revisionData = await getPageRevisions(pageId);
         setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+        setRevisions(revisionData);
         if (expandedId === blockId) setExpandedId(null);
         setSaveStatus("saved");
       } catch (error) {
@@ -778,7 +790,7 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [expandedId]
+    [expandedId, pageId]
   );
 
   const handleReorder = useCallback(
@@ -794,6 +806,8 @@ export default function BlockEditorPage() {
       setSaveError(null);
       try {
         await reorderPageBlocks(orderedIds);
+        const revisionData = await getPageRevisions(pageId);
+        setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
         setSaveStatus("error");
@@ -802,8 +816,27 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [blocks]
+    [blocks, pageId]
   );
+
+  const handleRestoreRevision = useCallback(async (revisionId: number) => {
+    setPending(true);
+    setSaveStatus("saving");
+    setSaveError(null);
+    try {
+      await restorePageRevision(revisionId);
+      const [updated, revisionData] = await Promise.all([getPageBlocks(pageId), getPageRevisions(pageId)]);
+      setBlocks(updated);
+      setRevisions(revisionData);
+      setExpandedId(updated[0]?.id ?? null);
+      setSaveStatus("saved");
+    } catch (error) {
+      setSaveStatus("error");
+      setSaveError(error instanceof Error ? error.message : "Unable to restore revision.");
+    } finally {
+      setPending(false);
+    }
+  }, [pageId]);
 
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const filteredBlockTypes = BLOCK_TYPES.filter((blockType) => {
@@ -877,6 +910,38 @@ export default function BlockEditorPage() {
           <div className="mb-4">
             <h2 className="font-semibold">Block palette</h2>
             <p className="text-xs text-muted-foreground">Click or drag a block onto the canvas.</p>
+          </div>
+          <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">Revision history</p>
+                <p className="text-xs text-muted-foreground">Undo recent builder changes.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={revisions.length === 0}
+                onClick={() => revisions[0] && handleRestoreRevision(revisions[0].id)}
+              >
+                <Undo2 className="size-3.5" />Undo
+              </Button>
+            </div>
+            {revisions.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {revisions.slice(0, 5).map((revision) => (
+                  <button
+                    key={revision.id}
+                    type="button"
+                    onClick={() => handleRestoreRevision(revision.id)}
+                    className="block w-full truncate rounded px-2 py-1 text-left text-xs text-muted-foreground hover:bg-background hover:text-foreground"
+                    title={`${revision.label} · ${new Date(revision.createdAt).toLocaleString()}`}
+                  >
+                    {revision.label} · {new Date(revision.createdAt).toLocaleTimeString()}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <Input
             value={blockSearch}

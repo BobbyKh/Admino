@@ -6,6 +6,7 @@ import * as pg from "./schema-postgres";
 export const sites = pg.sites;
 export const pages = pg.pages;
 export const pageBlocks = pg.pageBlocks;
+export const pageRevisions = pg.pageRevisions;
 export const settings = pg.settings;
 export const galleryImages = pg.galleryImages;
 export const menuCategories = pg.menuCategories;
@@ -27,10 +28,12 @@ export const cartItems = pg.cartItems;
 export const paymentConfigurations = pg.paymentConfigurations;
 export const orders = pg.orders;
 export const orderItems = pg.orderItems;
+export const rateLimitBuckets = pg.rateLimitBuckets;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
 export type PageBlock = pg.PageBlock;
+export type PageRevision = pg.PageRevision;
 export type GalleryImage = pg.GalleryImage;
 export type MenuCategory = pg.MenuCategory;
 export type MenuItem = pg.MenuItem;
@@ -51,6 +54,7 @@ export type OrderItem = pg.OrderItem;
 export type PaymentConfiguration = pg.PaymentConfiguration;
 export type ServiceCategory = pg.ServiceCategory;
 export type Service = pg.Service;
+export type RateLimitBucket = pg.RateLimitBucket;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

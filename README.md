@@ -70,6 +70,10 @@ In local development, use:
 http://localhost:3000/?site=<site-slug>
 ```
 
+## Ecommerce Payment Mode
+
+Checkout is currently positioned for manual/test payments, not production automated payment processing. Enabled methods can collect QR payment references or send sandbox/test provider requests, and merchants must verify payment before fulfillment. Do not market ecommerce as live card processing until live credentials, webhooks, reconciliation, refunds, and dispute handling are implemented and tested.
+
 ## Project Structure
 
 ```text
@@ -91,4 +95,5 @@ scripts/           Seed and maintenance scripts
 - The app is PostgreSQL-only.
 - Public sites must be published before rendering.
 - Rich text and custom HTML are sanitized before rendering.
+- Page-builder changes are snapshotted so recent block edits can be restored from revision history.
 - `npm run lint` currently passes with warnings only.

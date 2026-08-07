@@ -28,7 +28,7 @@ export async function getStoreCart(token: string | null) {
   if (!token) return { items: [], subtotal: 0, currency: "usd" };
   const cart = await getCartForSite(token, siteId);
   if (!cart) return { items: [], subtotal: 0, currency: "usd" };
-  const items = await db.select({ id: cartItems.id, quantity: cartItems.quantity, productId: products.id, title: products.title, image: products.image, price: cartItems.unitPrice, inventoryQuantity: products.inventoryQuantity }).from(cartItems).innerJoin(products, eq(cartItems.productId, products.id)).where(eq(cartItems.cartId, cart.id));
+  const items = await db.select({ id: cartItems.id, quantity: cartItems.quantity, productId: products.id, title: products.title, image: products.image, price: cartItems.unitPrice, inventoryQuantity: products.inventoryQuantity }).from(cartItems).innerJoin(products, eq(cartItems.productId, products.id)).where(and(eq(cartItems.cartId, cart.id), eq(products.siteId, siteId)));
   return { items, subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0), currency: cart.currency };
 }
 
@@ -100,7 +100,7 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
     for (const item of items.items) {
       const [product] = await tx.select().from(products).where(and(eq(products.id, item.productId), eq(products.siteId, siteId), eq(products.status, "active")));
       if (!product || product.inventoryQuantity < item.quantity) throw new Error(`${item.title} is no longer available in that quantity.`);
-      await tx.update(products).set({ inventoryQuantity: product.inventoryQuantity - item.quantity, updatedAt: new Date().toISOString() }).where(eq(products.id, product.id));
+      await tx.update(products).set({ inventoryQuantity: product.inventoryQuantity - item.quantity, updatedAt: new Date().toISOString() }).where(and(eq(products.id, product.id), eq(products.siteId, siteId)));
     }
     const paymentStatus = input.data.provider === "qr" ? "awaiting_verification" : "payment_pending";
     const [order] = await tx.insert(orders).values({ siteId, orderNumber, email: input.data.email, currency: cart.currency, subtotal: items.subtotal, total: items.subtotal, status: "pending", paymentStatus, paymentProvider: input.data.provider, providerPaymentId: input.data.paymentReference || null, updatedAt: new Date().toISOString() }).returning();

@@ -261,7 +261,7 @@ async function getTenantOrder(orderId: number) {
 export async function approveOrderPayment(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "pending" || !["awaiting_verification", "payment_pending"].includes(order.paymentStatus)) throw new Error("This order cannot be approved.");
-  await db.update(orders).set({ status: "paid", paymentStatus: "paid", updatedAt: new Date().toISOString() }).where(eq(orders.id, order.id));
+  await db.update(orders).set({ status: "paid", paymentStatus: "paid", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   revalidateCommerce();
 }
 
@@ -271,9 +271,9 @@ export async function rejectOrderPayment(orderId: number) {
   await db.transaction(async (tx) => {
     const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
     for (const item of items) {
-      if (item.productId) await tx.update(products).set({ inventoryQuantity: sql`${products.inventoryQuantity} + ${item.quantity}`, updatedAt: new Date().toISOString() }).where(eq(products.id, item.productId));
+      if (item.productId) await tx.update(products).set({ inventoryQuantity: sql`${products.inventoryQuantity} + ${item.quantity}`, updatedAt: new Date().toISOString() }).where(and(eq(products.id, item.productId), eq(products.siteId, order.siteId)));
     }
-    await tx.update(orders).set({ status: "cancelled", paymentStatus: "failed", updatedAt: new Date().toISOString() }).where(eq(orders.id, order.id));
+    await tx.update(orders).set({ status: "cancelled", paymentStatus: "failed", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   });
   revalidateCommerce();
 }
@@ -281,6 +281,6 @@ export async function rejectOrderPayment(orderId: number) {
 export async function fulfillOrder(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "paid" || order.paymentStatus !== "paid") throw new Error("Approve payment before marking an order delivered.");
-  await db.update(orders).set({ status: "fulfilled", updatedAt: new Date().toISOString() }).where(eq(orders.id, order.id));
+  await db.update(orders).set({ status: "fulfilled", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   revalidateCommerce();
 }

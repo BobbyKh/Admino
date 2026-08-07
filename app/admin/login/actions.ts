@@ -14,7 +14,7 @@ export async function adminLogin(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  const limit = checkRateLimit(`login:${await getClientIp()}:${email || "unknown"}`);
+  const limit = await checkRateLimit(`login:${await getClientIp()}:${email || "unknown"}`);
   if (!limit.allowed) {
     return { error: "Too many login attempts. Try again in a minute." };
   }

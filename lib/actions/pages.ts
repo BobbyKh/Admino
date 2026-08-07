@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, asc, inArray, ne } from "drizzle-orm";
+import { and, eq, asc, desc, inArray, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { pages, pageBlocks } from "@/lib/db/schema";
+import { pages, pageBlocks, pageRevisions } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
@@ -38,6 +38,62 @@ function canWritePage(role: string) {
 
 async function requirePagesFeature(user: { id: number; role: string }, siteId: number) {
   await requireTenantFeature(siteId, "pages", { role: (user.role as Role) ?? "viewer", userId: user.id });
+}
+
+async function createPageRevision(pageId: number, label: string, userId: number) {
+  const blocks = await db.select().from(pageBlocks).where(eq(pageBlocks.pageId, pageId)).orderBy(asc(pageBlocks.sortOrder));
+  await db.insert(pageRevisions).values({
+    pageId,
+    userId,
+    label,
+    snapshot: JSON.stringify({ blocks }),
+  });
+}
+
+export async function getPageRevisions(pageId: number) {
+  const page = await requirePageAccess(pageId);
+  const user = await requireSiteAccess(page.siteId);
+  await requirePagesFeature(user, page.siteId);
+  return db
+    .select({ id: pageRevisions.id, label: pageRevisions.label, createdAt: pageRevisions.createdAt })
+    .from(pageRevisions)
+    .where(eq(pageRevisions.pageId, pageId))
+    .orderBy(desc(pageRevisions.createdAt))
+    .limit(20);
+}
+
+export async function restorePageRevision(revisionId: number) {
+  const [revision] = await db.select().from(pageRevisions).where(eq(pageRevisions.id, revisionId));
+  if (!revision) throw new Error("Revision not found.");
+  const page = await requirePageAccess(revision.pageId);
+  const user = await requireSiteAccess(page.siteId);
+  if (!canWritePage(user.role)) throw new Error("Forbidden");
+  await requirePagesFeature(user, page.siteId);
+
+  let snapshot: { blocks?: Array<{ type: string; title: string | null; sortOrder: number; visible: boolean; config: string | null }> };
+  try {
+    snapshot = JSON.parse(revision.snapshot) as typeof snapshot;
+  } catch {
+    throw new Error("Revision snapshot is invalid.");
+  }
+
+  await createPageRevision(page.id, "Before revision restore", user.id);
+  await db.transaction(async (tx) => {
+    await tx.delete(pageBlocks).where(eq(pageBlocks.pageId, page.id));
+    for (const block of snapshot.blocks ?? []) {
+      await tx.insert(pageBlocks).values({
+        pageId: page.id,
+        type: block.type,
+        title: block.title,
+        sortOrder: block.sortOrder,
+        visible: block.visible,
+        config: block.config,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  });
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/pages");
 }
 
 export async function createPage(
@@ -204,6 +260,7 @@ const page = await requirePageAccess(pageId);
 
   const defaultConfig = getDefaultConfig(type);
 
+  await createPageRevision(page.id, "Before adding block", user.id);
   await db.insert(pageBlocks).values({
     pageId,
     type,
@@ -250,6 +307,7 @@ export async function updatePageBlock(
     }
   }
 
+  await createPageRevision(page.id, "Before updating block", user.id);
   await db
     .update(pageBlocks)
     .set(updates)
@@ -266,6 +324,7 @@ export async function deletePageBlock(id: number) {
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
   await requirePagesFeature(user, page.siteId);
+  await createPageRevision(page.id, "Before deleting block", user.id);
   await db.delete(pageBlocks).where(eq(pageBlocks.id, id));
   revalidatePath("/", "layout");
   revalidatePath("/admin/pages");
@@ -280,6 +339,7 @@ const page = await requirePageAccess(pageId);
   const user = await requireSiteAccess(page.siteId);
   if (!canWritePage(user.role)) throw new Error("Forbidden");
   await requirePagesFeature(user, page.siteId);
+  await createPageRevision(page.id, "Before reordering blocks", user.id);
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(pageBlocks).set({ sortOrder: i }).where(eq(pageBlocks.id, orderedIds[i]));

@@ -1,33 +1,36 @@
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { rateLimitBuckets } from "@/lib/db/schema";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute per IP
 
-export function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+export async function checkRateLimit(key: string): Promise<{ allowed: boolean; remaining: number }> {
   const now = Date.now();
-  const record = rateLimitMap.get(ip);
+  const bucketKey = key.slice(0, 240);
+  const resetAt = new Date(now + RATE_LIMIT_WINDOW_MS).toISOString();
 
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
-  }
+  const [bucket] = await db
+    .insert(rateLimitBuckets)
+    .values({ key: bucketKey, count: 1, resetAt, updatedAt: new Date(now).toISOString() })
+    .onConflictDoUpdate({
+      target: rateLimitBuckets.key,
+      set: {
+        count: sql`case when ${rateLimitBuckets.resetAt} <= ${new Date(now).toISOString()} then 1 else ${rateLimitBuckets.count} + 1 end`,
+        resetAt: sql`case when ${rateLimitBuckets.resetAt} <= ${new Date(now).toISOString()} then ${resetAt} else ${rateLimitBuckets.resetAt} end`,
+        updatedAt: new Date(now).toISOString(),
+      },
+    })
+    .returning({ count: rateLimitBuckets.count, resetAt: rateLimitBuckets.resetAt });
 
-  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+  if (!bucket) return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
+  if (new Date(bucket.resetAt).getTime() > now && bucket.count > RATE_LIMIT_MAX_REQUESTS) {
     return { allowed: false, remaining: 0 };
   }
 
-  record.count++;
-  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - record.count };
+  return { allowed: true, remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - bucket.count) };
 }
 
-// Clean up old entries periodically
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, record] of rateLimitMap.entries()) {
-      if (now > record.resetTime) {
-        rateLimitMap.delete(ip);
-      }
-    }
-  }, 60_000);
+export async function deleteExpiredRateLimitBuckets() {
+  await db.delete(rateLimitBuckets).where(sql`${rateLimitBuckets.resetAt} <= ${new Date().toISOString()}`);
 }
