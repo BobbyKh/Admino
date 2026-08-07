@@ -26,7 +26,7 @@ export default async function SiteLayout({
       >
         Skip to content
       </a>
-      {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showCart={site.template === "ecommerce" && layout.headerShowCart} />}
+      {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showLogo={layout.headerShowLogo} showSiteName={layout.headerShowSiteName} showCart={site.template === "ecommerce" && layout.headerShowCart} />}
       <main id="main-content" data-template={site.template} className="flex-1">{children}</main>
       {layout.footerVisible && <Footer settings={settings} navLinks={navLinks} layout={layout} />}
       {settings.aiChatEnabled === "true" && settings.hasAiApiKey === "true" && (

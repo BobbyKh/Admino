@@ -21,11 +21,15 @@ export function Navbar({
   settings,
   navLinks,
   showCart = false,
+  showLogo = true,
+  showSiteName = true,
   sticky = true,
 }: {
   settings: SiteSettings;
   navLinks: NavLink[];
   showCart?: boolean;
+  showLogo?: boolean;
+  showSiteName?: boolean;
   sticky?: boolean;
 }) {
   const pathname = usePathname();
@@ -38,24 +42,26 @@ export function Navbar({
   return (
     <header className={`${sticky ? "sticky top-0" : "relative"} z-40 w-full border-b bg-background/80 backdrop-blur-md`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href={withPreviewSite("/", siteSlug)} className="flex items-center gap-2">
-          {settings.logo ? (
+        <Link href={withPreviewSite("/", siteSlug)} className="flex min-w-0 items-center gap-2">
+          {showLogo && settings.logo ? (
             <Image
               src={settings.logo}
               alt={settings.siteName}
-              width={36}
-              height={36}
-              className="size-9 rounded-full object-cover"
+              width={120}
+              height={40}
+              className="h-10 w-auto max-w-36 rounded-md object-contain"
               unoptimized
             />
-          ) : (
+          ) : showLogo ? (
             <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Leaf className="size-4" />
             </span>
+          ) : null}
+          {showSiteName && (
+            <span className="truncate text-lg font-semibold tracking-tight">
+              {settings.siteName}
+            </span>
           )}
-          <span className="text-lg font-semibold tracking-tight">
-            {settings.siteName}
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
