@@ -11,7 +11,7 @@ import { adminLogin, type LoginState } from "./actions";
 
 const initialState: LoginState = {};
 
-export function LoginForm() {
+export function LoginForm({ resetSuccess = false }: { resetSuccess?: boolean }) {
   const [state, formAction, pending] = useActionState(adminLogin, initialState);
 
   return (
@@ -45,7 +45,12 @@ export function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="password">Password</Label>
+              <Link href="/admin/forgot-password" className="text-xs text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <LockKeyhole className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -59,6 +64,12 @@ export function LoginForm() {
               />
             </div>
           </div>
+
+          {resetSuccess && (
+            <p className="rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
+              Password updated. Sign in with your new password.
+            </p>
+          )}
 
           {state?.error && (
             <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">

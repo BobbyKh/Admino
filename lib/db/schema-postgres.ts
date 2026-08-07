@@ -236,6 +236,20 @@ export const adminUsers = pgTable("admin_users", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  userIdIdx: index("password_reset_tokens_user_id_idx").on(t.userId),
+  tokenHashIdx: index("password_reset_tokens_hash_idx").on(t.tokenHash),
+}));
+
 // ─── Per-user tenant feature grants ─────────────────────────────────────────
 // Restrictive overlay on top of site-level feature access. When a user has
 // grants recorded, they can only use the granted features; with no grants they
@@ -450,6 +464,7 @@ export type Booking = typeof bookings.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Media = typeof media.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type NavLink = typeof navLinks.$inferSelect;
 export type HomeSection = typeof homeSections.$inferSelect;
 export type Site = typeof sites.$inferSelect;

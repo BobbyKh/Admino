@@ -151,6 +151,20 @@ export async function sendContactAdminAlert(message: {
   return sendMail(notifyTo, `New contact message: ${message.subject}`, html);
 }
 
+export async function sendPasswordResetEmail(to: string, resetUrl: string) {
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+    <h2 style="color:#166534">Reset your Admino password</h2>
+    <p>A password reset was requested for this admin account.</p>
+    <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#166534;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Reset password</a></p>
+    <p>This link expires in 30 minutes. If you did not request it, you can ignore this email.</p>
+    <p style="color:#666;font-size:12px;word-break:break-all">${escapeHtml(resetUrl)}</p>
+  </div>`;
+  const result = await sendMail(to, "Reset your Admino password", html);
+  if (result.skipped) console.log(`[password-reset:url] ${resetUrl}`);
+  return result;
+}
+
 // ─── Activity Notifications ──────────────────────────────────────────────────
 
 const ENTITY_LABELS: Record<string, string> = {

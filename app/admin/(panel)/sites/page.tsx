@@ -38,7 +38,9 @@ import {
   updateSite,
   deleteSite,
   getAllTenantFeatureAccess,
+  getSitePublishReadiness,
   getSites,
+  type SitePublishReadiness,
 } from "@/lib/actions/index";
 import { useActionState } from "react";
 
@@ -61,13 +63,15 @@ export default function SitesPage() {
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [draftFeatures, setDraftFeatures] = useState<TenantFeature[]>([]);
   const [featureAccess, setFeatureAccess] = useState<Record<number, TenantFeature[]>>({});
+  const [readiness, setReadiness] = useState<Record<number, SitePublishReadiness>>({});
   const [copiedSiteId, setCopiedSiteId] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([nextSites, access]) => {
+    Promise.all([getSites(), getAllTenantFeatureAccess(), getSitePublishReadiness()]).then(([nextSites, access, nextReadiness]) => {
       setSites(nextSites);
       setFeatureAccess(access);
+      setReadiness(nextReadiness);
     });
   }, []);
 
@@ -76,9 +80,10 @@ export default function SitesPage() {
 
   useEffect(() => {
     if (createState?.success) {
-      Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([updatedSites, access]) => {
+      Promise.all([getSites(), getAllTenantFeatureAccess(), getSitePublishReadiness()]).then(([updatedSites, access, nextReadiness]) => {
         setSites(updatedSites);
         setFeatureAccess(access);
+        setReadiness(nextReadiness);
         setCreateOpen(false);
       });
     }
@@ -86,9 +91,10 @@ export default function SitesPage() {
 
   useEffect(() => {
     if (updateState?.success) {
-      Promise.all([getSites(), getAllTenantFeatureAccess()]).then(([updatedSites, access]) => {
+      Promise.all([getSites(), getAllTenantFeatureAccess(), getSitePublishReadiness()]).then(([updatedSites, access, nextReadiness]) => {
         setSites(updatedSites);
         setFeatureAccess(access);
+        setReadiness(nextReadiness);
         setEditingSite(null);
       });
     }
@@ -226,6 +232,24 @@ export default function SitesPage() {
                   <Sparkles className="size-3" />
                   {featureAccess[site.id]?.length ?? 0} of {Object.keys(TENANT_FEATURE_METADATA).length} features enabled
                 </p>
+                {readiness[site.id] && (
+                  <div className="mt-3 rounded-md border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium">Launch checklist</p>
+                      <Badge variant={readiness[site.id].complete === readiness[site.id].total ? "default" : "secondary"}>
+                        {readiness[site.id].complete}/{readiness[site.id].total}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                      {readiness[site.id].checks.slice(0, 4).map((check) => (
+                        <p key={check.key} className={`flex items-center gap-1.5 text-xs ${check.complete ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"}`} title={check.helper}>
+                          <span>{check.complete ? "✓" : "•"}</span>
+                          {check.label}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {site.published && getSiteUrl(site) ? (
                   <div className="mt-3 flex items-center gap-2 rounded-md border bg-muted/30 p-2">
                     <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={getSiteUrl(site)!}>
@@ -355,6 +379,27 @@ export default function SitesPage() {
                 />
                 <Label>Published</Label>
               </div>
+              {readiness[editingSite.id] && (
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label>Publish readiness</Label>
+                      <p className="mt-1 text-xs text-muted-foreground">Review launch basics before publishing this tenant.</p>
+                    </div>
+                    <Badge variant={readiness[editingSite.id].complete === readiness[editingSite.id].total ? "default" : "secondary"}>
+                      {readiness[editingSite.id].complete}/{readiness[editingSite.id].total} ready
+                    </Badge>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {readiness[editingSite.id].checks.map((check) => (
+                      <div key={check.key} className={`rounded-md border bg-background px-3 py-2 text-xs ${check.complete ? "text-muted-foreground" : "border-amber-300 text-amber-700 dark:border-amber-900 dark:text-amber-300"}`}>
+                        <p className="font-medium text-foreground">{check.complete ? "✓" : "•"} {check.label}</p>
+                        {!check.complete && <p className="mt-1">{check.helper}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
                 <div>
                   <Label>Tenant features</Label>

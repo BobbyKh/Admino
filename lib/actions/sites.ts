@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { sites } from "@/lib/db/schema";
+import { navLinks, pages, paymentConfigurations, products, settings, sites } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
 import { createDefaultHomepage } from "@/lib/default-homepage";
 import { createDefaultNavigation } from "@/lib/default-navigation";
@@ -118,4 +118,41 @@ export async function getAllTenantFeatureAccess() {
   const allSites = await db.select({ id: sites.id }).from(sites);
   const access = await Promise.all(allSites.map(async (site) => ({ siteId: site.id, features: await getTenantFeatureAccess(site.id) })));
   return Object.fromEntries(access.map(({ siteId, features }) => [siteId, features])) as Record<number, TenantFeature[]>;
+}
+
+export type SitePublishReadiness = {
+  complete: number;
+  total: number;
+  checks: Array<{ key: string; label: string; complete: boolean; helper: string }>;
+};
+
+export async function getSitePublishReadiness(): Promise<Record<number, SitePublishReadiness>> {
+  await requireRole("super_admin");
+  const allSites = await db.select().from(sites);
+  const entries = await Promise.all(allSites.map(async (site) => {
+    const [siteSettings, sitePages, siteNavLinks, activeProducts, enabledPayments, features] = await Promise.all([
+      db.select({ key: settings.key, value: settings.value }).from(settings).where(eq(settings.siteId, site.id)),
+      db.select({ slug: pages.slug, published: pages.published }).from(pages).where(eq(pages.siteId, site.id)),
+      db.select({ id: navLinks.id }).from(navLinks).where(and(eq(navLinks.siteId, site.id), eq(navLinks.visible, true))),
+      db.select({ id: products.id }).from(products).where(and(eq(products.siteId, site.id), eq(products.status, "active"))),
+      db.select({ id: paymentConfigurations.id }).from(paymentConfigurations).where(and(eq(paymentConfigurations.siteId, site.id), eq(paymentConfigurations.enabled, true))),
+      getTenantFeatureAccess(site.id),
+    ]);
+    const settingMap = new Map(siteSettings.map((row) => [row.key, row.value.trim()]));
+    const hasCommerce = site.template === "ecommerce" || features.includes("commerce");
+    const checks = [
+      { key: "identity", label: "Site identity", complete: Boolean(site.name.trim() && (site.description?.trim() || settingMap.get("description"))), helper: "Add a clear site name and description." },
+      { key: "contact", label: "Contact details", complete: Boolean(settingMap.get("email") && settingMap.get("phone") && settingMap.get("address")), helper: "Add email, phone, and address in Settings." },
+      { key: "homepage", label: "Published homepage", complete: sitePages.some((page) => page.slug === "home" && page.published), helper: "Publish the home page before launch." },
+      { key: "pages", label: "Published pages", complete: sitePages.some((page) => page.published), helper: "Publish at least one public page." },
+      { key: "navigation", label: "Visible navigation", complete: siteNavLinks.length > 0, helper: "Add at least one visible navigation link." },
+      { key: "domain", label: "Custom domain", complete: Boolean(site.domain), helper: "Connect a custom domain or use the preview URL intentionally." },
+      ...(hasCommerce ? [
+        { key: "products", label: "Active products", complete: activeProducts.length > 0, helper: "Add active products before enabling commerce." },
+        { key: "payments", label: "Payment method", complete: enabledPayments.length > 0, helper: "Enable at least one manual/test payment method." },
+      ] : []),
+    ];
+    return [site.id, { complete: checks.filter((check) => check.complete).length, total: checks.length, checks }] as const;
+  }));
+  return Object.fromEntries(entries);
 }
