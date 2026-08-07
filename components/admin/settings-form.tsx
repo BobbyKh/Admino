@@ -140,6 +140,7 @@ export function SettingsForm({
             icon={<Paintbrush className="size-4" />}
           >
             <ImageField label="Site logo" name="logo" value={initial.logo} />
+            <ImageField label="Favicon / browser icon" name="favicon" value={initial.favicon} />
             <Field label="Site name" name="siteName" value={initial.siteName} />
             <Field label="Tagline" name="tagline" value={initial.tagline} />
             <TextareaField

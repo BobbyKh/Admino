@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
@@ -102,12 +103,16 @@ export function AdminNav({
   sites,
   currentSiteId,
   features = [],
+  brandLogo = "",
+  brandName = "Admino",
 }: {
   adminName: string;
   role?: string;
   sites: Site[];
   currentSiteId: number;
   features?: TenantFeature[];
+  brandLogo?: string;
+  brandName?: string;
 }) {
   const pathname = usePathname();
   const isSuperAdmin = role === "super_admin";
@@ -129,13 +134,24 @@ export function AdminNav({
     <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
       <div className="border-b px-5 py-3">
         <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <UtensilsCrossed className="size-4" />
-        </span>
-        <div className="leading-tight">
-          <p className="text-sm font-semibold">Admino</p>
-          <p className="text-xs text-muted-foreground">Web Builder</p>
-        </div>
+          {brandLogo ? (
+            <Image
+              src={brandLogo}
+              alt={brandName}
+              width={36}
+              height={36}
+              className="size-9 rounded-lg object-contain"
+              unoptimized
+            />
+          ) : (
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <UtensilsCrossed className="size-4" />
+            </span>
+          )}
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-semibold">{brandName || "Admino"}</p>
+            <p className="text-xs text-muted-foreground">Admino Web Builder</p>
+          </div>
         </div>
         <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       </div>

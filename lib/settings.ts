@@ -6,6 +6,7 @@ export const SETTING_KEYS = [
   "siteName",
   "tagline",
   "logo",
+  "favicon",
   "description",
   // Hero
   "heroTitle",
@@ -113,6 +114,7 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   siteName: "Maiti Resort",
   tagline: "A peaceful dining & relaxation getaway in Kirtipur",
   logo: "",
+  favicon: "",
   description:
     "Maiti Resort is a dining and relaxation venue located in Kirtipur 44600, Nepal. Set within 5 km of Balkhu, it offers a peaceful, scenic getaway away from city traffic and noise, featuring a spacious layout with outdoor seating and a romantic, casual atmosphere suitable for groups and families with children. The resort serves breakfast, lunch, dinner, dessert, coffee, beer, and wine, with options for dine-in, takeout, and curbside pickup, and provides amenities such as restrooms, wheelchair-accessible facilities, NFC payment acceptance, and free lot and street parking.",
   heroTitle: "Dine, Relax & Unwind in Kirtipur",
@@ -224,6 +226,7 @@ export interface SiteSettings {
   siteName: string;
   tagline: string;
   logo: string;
+  favicon: string;
   description: string;
   heroTitle: string;
   heroSubtitle: string;
