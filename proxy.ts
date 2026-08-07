@@ -21,10 +21,9 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
 
-  // Local development and Vercel deployment URLs can preview any public tenant.
-  // Custom domains continue to resolve by hostname and do not need this override.
-  const isPreviewHost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app");
-  const siteSlug = isPreviewHost ? request.nextUrl.searchParams.get("site") : null;
+  // Query-based site resolution lets the admin open published tenants that do
+  // not have a dedicated domain yet. Custom domains still work without it.
+  const siteSlug = request.nextUrl.searchParams.get("site");
 
   // Pass resolution hints to server components via REQUEST headers
   const requestHeaders = new Headers(request.headers);

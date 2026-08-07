@@ -112,6 +112,8 @@ export function AdminNav({
   const pathname = usePathname();
   const isSuperAdmin = role === "super_admin";
   const userRoleRank = ROLE_RANK[role] ?? 0;
+  const currentSite = sites.find((site) => site.id === currentSiteId);
+  const viewSiteHref = currentSite ? `/?site=${encodeURIComponent(currentSite.slug)}` : "/";
 
   const visibleNavGroups = NAV_GROUPS.map((group) => ({
     ...group,
@@ -178,7 +180,7 @@ export function AdminNav({
         <div className="grid gap-1.5">
           <div className="flex items-center gap-2">
             <Link
-              href="/"
+              href={viewSiteHref}
               target="_blank"
               className="flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >

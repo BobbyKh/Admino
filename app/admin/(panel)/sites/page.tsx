@@ -95,10 +95,8 @@ export default function SitesPage() {
   }, [updateState]);
 
   function getSiteUrl(site: Site) {
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return `${window.location.origin}/?site=${encodeURIComponent(site.slug)}`;
-    }
-    return site.domain ? `https://${site.domain}` : null;
+    if (site.domain) return `https://${site.domain}`;
+    return `${window.location.origin}/?site=${encodeURIComponent(site.slug)}`;
   }
 
   async function copySiteUrl(site: Site) {
