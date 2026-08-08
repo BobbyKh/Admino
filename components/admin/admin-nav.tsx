@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   LineChart,
   MessagesSquare,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -115,6 +116,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Administration",
     items: [
+      { href: "/admin/docs", label: "Documentation", icon: BookOpen },
       { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
       { href: "/admin/billing", label: "Billing & Plans", icon: CreditCard, minRole: "admin" },
       { href: "/admin/webhooks", label: "Webhooks", icon: Bell, minRole: "admin" },

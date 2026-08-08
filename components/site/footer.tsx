@@ -69,6 +69,20 @@ export function Footer({
                 </Link>
               </li>
             ))}
+            {settings.helpEnabled === "true" && (
+              <li>
+                <Link href={withPreviewSite("/help", siteSlug)} className="transition-colors hover:text-foreground">
+                  Help
+                </Link>
+              </li>
+            )}
+            {settings.faqEnabled === "true" && (
+              <li>
+                <Link href={withPreviewSite("/faq", siteSlug)} className="transition-colors hover:text-foreground">
+                  FAQ
+                </Link>
+              </li>
+            )}
           </ul>
         </div>}
 

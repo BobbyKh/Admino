@@ -90,6 +90,10 @@ export const SETTING_KEYS = [
   "aiChatEnabled",
   "aiRagEnabled",
   "aiRagIndexedAt",
+  // Help & FAQ
+  "helpEnabled",
+  "faqEnabled",
+  "faqItems",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -218,6 +222,16 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   aiChatEnabled: "false",
   aiRagEnabled: "false",
   aiRagIndexedAt: "",
+  // Help & FAQ
+  helpEnabled: "true",
+  faqEnabled: "true",
+  faqItems: JSON.stringify([
+    { question: "How can I place an order?", answer: "Browse products, add items to your cart, and check out. You'll confirm your order and payment in one flow." },
+    { question: "How do I make a booking or reservation?", answer: "Use the booking form on the site, or contact us directly. You'll receive confirmation by email or phone." },
+    { question: "What payment methods do you accept?", answer: "Accepted methods depend on the store configuration — typically cards (Stripe) and local wallets like eSewa." },
+    { question: "How do I contact support?", answer: "Use the contact form on the site, email us, or call during business hours." },
+    { question: "What are your hours?", answer: "Hours are listed in the footer and on the contact page of this site." },
+  ]),
 };
 
 export interface Feature {
@@ -300,6 +314,10 @@ export interface SiteSettings {
   aiChatEnabled: string;
   aiRagEnabled: string;
   aiRagIndexedAt: string;
+  // Help & FAQ
+  helpEnabled: string;
+  faqEnabled: string;
+  faqItems: string;
 }
 
 export function parseFeatures(raw: string): Feature[] {
