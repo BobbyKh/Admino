@@ -14,6 +14,7 @@ import {
 import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
 import { getSiteLocales, DEFAULT_LOCALE } from "@/lib/i18n";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Locale Management ───────────────────────────────────────────────────────
 
@@ -27,8 +28,8 @@ const localeSchema = z.object({
 });
 
 export async function addLocale(_prev: unknown, formData: FormData) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const parsed = localeSchema.safeParse({
     code: formData.get("code"),
@@ -44,7 +45,7 @@ export async function addLocale(_prev: unknown, formData: FormData) {
   const existing = await db
     .select({ id: siteLocales.id })
     .from(siteLocales)
-    .where(and(eq(siteLocales.siteId, user.siteId), eq(siteLocales.code, code)))
+    .where(and(eq(siteLocales.siteId, siteId), eq(siteLocales.code, code)))
     .limit(1);
 
   if (existing.length > 0) {
@@ -55,13 +56,13 @@ export async function addLocale(_prev: unknown, formData: FormData) {
   const maxSort = await db
     .select({ sortOrder: siteLocales.sortOrder })
     .from(siteLocales)
-    .where(eq(siteLocales.siteId, user.siteId))
+    .where(eq(siteLocales.siteId, siteId))
     .orderBy(siteLocales.sortOrder);
 
   const isDefault = maxSort.length === 0; // First locale is default
 
   await db.insert(siteLocales).values({
-    siteId: user.siteId,
+    siteId,
     code,
     name: parsed.data.name,
     isDefault,
@@ -73,13 +74,13 @@ export async function addLocale(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteLocale(localeId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [locale] = await db
     .select()
     .from(siteLocales)
-    .where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, user.siteId)));
+    .where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
 
   if (!locale) return { success: false, message: "Locale not found." };
   if (locale.isDefault) return { success: false, message: "Cannot delete the default locale." };
@@ -94,20 +95,20 @@ export async function deleteLocale(localeId: number) {
 }
 
 export async function setDefaultLocale(localeId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   // Unset all defaults
   await db
     .update(siteLocales)
     .set({ isDefault: false })
-    .where(eq(siteLocales.siteId, user.siteId));
+    .where(eq(siteLocales.siteId, siteId));
 
   // Set new default
   await db
     .update(siteLocales)
     .set({ isDefault: true })
-    .where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, user.siteId)));
+    .where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
 
   revalidatePath("/admin/i18n");
   return { success: true, message: "Default locale updated." };
@@ -116,8 +117,7 @@ export async function setDefaultLocale(localeId: number) {
 // ─── Translation Management ──────────────────────────────────────────────────
 
 export async function getPageTranslations(pageId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
 
   const locales = await getSiteLocales();
   const translations = await db
@@ -136,8 +136,7 @@ export async function getPageTranslations(pageId: number) {
 }
 
 export async function getBlockTranslations(blockId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
 
   const locales = await getSiteLocales();
   const translations = await db
@@ -168,8 +167,7 @@ export async function savePageTranslation(
   _prev: unknown,
   formData: FormData
 ) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
 
   const pageId = Number(formData.get("pageId"));
   const parsed = pageTranslationSchema.safeParse({
@@ -231,8 +229,7 @@ export async function saveBlockTranslation(
   _prev: unknown,
   formData: FormData
 ) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
 
   const blockId = Number(formData.get("blockId"));
   const parsed = blockTranslationSchema.safeParse({

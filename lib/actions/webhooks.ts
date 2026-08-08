@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { webhooks, webhookDeliveries } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { WEBHOOK_EVENTS, getEventDescription, type WebhookEvent } from "@/lib/webhooks";
 
 // ─── Public (admin) Actions ──────────────────────────────────────────────────
@@ -19,13 +20,13 @@ export async function getWebhookEvents() {
 }
 
 export async function getWebhooks() {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   return db
     .select()
     .from(webhooks)
-    .where(eq(webhooks.siteId, user.siteId))
+    .where(eq(webhooks.siteId, siteId))
     .orderBy(desc(webhooks.createdAt));
 }
 
@@ -37,8 +38,8 @@ const webhookSchema = z.object({
 });
 
 export async function createWebhook(_prev: unknown, formData: FormData) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const eventsRaw = formData.get("events") as string;
   let events: string[];
@@ -60,7 +61,7 @@ export async function createWebhook(_prev: unknown, formData: FormData) {
   }
 
   await db.insert(webhooks).values({
-    siteId: user.siteId,
+    siteId,
     ...parsed.data,
     events: JSON.stringify(parsed.data.events),
   });
@@ -70,39 +71,39 @@ export async function createWebhook(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteWebhook(webhookId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   await db
     .delete(webhooks)
-    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, user.siteId)));
+    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, siteId)));
 
   revalidatePath("/admin/webhooks");
   return { success: true, message: "Webhook deleted." };
 }
 
 export async function toggleWebhook(webhookId: number, active: boolean) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   await db
     .update(webhooks)
     .set({ active, updatedAt: new Date().toISOString() })
-    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, user.siteId)));
+    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, siteId)));
 
   revalidatePath("/admin/webhooks");
   return { success: true, message: active ? "Webhook enabled." : "Webhook disabled." };
 }
 
 export async function getWebhookDeliveries(webhookId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   // Verify the webhook belongs to this site
   const [hook] = await db
     .select()
     .from(webhooks)
-    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, user.siteId)));
+    .where(and(eq(webhooks.id, webhookId), eq(webhooks.siteId, siteId)));
 
   if (!hook) return [];
 
@@ -115,8 +116,8 @@ export async function getWebhookDeliveries(webhookId: number) {
 }
 
 export async function retryWebhookDelivery(deliveryId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [delivery] = await db
     .select()
@@ -128,7 +129,7 @@ export async function retryWebhookDelivery(deliveryId: number) {
   const [hook] = await db
     .select()
     .from(webhooks)
-    .where(and(eq(webhooks.id, delivery.webhookId), eq(webhooks.siteId, user.siteId)));
+    .where(and(eq(webhooks.id, delivery.webhookId), eq(webhooks.siteId, siteId)));
 
   if (!hook) return { success: false, message: "Webhook not found." };
 

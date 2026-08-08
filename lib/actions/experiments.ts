@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Public Actions ──────────────────────────────────────────────────────────
 
@@ -147,13 +148,13 @@ export async function trackConversion(
 // ─── Admin Actions ───────────────────────────────────────────────────────────
 
 export async function getExperiments() {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   return db
     .select()
     .from(experiments)
-    .where(eq(experiments.siteId, user.siteId))
+    .where(eq(experiments.siteId, siteId))
     .orderBy(desc(experiments.createdAt));
 }
 
@@ -166,8 +167,8 @@ const experimentSchema = z.object({
 });
 
 export async function createExperiment(_prev: unknown, formData: FormData) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   let variants: Array<{ id: string; name: string; weight: number }>;
   try {
@@ -192,7 +193,7 @@ export async function createExperiment(_prev: unknown, formData: FormData) {
   }
 
   await db.insert(experiments).values({
-    siteId: user.siteId,
+    siteId,
     ...parsed.data,
     variants: JSON.stringify(variants),
   });
@@ -205,14 +206,14 @@ export async function updateExperimentStatus(
   experimentId: number,
   status: "draft" | "running" | "paused" | "completed"
 ) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   await db
     .update(experiments)
     .set({ status, updatedAt: new Date().toISOString() })
     .where(
-      and(eq(experiments.id, experimentId), eq(experiments.siteId, user.siteId))
+      and(eq(experiments.id, experimentId), eq(experiments.siteId, siteId))
     );
 
   revalidatePath("/admin/experiments");
@@ -220,13 +221,13 @@ export async function updateExperimentStatus(
 }
 
 export async function deleteExperiment(experimentId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   await db
     .delete(experiments)
     .where(
-      and(eq(experiments.id, experimentId), eq(experiments.siteId, user.siteId))
+      and(eq(experiments.id, experimentId), eq(experiments.siteId, siteId))
     );
 
   revalidatePath("/admin/experiments");
@@ -234,14 +235,14 @@ export async function deleteExperiment(experimentId: number) {
 }
 
 export async function getExperimentResults(experimentId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return null;
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [experiment] = await db
     .select()
     .from(experiments)
     .where(
-      and(eq(experiments.id, experimentId), eq(experiments.siteId, user.siteId))
+      and(eq(experiments.id, experimentId), eq(experiments.siteId, siteId))
     )
     .limit(1);
 

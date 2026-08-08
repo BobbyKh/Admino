@@ -6,17 +6,18 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { conversionFunnels, pageViews } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Admin Actions ───────────────────────────────────────────────────────────
 
 export async function getFunnels() {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   return db
     .select()
     .from(conversionFunnels)
-    .where(eq(conversionFunnels.siteId, user.siteId))
+    .where(eq(conversionFunnels.siteId, siteId))
     .orderBy(desc(conversionFunnels.createdAt));
 }
 
@@ -26,8 +27,8 @@ const funnelSchema = z.object({
 });
 
 export async function createFunnel(_prev: unknown, formData: FormData) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   let steps: string[];
   try {
@@ -52,7 +53,7 @@ export async function createFunnel(_prev: unknown, formData: FormData) {
   }
 
   await db.insert(conversionFunnels).values({
-    siteId: user.siteId,
+    siteId,
     name: parsed.data.name,
     steps: JSON.stringify(steps),
   });
@@ -62,15 +63,15 @@ export async function createFunnel(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteFunnel(funnelId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   await db
     .delete(conversionFunnels)
     .where(
       and(
         eq(conversionFunnels.id, funnelId),
-        eq(conversionFunnels.siteId, user.siteId)
+        eq(conversionFunnels.siteId, siteId)
       )
     );
 
@@ -79,8 +80,8 @@ export async function deleteFunnel(funnelId: number) {
 }
 
 export async function getFunnelResults(funnelId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return null;
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [funnel] = await db
     .select()
@@ -88,7 +89,7 @@ export async function getFunnelResults(funnelId: number) {
     .where(
       and(
         eq(conversionFunnels.id, funnelId),
-        eq(conversionFunnels.siteId, user.siteId)
+        eq(conversionFunnels.siteId, siteId)
       )
     )
     .limit(1);
@@ -108,7 +109,7 @@ export async function getFunnelResults(funnelId: number) {
         .from(pageViews)
         .where(
           and(
-            eq(pageViews.siteId, user.siteId!),
+            eq(pageViews.siteId, siteId),
             sql`${pageViews.path} LIKE ${"%" + pattern + "%"}`
           )
         );

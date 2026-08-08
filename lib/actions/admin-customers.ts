@@ -12,12 +12,13 @@ import {
   products,
 } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Admin Customer Actions ──────────────────────────────────────────────────
 
 export async function getAdminCustomers(query?: string) {
-  const user = await requireAdmin();
-  if (!user.siteId) return [];
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   if (query) {
     const pattern = `%${query}%`;
@@ -26,7 +27,7 @@ export async function getAdminCustomers(query?: string) {
       .from(customers)
       .where(
         and(
-          eq(customers.siteId, user.siteId),
+          eq(customers.siteId, siteId),
           or(
             like(customers.name, pattern),
             like(customers.email, pattern),
@@ -40,13 +41,13 @@ export async function getAdminCustomers(query?: string) {
   return db
     .select()
     .from(customers)
-    .where(eq(customers.siteId, user.siteId))
+    .where(eq(customers.siteId, siteId))
     .orderBy(desc(customers.createdAt));
 }
 
 export async function getAdminCustomer(customerId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return null;
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [customer] = await db
     .select()
@@ -54,7 +55,7 @@ export async function getAdminCustomer(customerId: number) {
     .where(
       and(
         eq(customers.id, customerId),
-        eq(customers.siteId, user.siteId)
+        eq(customers.siteId, siteId)
       )
     )
     .limit(1);
@@ -101,13 +102,13 @@ export async function getAdminCustomer(customerId: number) {
 }
 
 export async function getAdminCustomerStats() {
-  const user = await requireAdmin();
-  if (!user.siteId) return { total: 0, thisMonth: 0, totalOrders: 0, totalRevenue: 0 };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const [total] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(customers)
-    .where(eq(customers.siteId, user.siteId));
+    .where(eq(customers.siteId, siteId));
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -118,7 +119,7 @@ export async function getAdminCustomerStats() {
     .from(customers)
     .where(
       and(
-        eq(customers.siteId, user.siteId),
+        eq(customers.siteId, siteId),
         sql`${customers.createdAt} >= ${monthStart.toISOString()}`
       )
     );
@@ -129,7 +130,7 @@ export async function getAdminCustomerStats() {
       revenue: sql<number>`coalesce(sum(${orders.total}), 0)::int`,
     })
     .from(orders)
-    .where(eq(orders.siteId, user.siteId));
+    .where(eq(orders.siteId, siteId));
 
   return {
     total: total?.count ?? 0,
@@ -149,8 +150,8 @@ export async function updateAdminCustomer(
   _prev: unknown,
   formData: FormData
 ) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   const parsed = updateCustomerSchema.safeParse({
     name: formData.get("name") || undefined,
@@ -167,7 +168,7 @@ export async function updateAdminCustomer(
     .update(customers)
     .set({ ...parsed.data, updatedAt: new Date().toISOString() })
     .where(
-      and(eq(customers.id, customerId), eq(customers.siteId, user.siteId))
+      and(eq(customers.id, customerId), eq(customers.siteId, siteId))
     );
 
   revalidatePath("/admin/customers");
@@ -175,8 +176,8 @@ export async function updateAdminCustomer(
 }
 
 export async function deleteAdminCustomer(customerId: number) {
-  const user = await requireAdmin();
-  if (!user.siteId) return { success: false, message: "No site assigned." };
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
 
   // Check for orders — don't delete customers with order history
   const [orderCount] = await db
@@ -194,7 +195,7 @@ export async function deleteAdminCustomer(customerId: number) {
   await db
     .delete(customers)
     .where(
-      and(eq(customers.id, customerId), eq(customers.siteId, user.siteId))
+      and(eq(customers.id, customerId), eq(customers.siteId, siteId))
     );
 
   revalidatePath("/admin/customers");
