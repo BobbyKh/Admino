@@ -25,6 +25,7 @@ import {
   CreditCard,
   Newspaper,
   Wrench,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -94,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
       { href: "/admin/billing", label: "Billing & Plans", icon: CreditCard, minRole: "admin" },
+      { href: "/admin/webhooks", label: "Webhooks", icon: Bell, minRole: "admin" },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
       { href: "/admin/export", label: "Export", icon: Download, minRole: "admin" },
     ],

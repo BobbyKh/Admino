@@ -6,6 +6,7 @@ import { messages } from "@/lib/db/schema";
 import { escapeHtml } from "@/lib/sanitize";
 import { sendContactAdminAlert } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 const formSubmissionSchema = z.object({
   siteId: z.number().int().positive(),
@@ -66,6 +67,17 @@ export async function submitSiteForm(
   void sendContactAdminAlert(sanitized).catch((err) =>
     console.error("Failed to send contact notification alert:", err)
   );
+
+  // Dispatch webhook
+  void dispatchWebhook(parsed.data.siteId, "message.received", {
+    message: {
+      name: sanitized.name,
+      email: sanitized.email,
+      phone: sanitized.phone,
+      subject: sanitized.subject,
+      message: sanitized.message,
+    },
+  }).catch((err) => console.error("Webhook dispatch failed:", err));
 
   return { success: true, message: "Thank you! Your message has been submitted successfully." };
 }

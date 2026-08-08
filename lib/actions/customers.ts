@@ -20,6 +20,7 @@ import {
   getSessionCustomer,
   verifyCustomerCredentials,
 } from "@/lib/customer-auth";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 // ─── Auth Actions ────────────────────────────────────────────────────────────
 
@@ -68,6 +69,16 @@ export async function registerCustomer(_prev: unknown, formData: FormData) {
 
   await createCustomerSession(customer.id);
   revalidatePath("/");
+
+  // Dispatch webhook
+  void dispatchWebhook(siteId, "customer.registered", {
+    customer: {
+      id: customer.id,
+      name: parsed.data.name,
+      email: parsed.data.email,
+    },
+  }).catch(() => {});
+
   return { success: true, message: "Account created." };
 }
 

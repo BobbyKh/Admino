@@ -35,6 +35,8 @@ export const customerAddresses = pg.customerAddresses;
 export const wishlists = pg.wishlists;
 export const plans = pg.plans;
 export const subscriptions = pg.subscriptions;
+export const webhooks = pg.webhooks;
+export const webhookDeliveries = pg.webhookDeliveries;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
@@ -67,6 +69,8 @@ export type CustomerAddress = pg.CustomerAddress;
 export type Wishlist = pg.Wishlist;
 export type Plan = pg.Plan;
 export type Subscription = pg.Subscription;
+export type Webhook = pg.Webhook;
+export type WebhookDelivery = pg.WebhookDelivery;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

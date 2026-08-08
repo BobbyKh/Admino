@@ -16,6 +16,7 @@ import {
   Blocks,
   Sparkles,
   Undo2,
+  Wand2,
 } from "lucide-react";
 import {
   DndContext,
@@ -74,6 +75,8 @@ import {
   getPageRevisions,
   restorePageRevision,
   generateBlockConfig,
+  generatePageLayoutWithAi,
+  applyGeneratedBlocks,
 } from "@/lib/actions/index";
 import {
   BLOCK_TYPES,
@@ -83,6 +86,136 @@ import {
 } from "@/lib/blocks";
 
 // ─── Sortable Block Item ─────────────────────────────────────────────────────
+
+function AiLayoutGenerator({ pageId }: { pageId: number }) {
+  const [open, setOpen] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Array<{ type: string; title?: string; config: Record<string, unknown> }>>([]);
+
+  async function generate() {
+    setPending(true);
+    setError(null);
+    setPreview([]);
+    try {
+      const formData = new FormData();
+      formData.set("pageId", String(pageId));
+      formData.set("description", instruction);
+      const result = await generatePageLayoutWithAi({}, formData);
+      if ("error" in result || !result.success) {
+        setError(result.message);
+        return;
+      }
+      if (result.blocks) {
+        setPreview(result.blocks);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function applyBlocks() {
+    if (preview.length === 0) return;
+    setPending(true);
+    try {
+      const result = await applyGeneratedBlocks(pageId, preview);
+      if (result.success) {
+        setOpen(false);
+        setPreview([]);
+        setInstruction("");
+        window.location.reload();
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply blocks.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="w-full gap-1.5">
+          <Wand2 className="size-3.5 text-primary" />
+          AI Layout Generator
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wand2 className="size-4 text-primary" />
+            Generate Page Layout
+          </DialogTitle>
+          <ModalDescription>
+            Describe the page you want. AI will generate a complete block layout.
+          </ModalDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Textarea
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            rows={4}
+            placeholder="A modern restaurant homepage with hero section, menu preview, testimonials, and booking CTA..."
+            autoFocus
+          />
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Restaurant homepage",
+              "Portfolio landing page",
+              "Ecommerce product page",
+              "Service business page",
+            ].map((example) => (
+              <Button
+                key={example}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setInstruction(example)}
+              >
+                {example}
+              </Button>
+            ))}
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {preview.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Preview ({preview.length} blocks):</p>
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
+                {preview.map((block, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="text-xs">{block.type}</Badge>
+                    <span className="text-muted-foreground">{block.title || "Untitled"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+              Cancel
+            </Button>
+            {preview.length > 0 ? (
+              <Button onClick={applyBlocks} disabled={pending} className="gap-2">
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                Apply {preview.length} Blocks
+              </Button>
+            ) : (
+              <Button onClick={generate} disabled={pending || instruction.trim().length < 10} className="gap-2">
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                Generate Layout
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function SortableBlockItem({
   block,
@@ -1175,6 +1308,7 @@ export default function BlockEditorPage() {
               </div>
             )}
           </div>
+          <AiLayoutGenerator pageId={pageId} />
           <Input
             value={blockSearch}
             onChange={(event) => setBlockSearch(event.target.value)}

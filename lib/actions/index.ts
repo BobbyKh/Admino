@@ -20,3 +20,6 @@ export { generateThemeFromPrompt, type AiGeneratedTheme, type GenerateThemeResul
 export { generateBlockConfig } from "./block-ai";
 export { exportTenantData } from "./export";
 export { getPlans, getCurrentSubscription, selectPlan, cancelSubscription, adminCreatePlan, adminDeletePlan, getAllSubscriptions } from "./billing";
+export { getWebhooks, createWebhook, deleteWebhook, toggleWebhook, getWebhookDeliveries, retryWebhookDelivery, getWebhookEvents } from "./webhooks";
+export { generatePageLayoutWithAi, applyGeneratedBlocks } from "./layout-ai";
+export { generateImage, generateImageForUpload } from "./image-ai";

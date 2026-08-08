@@ -522,6 +522,43 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Webhooks ───────────────────────────────────────────────────────────────
+
+export const webhooks = pgTable("webhooks", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  secret: text("secret"),
+  events: text("events").notNull().default("[]"), // JSON array of event types
+  active: boolean("active").notNull().default(true),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("webhooks_site_id_idx").on(t.siteId),
+}));
+
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: serial("id").primaryKey(),
+  webhookId: integer("webhook_id").notNull().references(() => webhooks.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  payload: text("payload").notNull(),
+  status: text("status").notNull().default("pending"), // pending | success | failed
+  statusCode: integer("status_code"),
+  response: text("response"),
+  attempts: integer("attempts").notNull().default(0),
+  nextRetryAt: text("next_retry_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  webhookIdIdx: index("webhook_deliveries_webhook_id_idx").on(t.webhookId),
+  statusIdx: index("webhook_deliveries_status_idx").on(t.status),
+  eventIdx: index("webhook_deliveries_event_idx").on(t.event),
+  createdAtIdx: index("webhook_deliveries_created_at_idx").on(t.createdAt),
+}));
+
+export type Webhook = typeof webhooks.$inferSelect;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+
 // ─── Subscription Billing ───────────────────────────────────────────────────
 
 export const plans = pgTable("plans", {
