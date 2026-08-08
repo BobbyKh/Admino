@@ -291,6 +291,47 @@ export const pageRevisions = pgTable("page_revisions", {
 
 // ─── Ecommerce (tenant-scoped) ──────────────────────────────────────────────
 
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  phone: text("phone"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("customers_site_id_idx").on(t.siteId),
+  emailIdx: index("customers_email_idx").on(t.email),
+  siteEmailUnique: uniqueIndex("customers_site_email_idx").on(t.siteId, t.email),
+}));
+
+export const customerAddresses = pgTable("customer_addresses", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  label: text("label").notNull().default("Home"),
+  line1: text("line_1").notNull(),
+  line2: text("line_2"),
+  city: text("city").notNull(),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country").notNull().default("US"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerIdIdx: index("customer_addresses_customer_id_idx").on(t.customerId),
+}));
+
+export const wishlists = pgTable("wishlists", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerProductUnique: uniqueIndex("wishlists_customer_product_idx").on(t.customerId, t.productId),
+  customerIdIdx: index("wishlists_customer_id_idx").on(t.customerId),
+}));
+
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
@@ -368,6 +409,7 @@ export const services = pgTable("services", {
 export const carts = pgTable("carts", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   token: text("token").notNull().unique(),
   email: text("email"),
   currency: text("currency").notNull().default("usd"),
@@ -375,6 +417,7 @@ export const carts = pgTable("carts", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("carts_site_id_idx").on(t.siteId),
+  customerIdIdx: index("carts_customer_id_idx").on(t.customerId),
 }));
 
 export const cartItems = pgTable("cart_items", {
@@ -405,6 +448,7 @@ export const paymentConfigurations = pgTable("payment_configurations", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   orderNumber: text("order_number").notNull().unique(),
   email: text("email").notNull(),
   customerName: text("customer_name"),
@@ -427,6 +471,7 @@ export const orders = pgTable("orders", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("orders_site_id_idx").on(t.siteId),
+  customerIdIdx: index("orders_customer_id_idx").on(t.customerId),
   statusIdx: index("orders_status_idx").on(t.status),
   createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
 }));
@@ -477,6 +522,49 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Subscription Billing ───────────────────────────────────────────────────
+
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  price: integer("price").notNull(), // Minor currency unit (cents)
+  currency: text("currency").notNull().default("usd"),
+  interval: text("interval").notNull().default("month"), // month | year
+  features: text("features"), // JSON array of feature strings
+  maxPages: integer("max_pages").notNull().default(10),
+  maxProducts: integer("max_products").notNull().default(50),
+  maxStorage: integer("max_storage_mb").notNull().default(1000), // MB
+  maxBandwidth: integer("max_bandwidth_gb").notNull().default(10), // GB
+  stripePriceId: text("stripe_price_id"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("active"), // active | past_due | cancelled | trialing
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  currentPeriodStart: text("current_period_start"),
+  currentPeriodEnd: text("current_period_end"),
+  cancelAt: text("cancel_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("subscriptions_site_id_idx").on(t.siteId),
+  statusIdx: index("subscriptions_status_idx").on(t.status),
+  stripeSubIdx: index("subscriptions_stripe_sub_idx").on(t.stripeSubscriptionId),
+}));
+
+export type Plan = typeof plans.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+
 export type GalleryImage = typeof galleryImages.$inferSelect;
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type MenuItem = typeof menuItems.$inferSelect;
@@ -504,6 +592,9 @@ export type Service = typeof services.$inferSelect;
 export type UserFeature = typeof userFeatures.$inferSelect;
 export type RateLimitBucket = typeof rateLimitBuckets.$inferSelect;
 export type NewUserFeature = typeof userFeatures.$inferInsert;
+export type Customer = typeof customers.$inferSelect;
+export type CustomerAddress = typeof customerAddresses.$inferSelect;
+export type Wishlist = typeof wishlists.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

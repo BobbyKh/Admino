@@ -30,6 +30,11 @@ export const paymentConfigurations = pg.paymentConfigurations;
 export const orders = pg.orders;
 export const orderItems = pg.orderItems;
 export const rateLimitBuckets = pg.rateLimitBuckets;
+export const customers = pg.customers;
+export const customerAddresses = pg.customerAddresses;
+export const wishlists = pg.wishlists;
+export const plans = pg.plans;
+export const subscriptions = pg.subscriptions;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
@@ -57,6 +62,11 @@ export type PaymentConfiguration = pg.PaymentConfiguration;
 export type ServiceCategory = pg.ServiceCategory;
 export type Service = pg.Service;
 export type RateLimitBucket = pg.RateLimitBucket;
+export type Customer = pg.Customer;
+export type CustomerAddress = pg.CustomerAddress;
+export type Wishlist = pg.Wishlist;
+export type Plan = pg.Plan;
+export type Subscription = pg.Subscription;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

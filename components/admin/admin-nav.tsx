@@ -93,6 +93,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Administration",
     items: [
       { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
+      { href: "/admin/billing", label: "Billing & Plans", icon: CreditCard, minRole: "admin" },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
       { href: "/admin/export", label: "Export", icon: Download, minRole: "admin" },
     ],

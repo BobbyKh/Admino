@@ -15,6 +15,8 @@ export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentC
 export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
 export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
 export { addStoreCartItem, completeStoreCheckout, getStoreCart, getStorePaymentMethods, updateStoreCartItem } from "./storefront-commerce";
+export { registerCustomer, loginCustomer, logoutCustomer, getCustomerProfile, updateCustomerProfile, getCustomerOrders, getCustomerOrder, getCustomerAddresses, addCustomerAddress, deleteCustomerAddress, setDefaultAddress, getCustomerWishlist, addToWishlist, removeFromWishlist, isInWishlist } from "./customers";
 export { generateThemeFromPrompt, type AiGeneratedTheme, type GenerateThemeResult } from "./theme-ai";
 export { generateBlockConfig } from "./block-ai";
 export { exportTenantData } from "./export";
+export { getPlans, getCurrentSubscription, selectPlan, cancelSubscription, adminCreatePlan, adminDeletePlan, getAllSubscriptions } from "./billing";
