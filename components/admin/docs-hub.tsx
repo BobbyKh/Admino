@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -123,22 +123,23 @@ function RenderBlock({ block }: { block: DocBlock }) {
 export function DocsHub() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState<{ categoryId: string; articleId: string } | null>(null);
+  const [localActive, setLocalActive] = useState<{ categoryId: string; articleId: string } | null>(null);
 
   // Support /admin/docs?cat=getting-started&article=create-site deep links.
-  useEffect(() => {
-    const cat = searchParams.get("cat");
-    const articleId = searchParams.get("article");
-    if (cat) {
-      const category = DOC_CATEGORIES.find((c) => c.id === cat);
-      if (category) {
-        const article = articleId
-          ? category.articles.find((a) => a.id === articleId)
-          : category.articles[0];
-        if (article) setActive({ categoryId: category.id, articleId: article.id });
-      }
-    }
-  }, [searchParams]);
+  // The URL wins when present; local selection is used otherwise.
+  const cat = searchParams.get("cat");
+  const articleId = searchParams.get("article");
+  const urlActive = useMemo(() => {
+    if (!cat) return null;
+    const category = DOC_CATEGORIES.find((c) => c.id === cat);
+    if (!category) return null;
+    const article = articleId
+      ? category.articles.find((a) => a.id === articleId)
+      : category.articles[0];
+    return article ? { categoryId: category.id, articleId: article.id } : null;
+  }, [cat, articleId]);
+
+  const active = urlActive ?? localActive;
 
   const results = useMemo(() => searchDocs(query), [query]);
 
@@ -163,7 +164,7 @@ export function DocsHub() {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setActive(null);
+            setLocalActive(null);
           }}
           placeholder="Search documentation (e.g. webhook, product, RAG, publish)..."
           className="pl-9"
@@ -173,7 +174,9 @@ export function DocsHub() {
       {query ? (
         <div className="space-y-2">
           {results.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">No results for "{query}".</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No results for &quot;{query}&quot;.
+            </p>
           )}
           {results.map(({ category, article }) => {
             const Icon = ICONS[category.icon] ?? BookOpen;
@@ -181,7 +184,7 @@ export function DocsHub() {
               <button
                 key={article.id}
                 onClick={() => {
-                  setActive({ categoryId: category.id, articleId: article.id });
+                  setLocalActive({ categoryId: category.id, articleId: article.id });
                   setQuery("");
                 }}
                 className="flex w-full items-center gap-3 rounded-lg border bg-background px-4 py-3 text-left transition-colors hover:border-primary/40"
@@ -199,7 +202,7 @@ export function DocsHub() {
           })}
         </div>
       ) : activeArticle ? (
-        <ArticleView article={activeArticle} onBack={() => setActive(null)} />
+        <ArticleView article={activeArticle} onBack={() => setLocalActive(null)} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {DOC_CATEGORIES.map((category) => {
@@ -220,7 +223,7 @@ export function DocsHub() {
                     {category.articles.map((article) => (
                       <li key={article.id}>
                         <button
-                          onClick={() => setActive({ categoryId: category.id, articleId: article.id })}
+                          onClick={() => setLocalActive({ categoryId: category.id, articleId: article.id })}
                           className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         >
                           {article.title}

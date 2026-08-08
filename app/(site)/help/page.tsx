@@ -47,7 +47,7 @@ export default async function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>Browse the products or menu, add the items you want to your cart, then check out when ready.</p>
-            <p>At checkout you'll provide delivery or pickup details and choose a payment method. You'll get a confirmation once your order is placed.</p>
+            <p>At checkout you&apos;ll provide delivery or pickup details and choose a payment method. You&apos;ll get a confirmation once your order is placed.</p>
             <Link href="/menu" className="inline-block">
               <Button variant="outline" size="sm">View menu</Button>
             </Link>
@@ -59,7 +59,7 @@ export default async function HelpPage() {
             <CardTitle className="font-heading">Bookings & reservations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Reserve a table or appointment using the booking form. Pick a date and time, enter your details, and we'll confirm your booking.</p>
+            <p>Reserve a table or appointment using the booking form. Pick a date and time, enter your details, and we&apos;ll confirm your booking.</p>
             <Link href="/book" className="inline-block">
               <Button variant="outline" size="sm">Make a booking</Button>
             </Link>
@@ -72,7 +72,7 @@ export default async function HelpPage() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>We accept the payment methods listed during checkout — typically cards through Stripe and local wallets where supported.</p>
-            <p>If you have a question about a specific payment, please reach out with your order details and we'll sort it out.</p>
+            <p>If you have a question about a specific payment, please reach out with your order details and we&apos;ll sort it out.</p>
           </CardContent>
         </Card>
 
@@ -81,7 +81,7 @@ export default async function HelpPage() {
             <CardTitle className="font-heading">Order tracking</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Check your order status any time from your account. If you checked out as a guest and have a question, contact us and we'll look it up.</p>
+            <p>Check your order status any time from your account. If you checked out as a guest and have a question, contact us and we&apos;ll look it up.</p>
             <p className="flex items-center gap-2"><Phone className="size-4 text-primary" /> {settings.phone}</p>
           </CardContent>
         </Card>
