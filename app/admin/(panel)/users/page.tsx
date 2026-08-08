@@ -60,6 +60,7 @@ import {
   type TenantFeature,
 } from "@/lib/tenant-features-constants";
 import { useActionState } from "react";
+import { toast } from "sonner";
 
 type AdminActionState = { success?: boolean; message?: string };
 type Site = { id: number; name: string; slug: string };
@@ -101,19 +102,25 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (createState?.success) {
+      toast.success("User created.");
       getAdminUsers().then((updatedUsers) => {
         setUsers(updatedUsers);
         setCreateOpen(false);
       });
+    } else if (createState?.message) {
+      toast.error(createState.message);
     }
   }, [createState]);
 
   useEffect(() => {
     if (updateState?.success) {
+      toast.success("User updated.");
       getAdminUsers().then((updatedUsers) => {
         setUsers(updatedUsers);
         setEditingUser(null);
       });
+    } else if (updateState?.message) {
+      toast.error(updateState.message);
     }
   }, [updateState]);
 

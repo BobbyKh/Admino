@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
 export default function SiteError({
   error,
   reset,
@@ -8,18 +12,22 @@ export default function SiteError({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <h2 className="text-2xl font-semibold">Something went wrong</h2>
-        <p className="text-muted-foreground">
-          An unexpected error occurred. Please try again.
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <AlertTriangle className="mb-4 size-12 text-destructive" />
+      <h1 className="mb-2 text-2xl font-bold">Something went wrong</h1>
+      <p className="mb-2 text-muted-foreground">
+        An unexpected error occurred. Please try again.
+      </p>
+      {error.digest && (
+        <p className="mb-4 rounded-md bg-muted px-3 py-1 text-xs text-muted-foreground">
+          Error: {error.digest}
         </p>
-        <button
-          onClick={reset}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Try again
-        </button>
+      )}
+      <div className="flex gap-3">
+        <Button variant="outline" asChild>
+          <Link href="/">Back to Home</Link>
+        </Button>
+        <Button onClick={reset}>Try again</Button>
       </div>
     </div>
   );

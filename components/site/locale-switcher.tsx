@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,17 @@ export function LocaleSwitcher({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingCode) {
+      document.cookie = `admino_locale=${pendingCode};path=/;max-age=${60 * 60 * 24 * 365}`;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPendingCode(null);
+      setPending(false);
+      router.refresh();
+    }
+  }, [pendingCode, router]);
 
   if (locales.length <= 1) return null;
 
@@ -34,8 +45,7 @@ export function LocaleSwitcher({
   function switchLocale(code: string) {
     if (code === currentLocale) return;
     setPending(true);
-    document.cookie = `admino_locale=${code};path=/;max-age=${60 * 60 * 24 * 365}`;
-    router.refresh();
+    setPendingCode(code);
   }
 
   return (

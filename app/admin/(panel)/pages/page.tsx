@@ -111,21 +111,27 @@ export default function PagesPage() {
   // Handle create success
   useEffect(() => {
     if (createState?.success && selectedSiteId) {
+      toast.success("Page created.");
       getPages(selectedSiteId).then((updated) => {
         setPages(updated);
         setCreateOpen(false);
         setCreateOgImage("");
       });
+    } else if (createState?.error) {
+      toast.error(createState.error);
     }
   }, [createState, selectedSiteId]);
 
   // Handle update success
   useEffect(() => {
     if (updateState?.success && selectedSiteId) {
+      toast.success("Page updated.");
       getPages(selectedSiteId).then((updated) => {
         setPages(updated);
         setEditingPage(null);
       });
+    } else if (updateState?.error) {
+      toast.error(updateState.error);
     }
   }, [updateState, selectedSiteId]);
 
