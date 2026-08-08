@@ -67,7 +67,7 @@ async function callOpenAI(
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await formatProviderError(res, "OpenAI"));
+  if (!res.ok) throw new Error(await formatProviderError(res, baseUrl || "https://api.openai.com/v1"));
   const data = await res.json();
   return String(data.choices?.[0]?.message?.content ?? "");
 }
@@ -96,7 +96,7 @@ async function callAnthropic(
       messages: [{ role: "user", content: userPrompt }],
     }),
   });
-  if (!res.ok) throw new Error(await formatProviderError(res, "Anthropic"));
+  if (!res.ok) throw new Error(await formatProviderError(res, baseUrl || "https://api.anthropic.com"));
   const data = await res.json();
   return String(data.content?.[0]?.text ?? "");
 }
@@ -120,21 +120,21 @@ async function callGoogle(
       generationConfig: { maxOutputTokens: maxTokens, temperature },
     }),
   });
-  if (!res.ok) throw new Error(await formatProviderError(res, "Google"));
+  if (!res.ok) throw new Error(await formatProviderError(res, baseUrl || "https://generativelanguage.googleapis.com"));
   const data = await res.json();
   return String(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
 }
 
-async function formatProviderError(response: Response, providerName: string): Promise<string> {
+async function formatProviderError(response: Response, url: string): Promise<string> {
   const status = response.status;
-  if (status === 401) return `Invalid ${providerName} API key. Check your key in Settings → AI.`;
-  if (status === 402) return `${providerName} billing error — no credits available. Add credits or select a funded model in Settings → AI.`;
+  if (status === 401) return `API key rejected by ${url}. Verify your key and base URL in Settings → AI.`;
+  if (status === 402) return `Billing error at ${url} — no credits available. Add credits or check your plan.`;
   if (status === 429) {
     const retryAfter = response.headers.get("retry-after");
     return retryAfter
-      ? `${providerName} rate limit reached. Try again in about ${retryAfter} seconds.`
-      : `${providerName} rate limit reached. Wait a moment, then try again.`;
+      ? `Rate limit reached at ${url}. Try again in about ${retryAfter} seconds.`
+      : `Rate limit reached at ${url}. Wait a moment, then try again.`;
   }
   const body = await response.text().catch(() => "").then((t) => t.slice(0, 200));
-  return `${providerName} API error ${status}${body ? `: ${body}` : ""}`;
+  return `AI API error ${status} from ${url}${body ? `: ${body}` : ""}`;
 }
