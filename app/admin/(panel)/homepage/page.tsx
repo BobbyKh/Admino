@@ -7,6 +7,25 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,14 +89,168 @@ function getTypeIcon(type: string) {
   return SECTION_TYPES.find((t) => t.value === type)?.icon ?? "📄";
 }
 
+function SortableSectionItem({
+  section,
+  isEditing,
+  onToggleEdit,
+  onToggleVisibility,
+  onDelete,
+  onSave,
+  onCancelEdit,
+  pending,
+}: {
+  section: HomeSection;
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  onToggleVisibility: (id: number, visible: boolean) => void;
+  onDelete: (id: number) => void;
+  onSave: (id: number, e: React.FormEvent<HTMLFormElement>) => void;
+  onCancelEdit: () => void;
+  pending: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : "auto" as const,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-lg border p-3 transition-all ${
+        isDragging ? "shadow-lg ring-2 ring-primary/30" : "hover:bg-muted/50"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag to reorder ${getTypeLabel(section.type)}`}
+        >
+          <GripVertical className="size-4" />
+        </button>
+
+        <span className="text-lg leading-none">{getTypeIcon(section.type)}</span>
+
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-medium">
+            {getTypeLabel(section.type)}
+          </span>
+          {section.title && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              — {section.title}
+            </span>
+          )}
+        </div>
+
+        <Switch
+          checked={section.visible}
+          onCheckedChange={(val) => onToggleVisibility(section.id, val)}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleEdit}
+        >
+          Edit
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 text-destructive hover:text-destructive"
+          onClick={() => onDelete(section.id)}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+
+      {isEditing && (
+        <form
+          onSubmit={(e) => onSave(section.id, e)}
+          className="mt-3 space-y-3 border-t pt-3"
+        >
+          <div className="space-y-1.5">
+            <Label>Section Title</Label>
+            <Input name="title" defaultValue={section.title ?? ""} placeholder="Optional heading" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Config JSON (section-specific settings)</Label>
+            <Textarea
+              name="config"
+              defaultValue={section.config ?? ""}
+              rows={4}
+              placeholder='{"key": "value"}'
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={pending}>
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onCancelEdit}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function DragOverlaySectionContent({ section }: { section: HomeSection }) {
+  return (
+    <Card className="shadow-xl ring-2 ring-primary/40 opacity-90 w-full max-w-[600px]">
+      <div className="flex items-center gap-2 p-3 bg-background">
+        <GripVertical className="size-4 text-primary" />
+        <span className="text-lg leading-none">{getTypeIcon(section.type)}</span>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm font-medium">
+            {getTypeLabel(section.type)}
+          </span>
+          {section.title && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              — {section.title}
+            </span>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default function HomepageSectionsPage() {
   const [sections, setSections] = React.useState<HomeSection[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [pending, startTransition] = React.useTransition();
   const [showAdd, setShowAdd] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
-  const [dragIdx, setDragIdx] = React.useState<number | null>(null);
-  const [overIdx, setOverIdx] = React.useState<number | null>(null);
+  const [activeDragId, setActiveDragId] = React.useState<number | string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   React.useEffect(() => {
     getHomeSections()
@@ -85,14 +258,23 @@ export default function HomepageSectionsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  function reorder(from: number, to: number) {
-    if (from === to || from < 0 || to < 0) return;
-    const updated = [...sections];
-    const [moved] = updated.splice(from, 1);
-    updated.splice(to, 0, moved);
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDragId(event.active.id);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveDragId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sections.findIndex((s) => s.id === active.id);
+    const newIndex = sections.findIndex((s) => s.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const updated = arrayMove(sections, oldIndex, newIndex);
     setSections(updated);
-    setDragIdx(null);
-    setOverIdx(null);
     startTransition(async () => {
       await reorderHomeSections(updated.map((s) => s.id));
     });
@@ -152,6 +334,10 @@ export default function HomepageSectionsPage() {
       setSections((prev) => prev.map((s) => (s.id === id ? { ...s, visible } : s)));
     });
   }
+
+  const activeDragSection = activeDragId
+    ? sections.find((s) => s.id === activeDragId)
+    : null;
 
   if (loading) {
     return (
@@ -229,117 +415,34 @@ export default function HomepageSectionsPage() {
               No sections yet. Add one to build your homepage.
             </p>
           )}
-          {sections.map((section, i) => (
-            <div
-              key={section.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", String(i));
-                setDragIdx(i);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setOverIdx(i);
-              }}
-              onDragLeave={() => setOverIdx(null)}
-              onDrop={(e) => {
-                e.preventDefault();
-                const from = Number(e.dataTransfer.getData("text/plain"));
-                reorder(from, i);
-              }}
-              onDragEnd={() => {
-                setDragIdx(null);
-                setOverIdx(null);
-              }}
-              className={`rounded-lg border p-3 transition-all ${
-                dragIdx === i
-                  ? "opacity-40 scale-95"
-                  : overIdx === i && dragIdx !== null
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                    : "hover:bg-muted/50"
-              }`}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sections.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className="cursor-grab text-muted-foreground/50 active:cursor-grabbing hover:text-muted-foreground"
-                  title="Drag to reorder"
-                >
-                  <GripVertical className="size-4" />
-                </span>
-
-                <span className="text-lg leading-none">{getTypeIcon(section.type)}</span>
-
-                <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium">
-                    {getTypeLabel(section.type)}
-                  </span>
-                  {section.title && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      — {section.title}
-                    </span>
-                  )}
-                </div>
-
-                <Switch
-                  checked={section.visible}
-                  onCheckedChange={(val) => handleToggleVisibility(section.id, val)}
+              {sections.map((section) => (
+                <SortableSectionItem
+                  key={section.id}
+                  section={section}
+                  isEditing={editingId === section.id}
+                  onToggleEdit={() => setEditingId(editingId === section.id ? null : section.id)}
+                  onToggleVisibility={handleToggleVisibility}
+                  onDelete={handleDelete}
+                  onSave={handleUpdate}
+                  onCancelEdit={() => setEditingId(null)}
+                  pending={pending}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setEditingId(editingId === section.id ? null : section.id)
-                  }
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(section.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-
-              {editingId === section.id && (
-                <form
-                  onSubmit={(e) => handleUpdate(section.id, e)}
-                  className="mt-3 space-y-3 border-t pt-3"
-                >
-                  <div className="space-y-1.5">
-                    <Label>Section Title</Label>
-                    <Input name="title" defaultValue={section.title ?? ""} placeholder="Optional heading" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Config JSON (section-specific settings)</Label>
-                    <Textarea
-                      name="config"
-                      defaultValue={section.config ?? ""}
-                      rows={4}
-                      placeholder='{"key": "value"}'
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="submit" size="sm" disabled={pending}>
-                      Save
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingId(null)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-          ))}
+              ))}
+            </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeDragSection ? <DragOverlaySectionContent section={activeDragSection} /> : null}
+            </DragOverlay>
+          </DndContext>
         </CardContent>
       </Card>
     </div>

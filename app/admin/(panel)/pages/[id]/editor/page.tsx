@@ -17,6 +17,25 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +81,186 @@ import {
   getBlockType,
   getDefaultConfig,
 } from "@/lib/blocks";
+
+// ─── Sortable Block Item ─────────────────────────────────────────────────────
+
+function SortableBlockItem({
+  block,
+  index,
+  isExpanded,
+  onToggleExpand,
+  onUpdateBlock,
+  onDeleteBlock,
+  onConfigChange,
+}: {
+  block: PageBlock;
+  index: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdateBlock: (blockId: number, updates: { title?: string; visible?: boolean; config?: string }) => void;
+  onDeleteBlock: (blockId: number) => void;
+  onConfigChange: (blockId: number, config: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : "auto" as const,
+  };
+
+  const blockType = getBlockType(block.type);
+  const Icon = blockType?.icon ?? Blocks;
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`overflow-hidden transition-shadow ${
+        isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
+      }`}
+    >
+      {/* Block header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+        onClick={onToggleExpand}
+      >
+        <button
+          type="button"
+          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag to reorder ${block.title || blockType?.label || block.type}`}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
+          <Icon className="size-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {block.title || blockType?.label || block.type}
+            </p>
+            <Badge variant="outline" className="text-xs">
+              {block.type}
+            </Badge>
+            {!block.visible && (
+              <Badge variant="secondary" className="text-xs">
+                Hidden
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onUpdateBlock(block.id, { visible: !block.visible })}
+            title={block.visible ? "Hide" : "Show"}
+          >
+            {block.visible ? (
+              <Eye className="size-4" />
+            ) : (
+              <EyeOff className="size-4 text-muted-foreground" />
+            )}
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="size-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove this block from the page.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDeleteBlock(block.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {isExpanded ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      {/* Block config (expanded) */}
+      {isExpanded && (
+        <CardContent className="border-t bg-muted/30 px-4 py-4">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <AiBlockAssistant
+                block={block}
+                onConfigChange={(config) => onConfigChange(block.id, config)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Block Title (optional)</Label>
+              <Input
+                value={block.title ?? ""}
+                onChange={(e) => onUpdateBlock(block.id, { title: e.target.value })}
+                placeholder={blockType?.label ?? block.type}
+              />
+            </div>
+            <BlockConfigEditor
+              block={block}
+              onConfigChange={(config) => onConfigChange(block.id, config)}
+            />
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// ─── Drag Overlay Content ────────────────────────────────────────────────────
+
+function DragOverlayContent({ block }: { block: PageBlock }) {
+  const blockType = getBlockType(block.type);
+  const Icon = blockType?.icon ?? Blocks;
+
+  return (
+    <Card className="overflow-hidden shadow-xl ring-2 ring-primary/40 opacity-90 w-full max-w-[600px]">
+      <div className="flex items-center gap-3 px-4 py-3 bg-background">
+        <GripVertical className="size-4 shrink-0 text-primary" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
+          <Icon className="size-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {block.title || blockType?.label || block.type}
+            </p>
+            <Badge variant="outline" className="text-xs">
+              {block.type}
+            </Badge>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function RepeaterConfigEditor({
   items,
@@ -805,32 +1004,6 @@ export default function BlockEditorPage() {
     [expandedId, pageId]
   );
 
-  const handleReorder = useCallback(
-    async (fromIndex: number, toIndex: number) => {
-      if (fromIndex === toIndex) return;
-      const newBlocks = [...blocks];
-      const [moved] = newBlocks.splice(fromIndex, 1);
-      newBlocks.splice(toIndex, 0, moved);
-      setBlocks(newBlocks);
-      const orderedIds = newBlocks.map((b) => b.id);
-      setPending(true);
-      setSaveStatus("saving");
-      setSaveError(null);
-      try {
-        await reorderPageBlocks(orderedIds);
-        const revisionData = await getPageRevisions(pageId);
-        setRevisions(revisionData);
-        setSaveStatus("saved");
-      } catch (error) {
-        setSaveStatus("error");
-        setSaveError(error instanceof Error ? error.message : "Unable to reorder blocks.");
-      } finally {
-        setPending(false);
-      }
-    },
-    [blocks, pageId]
-  );
-
   const handleRestoreRevision = useCallback(async (revisionId: number) => {
     setPending(true);
     setSaveStatus("saving");
@@ -850,19 +1023,66 @@ export default function BlockEditorPage() {
     }
   }, [pageId]);
 
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [activeDragId, setActiveDragId] = useState<number | string | null>(null);
   const filteredBlockTypes = BLOCK_TYPES.filter((blockType) => {
     const query = blockSearch.trim().toLowerCase();
     return !query || `${blockType.label} ${blockType.description}`.toLowerCase().includes(query);
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveDragId(null);
+
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = blocks.findIndex((b) => b.id === active.id);
+      const newIndex = blocks.findIndex((b) => b.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+      setBlocks(newBlocks);
+
+      const orderedIds = newBlocks.map((b) => b.id);
+      setSaveStatus("saving");
+      setSaveError(null);
+      void reorderPageBlocks(orderedIds).then(async () => {
+        const revisionData = await getPageRevisions(pageId);
+        setRevisions(revisionData);
+        setSaveStatus("saved");
+      }).catch((error) => {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to reorder blocks.");
+      });
+    },
+    [blocks, pageId]
+  );
+
   const handlePaletteDrop = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault();
     const type = event.dataTransfer.getData("text/plain");
-    if (dragIdx === null && getBlockType(type)) {
+    if (getBlockType(type)) {
       handleAddBlock(type);
     }
   };
+
+  const activeDragBlock = activeDragId
+    ? blocks.find((b) => b.id === activeDragId)
+    : null;
 
   if (loading) {
     return (
@@ -1021,137 +1241,35 @@ export default function BlockEditorPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {blocks.map((block, index) => {
-            const blockType = getBlockType(block.type);
-            const Icon = blockType?.icon ?? Blocks;
-            const isExpanded = expandedId === block.id;
-
-            return (
-              <Card
-                key={block.id}
-                className={`overflow-hidden transition-all ${
-                  dragIdx === index ? "opacity-50" : ""
-                }`}
-              >
-                {/* Block header */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-                  onClick={() => setExpandedId(isExpanded ? null : block.id)}
-                  draggable
-                  onDragStart={() => setDragIdx(index)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(event) => {
-                    event.stopPropagation();
-                    if (dragIdx !== null) {
-                      handleReorder(dragIdx, index);
-                      setDragIdx(null);
-                    } else {
-                      handlePaletteDrop(event);
-                    }
-                  }}
-                  onDragEnd={() => setDragIdx(null)}
-                >
-                  <GripVertical className="size-4 shrink-0 text-muted-foreground/40" />
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
-                    <Icon className="size-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">
-                        {block.title || blockType?.label || block.type}
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {block.type}
-                      </Badge>
-                      {!block.visible && (
-                        <Badge variant="secondary" className="text-xs">
-                          Hidden
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        handleUpdateBlock(block.id, { visible: !block.visible })
-                      }
-                      title={block.visible ? "Hide" : "Show"}
-                    >
-                      {block.visible ? (
-                        <Eye className="size-4" />
-                      ) : (
-                        <EyeOff className="size-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this block?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently remove this block from the page.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteBlock(block.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    {isExpanded ? (
-                      <ChevronUp className="size-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Block config (expanded) */}
-                {isExpanded && (
-                  <CardContent className="border-t bg-muted/30 px-4 py-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-end">
-                        <AiBlockAssistant
-                          block={block}
-                          onConfigChange={(config) => handleConfigChange(block.id, config)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Block Title (optional)</Label>
-                        <Input
-                          value={block.title ?? ""}
-                          onChange={(e) =>
-                            handleUpdateBlock(block.id, { title: e.target.value })
-                          }
-                          placeholder={blockType?.label ?? block.type}
-                        />
-                      </div>
-                      <BlockConfigEditor
-                        block={block}
-                        onConfigChange={(config) => handleConfigChange(block.id, config)}
-                      />
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={blocks.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {blocks.map((block, index) => (
+                <SortableBlockItem
+                  key={block.id}
+                  block={block}
+                  index={index}
+                  isExpanded={expandedId === block.id}
+                  onToggleExpand={() => setExpandedId(expandedId === block.id ? null : block.id)}
+                  onUpdateBlock={handleUpdateBlock}
+                  onDeleteBlock={handleDeleteBlock}
+                  onConfigChange={handleConfigChange}
+                />
+              ))}
+            </div>
+          </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeDragBlock ? <DragOverlayContent block={activeDragBlock} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
         </section>
       </div>
