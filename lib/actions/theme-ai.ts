@@ -37,7 +37,7 @@ const colorSchema = z.string().trim().min(1).max(80).refine(isSafeCssColor, "Inv
 
 const generatedThemeSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  rationale: z.string().trim().max(240).optional(),
+  rationale: z.string().trim().max(1000).optional(),
   themePrimary: colorSchema,
   themePrimaryForeground: colorSchema,
   themeSecondary: colorSchema,
