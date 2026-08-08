@@ -16,7 +16,10 @@ import {
   Blocks,
   Sparkles,
   Undo2,
+  Redo2,
   Wand2,
+  Copy,
+  Keyboard,
 } from "lucide-react";
 import {
   DndContext,
@@ -1027,6 +1030,41 @@ export default function BlockEditorPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const configSaveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+
+  // Undo/Redo history
+  const [history, setHistory] = useState<PageBlock[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isRestoringRef = useRef(false);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const pushHistory = useCallback((newBlocks: PageBlock[]) => {
+    if (isRestoringRef.current) return;
+    setHistory((prev) => {
+      const trimmed = prev.slice(0, historyIndex + 1);
+      return [...trimmed, newBlocks];
+    });
+    setHistoryIndex((prev) => prev + 1);
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (!canUndo) return;
+    isRestoringRef.current = true;
+    const prevBlocks = history[historyIndex - 1];
+    setBlocks(prevBlocks);
+    setHistoryIndex((prev) => prev - 1);
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+  }, [canUndo, history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (!canRedo) return;
+    isRestoringRef.current = true;
+    const nextBlocks = history[historyIndex + 1];
+    setBlocks(nextBlocks);
+    setHistoryIndex((prev) => prev + 1);
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+  }, [canRedo, history, historyIndex]);
 
   // Load page and blocks
   useEffect(() => {
