@@ -14,3 +14,33 @@ export async function updateLayoutSettings(formData: FormData) {
   revalidatePath("/", "layout");
   revalidatePath("/admin/layout");
 }
+
+export async function updateThemeCustomizerSettings(formData: FormData) {
+  const { siteId, denied } = await getCurrentSiteWithFeature("layout");
+  if (denied) throw new Error(denied);
+
+  const fontBody = String(formData.get("fontBody") ?? "Inter").trim();
+  const fontHeading = String(formData.get("fontHeading") ?? "Outfit").trim();
+  const customCss = String(formData.get("customCss") ?? "").trim();
+
+  const themeConfig = {
+    fontBody,
+    fontHeading,
+    customCss,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db.insert(settings).values({
+    siteId,
+    key: "site_theme_customizer",
+    value: JSON.stringify(themeConfig),
+    updatedAt: new Date().toISOString(),
+  }).onConflictDoUpdate({
+    target: [settings.key, settings.siteId],
+    set: { value: JSON.stringify(themeConfig), updatedAt: new Date().toISOString() },
+  });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/layout");
+  return { success: true, message: "Theme customizer settings updated." };
+}

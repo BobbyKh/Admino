@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from "crypto";
+
 /**
  * Payment provider metadata shared by tenant configuration and checkout.
  */
@@ -29,4 +31,39 @@ export const testPaymentProviderRegistry: Record<
 
 export function isTestPaymentProvider(value: string): value is TestPaymentProvider {
   return TEST_PAYMENT_PROVIDERS.includes(value as TestPaymentProvider);
+}
+
+/**
+ * Generates eSewa HMAC-SHA256 signature for payment payload validation.
+ */
+export function generateEsewaSignature(
+  fields: Record<string, string>,
+  signedFieldNames: string,
+  secretKey: string
+): string {
+  const message = signedFieldNames
+    .split(",")
+    .map((field) => `${field}=${fields[field] ?? ""}`)
+    .join(",");
+  return createHmac("sha256", secretKey).update(message).digest("base64");
+}
+
+/**
+ * Verifies eSewa HMAC-SHA256 signature timing-safely.
+ */
+export function verifyEsewaSignature(
+  fields: Record<string, string>,
+  signedFieldNames: string,
+  signature: string,
+  secretKey: string
+): boolean {
+  try {
+    const expected = generateEsewaSignature(fields, signedFieldNames, secretKey);
+    if (Buffer.byteLength(expected) !== Buffer.byteLength(signature)) {
+      return false;
+    }
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  } catch {
+    return false;
+  }
 }

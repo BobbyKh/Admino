@@ -4,11 +4,12 @@ import { resolve4, resolveCname } from "node:dns/promises";
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { navLinks, pages, paymentConfigurations, products, settings, sites } from "@/lib/db/schema";
+import { navLinks, pageBlocks, pages, paymentConfigurations, products, settings, sites } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
 import { createDefaultHomepage } from "@/lib/default-homepage";
 import { createDefaultNavigation } from "@/lib/default-navigation";
 import { createEcommerceTemplate } from "@/lib/default-ecommerce";
+import { getTemplatePreset } from "@/lib/templates";
 import type { AdminActionState } from "./types";
 import { getTenantFeatureAccess, setTenantFeatureAccess, TENANT_FEATURES, type TenantFeature } from "@/lib/tenant-features";
 
@@ -284,4 +285,46 @@ export async function getSitePublishReadiness(): Promise<Record<number, SitePubl
     return [site.id, { complete: checks.filter((check) => check.complete).length, total: checks.length, checks }] as const;
   }));
   return Object.fromEntries(entries);
+}
+
+export async function applyTemplatePreset(siteId: number, templateId: string) {
+  await requireRole("super_admin");
+  const preset = getTemplatePreset(templateId);
+
+  await db.transaction(async (tx) => {
+    await tx.update(sites).set({ template: preset.id, updatedAt: new Date().toISOString() }).where(eq(sites.id, siteId));
+
+    for (const pageDef of preset.defaultPages) {
+      const [existingPage] = await tx.select({ id: pages.id }).from(pages).where(and(eq(pages.siteId, siteId), eq(pages.slug, pageDef.slug)));
+
+      let pageId = existingPage?.id;
+      if (!pageId) {
+        const [newPage] = await tx.insert(pages).values({
+          siteId,
+          title: pageDef.title,
+          slug: pageDef.slug,
+          published: true,
+          updatedAt: new Date().toISOString(),
+        }).returning({ id: pages.id });
+        pageId = newPage.id;
+      }
+
+      for (let i = 0; i < pageDef.blocks.length; i++) {
+        const b = pageDef.blocks[i];
+        await tx.insert(pageBlocks).values({
+          pageId,
+          type: b.type,
+          title: b.title,
+          sortOrder: i,
+          visible: true,
+          config: JSON.stringify(b.config),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+  });
+
+  revalidatePath("/admin/sites");
+  revalidatePath("/", "layout");
+  return { success: true, message: `Applied ${preset.name} template.` };
 }

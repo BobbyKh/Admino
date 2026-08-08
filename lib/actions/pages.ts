@@ -8,6 +8,7 @@ import { hasMinRole, type Role } from "@/lib/auth";
 import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { validateBlockConfig, validateBlockType } from "@/lib/block-config-validation";
+import { computeBlockDiff, type BlockSummary } from "@/lib/revision-diff";
 import type { AdminActionState } from "./types";
 
 const LEGAL_TEMPLATE_CONTENT: Record<string, string> = {
@@ -60,6 +61,34 @@ export async function getPageRevisions(pageId: number) {
     .where(eq(pageRevisions.pageId, pageId))
     .orderBy(desc(pageRevisions.createdAt))
     .limit(20);
+}
+
+export async function getPageRevisionDiff(pageId: number, revisionIdA: number, revisionIdB: number) {
+  const page = await requirePageAccess(pageId);
+  const user = await requireSiteAccess(page.siteId);
+  await requirePagesFeature(user, page.siteId);
+
+  const [revA, revB] = await Promise.all([
+    db.select().from(pageRevisions).where(and(eq(pageRevisions.id, revisionIdA), eq(pageRevisions.pageId, pageId))),
+    db.select().from(pageRevisions).where(and(eq(pageRevisions.id, revisionIdB), eq(pageRevisions.pageId, pageId))),
+  ]);
+
+  if (!revA[0] || !revB[0]) throw new Error("One or both revisions not found.");
+
+  let blocksA: BlockSummary[] = [];
+  let blocksB: BlockSummary[] = [];
+  try {
+    blocksA = (JSON.parse(revA[0].snapshot) as { blocks?: BlockSummary[] }).blocks ?? [];
+    blocksB = (JSON.parse(revB[0].snapshot) as { blocks?: BlockSummary[] }).blocks ?? [];
+  } catch {
+    throw new Error("Invalid revision snapshot JSON.");
+  }
+
+  return {
+    revisionA: { id: revA[0].id, label: revA[0].label, createdAt: revA[0].createdAt },
+    revisionB: { id: revB[0].id, label: revB[0].label, createdAt: revB[0].createdAt },
+    diff: computeBlockDiff(blocksA, blocksB),
+  };
 }
 
 export async function restorePageRevision(revisionId: number) {

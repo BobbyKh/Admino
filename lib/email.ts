@@ -165,6 +165,17 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   return result;
 }
 
+export async function sendTestEmail(to: string) {
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
+    <h2 style="color:#166534">SMTP Email Test — Admino</h2>
+    <p>This is a test notification email from your Web Builder application.</p>
+    <p>If you are receiving this email, your SMTP email settings are configured and working correctly!</p>
+    <p style="color:#666;font-size:12px">Sent at ${new Date().toLocaleString()}</p>
+  </div>`;
+  return sendMail(to, "SMTP Email Test — Admino", html);
+}
+
 export async function sendOrderConfirmationEmail(order: Order, items: OrderItem[]) {
   const siteName = await getSiteName(order.siteId);
   const html = orderEmailHtml({
