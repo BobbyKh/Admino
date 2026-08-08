@@ -71,6 +71,44 @@
 - Error messages now show actual API URL
 - Fixed Google `systemInstruction` bug in layout-ai
 
+### Phase 9: Production Security & Deployment (commit pending)
+**Security:**
+- Created `proxy.ts` middleware with CSP headers, CSRF protection, rate limiting
+- Hardened `next.config.ts`: standalone output, compression, security headers
+- Added HSTS, X-Frame-Options, X-Content-Type-Options headers
+
+**Deployment:**
+- Created `Dockerfile` with multi-stage build (deps → build → production)
+- Created `docker-compose.yml` with PostgreSQL + Redis + app
+- Created `vercel.json` for Vercel deployment
+- Created `.github/workflows/ci.yml` for GitHub Actions CI/CD
+- Created `.dockerignore` for optimized Docker builds
+- Updated `.env.example` with all required variables
+
+### Phase 10: Stripe Payment Integration (commit pending)
+- Installed `stripe` SDK (v22.4.0)
+- Created `lib/commerce/stripe.ts` — Stripe client utility with per-site key resolution
+- Created `app/api/payments/stripe/checkout/route.ts` — Stripe Checkout Session creation
+- Updated webhook to handle `checkout.session.completed` for order fulfillment
+- Updated checkout client to redirect to Stripe Checkout when Stripe selected
+- Created `/checkout/success` page for post-payment confirmation
+- Orders are pre-created with pending status, then updated on webhook confirmation
+
+### Phase 8: UX Improvements & AI Fixes (commit `8b4e2f1`)
+**UI Enhancements:**
+- Admin sidebar: mobile Sheet, collapsible nav groups, active state indicators
+- Loading states: skeleton UI replacing spinners
+- Error pages: improved 404 and error boundaries
+- Confirmation dialogs: AlertDialog replacing `window.confirm`
+- Account sidebar: client component with active state
+
+**AI Provider Fixes:**
+- Created shared `lib/ai-provider.ts` utility
+- Fixed product-ai, blog-ai, translation-ai (were OpenAI-only)
+- Fixed seo-ai, block-ai, theme-ai, layout-ai
+- Error messages now show actual API URL
+- Fixed Google `systemInstruction` bug in layout-ai
+
 **TypeScript Fixes:**
 - Fixed `getPages()` missing argument → `getPagesForCurrentSite()`
 - Fixed `siteId` narrowing in use-analytics-tracking

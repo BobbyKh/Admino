@@ -46,6 +46,7 @@ export const experimentEvents = pg.experimentEvents;
 export const pageViews = pg.pageViews;
 export const clickEvents = pg.clickEvents;
 export const conversionFunnels = pg.conversionFunnels;
+export const errorLogs = pg.errorLogs;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
@@ -89,6 +90,7 @@ export type ExperimentEvent = pg.ExperimentEvent;
 export type PageView = pg.PageView;
 export type ClickEvent = pg.ClickEvent;
 export type ConversionFunnel = pg.ConversionFunnel;
+export type ErrorLog = pg.ErrorLog;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

@@ -1,9 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { subscriptions } from "@/lib/db/schema";
+import { orders, orderItems, products, subscriptions } from "@/lib/db/schema";
 import { dispatchWebhook } from "@/lib/webhooks";
+import { sendOrderPaymentStatusEmail } from "@/lib/email";
 
 /**
  * Stripe webhook handler for subscription lifecycle events.
@@ -14,6 +15,7 @@ import { dispatchWebhook } from "@/lib/webhooks";
  * - customer.subscription.deleted
  * - invoice.paid
  * - invoice.payment_failed
+ * - checkout.session.completed
  *
  * Configure STRIPE_WEBHOOK_SECRET in .env.local with your Stripe webhook endpoint secret.
  */
@@ -59,6 +61,10 @@ export async function POST(request: NextRequest) {
         await handleInvoicePaymentFailed(event.data.object);
         break;
 
+      case "checkout.session.completed":
+        await handleCheckoutCompleted(event.data.object);
+        break;
+
       default:
         // Unhandled event type — acknowledge receipt
         break;
@@ -72,6 +78,71 @@ export async function POST(request: NextRequest) {
 }
 
 // ─── Event Handlers ──────────────────────────────────────────────────────────
+
+async function handleCheckoutCompleted(data: Record<string, unknown>) {
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const orderId = metadata.orderId ? parseInt(metadata.orderId, 10) : null;
+  if (!orderId) return;
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!order) return;
+  if (order.paymentStatus === "paid") return;
+
+  const stripePaymentIntentId = data.payment_intent as string | null;
+  const stripeCustomerId = data.customer as string | null;
+
+  await db
+    .update(orders)
+    .set({
+      status: "paid",
+      paymentStatus: "paid",
+      providerPaymentId: stripePaymentIntentId ?? data.id as string ?? null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(orders.id, orderId));
+
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  void sendOrderPaymentStatusEmail({ ...order, status: "paid", paymentStatus: "paid" }, items, "paid").catch((error) =>
+    console.error("Failed to send order paid email:", error)
+  );
+
+  void dispatchWebhook(order.siteId, "order.paid", {
+    order: {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      email: order.email,
+      customerName: order.customerName,
+      total: order.total,
+      currency: order.currency,
+      status: "paid",
+      paymentStatus: "paid",
+      stripePaymentIntentId,
+      stripeCustomerId,
+      items: items.map((item) => ({
+        title: item.title,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+    },
+  }).catch(() => {});
+
+  // Restore inventory for items in cancelled orders that are now paid
+  for (const item of items) {
+    if (item.productId) {
+      await db
+        .update(products)
+        .set({
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(products.id, item.productId));
+    }
+  }
+}
 
 async function handleSubscriptionUpdate(data: Record<string, unknown>) {
   const stripeSubscriptionId = data.id as string;

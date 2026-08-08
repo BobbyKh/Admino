@@ -792,3 +792,28 @@ export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;
 export type NewPage = typeof pages.$inferInsert;
 export type NewPageBlock = typeof pageBlocks.$inferInsert;
+
+// ─── Error Logs ──────────────────────────────────────────────────────────────
+
+export const errorLogs = pgTable("error_logs", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  level: text("level").notNull().default("error"), // error | warning | info
+  message: text("message").notNull(),
+  stack: text("stack"),
+  url: text("url"),
+  method: text("method"),
+  statusCode: integer("status_code"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  context: text("context"), // JSON string for extra metadata
+  resolved: integer("resolved").notNull().default(0), // 0 = unresolved, 1 = resolved
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("error_logs_site_id_idx").on(t.siteId),
+  levelIdx: index("error_logs_level_idx").on(t.level),
+  resolvedIdx: index("error_logs_resolved_idx").on(t.resolved),
+  createdAtIdx: index("error_logs_created_at_idx").on(t.createdAt),
+}));
+
+export type ErrorLog = typeof errorLogs.$inferSelect;

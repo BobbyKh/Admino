@@ -50,6 +50,13 @@
       "when": 1786028643502,
       "tag": "0006_lovely_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786214517495,
+      "tag": "0007_true_warhawk",
+      "breakpoints": true
     }
   ]
 }
