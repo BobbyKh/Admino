@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Leaf, Menu, Phone, ShoppingCart, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LocaleSwitcher } from "@/components/site/locale-switcher";
 import type { SiteSettings } from "@/lib/settings";
 import type { NavLink } from "@/lib/db/schema";
 
@@ -24,6 +25,7 @@ export function Navbar({
   showLogo = true,
   showSiteName = true,
   sticky = true,
+  locales,
 }: {
   settings: SiteSettings;
   navLinks: NavLink[];
@@ -31,6 +33,7 @@ export function Navbar({
   showLogo?: boolean;
   showSiteName?: boolean;
   sticky?: boolean;
+  locales?: Array<{ code: string; name: string; isDefault: boolean }>;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -84,6 +87,12 @@ export function Navbar({
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
+          {locales && locales.length > 1 && (
+            <LocaleSwitcher
+              locales={locales.map((l) => ({ code: l.code, name: l.name }))}
+              currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
+            />
+          )}
           {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label="View cart">
             <Button variant="ghost" size="icon"><ShoppingCart className="size-4" /></Button>
           </Link>}
@@ -134,6 +143,12 @@ export function Navbar({
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t pt-3">
+              {locales && locales.length > 1 && (
+                <LocaleSwitcher
+                  locales={locales.map((l) => ({ code: l.code, name: l.name }))}
+                  currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
+                />
+              )}
               {showCart && <Link href={withPreviewSite("/cart", siteSlug)} onClick={() => setOpen(false)}><Button variant="outline" className="w-full gap-2"><ShoppingCart className="size-4" />Cart</Button></Link>}
               {settings.navbarShowPhone === "true" && settings.phone && (
                 <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>

@@ -11,9 +11,12 @@ import {
   TrendingUp,
   ArrowUpRight,
   Clock,
+  MousePointer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -21,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSiteAnalytics } from "@/lib/actions/index";
+import { getSiteAnalytics, getHeatmapData } from "@/lib/actions/index";
 
 interface AnalyticsData {
   totalViews: number;
@@ -74,6 +77,9 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState("30");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [heatmapPath, setHeatmapPath] = useState("/");
+  const [heatmapData, setHeatmapData] = useState<Array<{ x: number; y: number; count: number }>>([]);
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   useEffect(() => {
     // Get siteId from admin context
@@ -85,6 +91,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (!siteId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     getSiteAnalytics(siteId, Number(days)).then((d) => {
       setData(d as AnalyticsData);
@@ -334,6 +341,78 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Heatmap Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <MousePointer className="size-4" />
+              Click Heatmap
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Input
+                value={heatmapPath}
+                onChange={(e) => setHeatmapPath(e.target.value)}
+                placeholder="Page path (e.g. /)"
+                className="w-48 h-8 text-xs"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!siteId || heatmapLoading}
+                onClick={async () => {
+                  if (!siteId) return;
+                  setHeatmapLoading(true);
+                  try {
+                    const clicks = await getHeatmapData(siteId, heatmapPath);
+                    setHeatmapData(clicks as Array<{ x: number; y: number; count: number }>);
+                  } catch {
+                    setHeatmapData([]);
+                  } finally {
+                    setHeatmapLoading(false);
+                  }
+                }}
+              >
+                {heatmapLoading ? "Loading..." : "Load"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {heatmapData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No click data yet. Enter a page path and click Load to view the heatmap.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="relative mx-auto aspect-[16/9] max-w-2xl overflow-hidden rounded-lg border bg-muted/30">
+                {heatmapData.map((point, i) => {
+                  const maxCount = Math.max(...heatmapData.map((d) => d.count));
+                  const intensity = maxCount > 0 ? point.count / maxCount : 0;
+                  return (
+                    <div
+                      key={i}
+                      className="absolute size-6 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                      style={{
+                        left: `${(point.x / 1000) * 100}%`,
+                        top: `${(point.y / 1000) * 100}%`,
+                        background: `radial-gradient(circle, rgba(239,68,68,${0.3 + intensity * 0.7}) 0%, rgba(239,68,68,0) 70%)`,
+                        width: `${16 + intensity * 24}px`,
+                        height: `${16 + intensity * 24}px`,
+                      }}
+                      title={`${point.count} clicks at (${point.x}, ${point.y})`}
+                    />
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                {heatmapData.length} click points recorded. Larger red dots indicate more clicks.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

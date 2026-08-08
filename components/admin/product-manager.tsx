@@ -3,9 +3,10 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Package, Pencil, Plus, Search, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { createProduct, deleteProduct, updateProduct } from "@/lib/actions/index";
+import { generateProductDescriptionWithAi } from "@/lib/actions/product-ai";
 import type { Product } from "@/lib/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,30 @@ export function ProductManager({ products }: { products: Product[] }) {
 
 function ProductFields({ product }: { product?: Product }) {
   const [image, setImage] = React.useState(product?.image ?? "");
-  return <><Field label="Title" name="title" required defaultValue={product?.title} /><Field label="Slug" name="slug" required defaultValue={product?.slug} /><Field label="Category" name="category" defaultValue={product?.category ?? ""} placeholder="For example, Clothing" /><Field label="Price (minor unit)" name="price" type="number" min="0" required defaultValue={product?.price} /><Field label="Currency (for example, USD)" name="currency" required minLength={3} maxLength={3} defaultValue={product?.currency ?? "usd"} /><Field label="Inventory" name="inventoryQuantity" type="number" min="0" required defaultValue={product?.inventoryQuantity ?? 0} /><div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" defaultValue={product?.status ?? "draft"} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div><Field label="Sizes (optional, comma-separated)" name="sizes" defaultValue={optionList(product?.sizes)} placeholder="S, M, L" /><Field label="Colors (optional, comma-separated)" name="colors" defaultValue={optionList(product?.colors)} placeholder="Black, Blue" /><div className="space-y-2 md:col-span-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} /></div><div className="md:col-span-2 rounded-lg border bg-muted/20 p-4"><MediaPicker name="image" label="Product image" value={image} onChange={setImage} /></div><label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured product</label></>;
+  const [aiLoading, setAiLoading] = React.useState(false);
+
+  async function handleGenerateDescription() {
+    const titleInput = document.querySelector("[name=title]") as HTMLInputElement | null;
+    const title = titleInput?.value;
+    if (!title) { toast.error("Enter a product title first."); return; }
+    setAiLoading(true);
+    try {
+      const result = await generateProductDescriptionWithAi(title);
+      if ("copy" in result) {
+        const descInput = document.querySelector("[name=description]") as HTMLTextAreaElement | null;
+        if (descInput) descInput.value = result.copy.description;
+        toast.success(`AI generated description and badge: "${result.copy.badge}"`);
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to generate product copy.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  return <><Field label="Title" name="title" required defaultValue={product?.title} /><Field label="Slug" name="slug" required defaultValue={product?.slug} /><Field label="Category" name="category" defaultValue={product?.category ?? ""} placeholder="For example, Clothing" /><Field label="Price (minor unit)" name="price" type="number" min="0" required defaultValue={product?.price} /><Field label="Currency (for example, USD)" name="currency" required minLength={3} maxLength={3} defaultValue={product?.currency ?? "usd"} /><Field label="Inventory" name="inventoryQuantity" type="number" min="0" required defaultValue={product?.inventoryQuantity ?? 0} /><div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" defaultValue={product?.status ?? "draft"} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div><Field label="Sizes (optional, comma-separated)" name="sizes" defaultValue={optionList(product?.sizes)} placeholder="S, M, L" /><Field label="Colors (optional, comma-separated)" name="colors" defaultValue={optionList(product?.colors)} placeholder="Black, Blue" /><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between"><Label htmlFor="description">Description</Label><Button type="button" variant="outline" size="sm" disabled={aiLoading} onClick={handleGenerateDescription}><Sparkles className="mr-1 size-3.5 text-primary" />{aiLoading ? "Generating..." : "AI Generate"}</Button></div><Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} /></div><div className="md:col-span-2 rounded-lg border bg-muted/20 p-4"><MediaPicker name="image" label="Product image" value={image} onChange={setImage} /></div><label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured product</label></>;
 }
 
 function Field({ label, name, ...props }: React.ComponentProps<typeof Input> & { label: string; name: string }) { return <div className="space-y-2"><Label htmlFor={name}>{label}</Label><Input id={name} name={name} {...props} /></div>; }

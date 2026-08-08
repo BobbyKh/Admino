@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Plus, Trash2, Star, Globe } from "lucide-react";
+import { Plus, Trash2, Star, Globe, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ import {
   deleteLocale,
   setDefaultLocale,
 } from "@/lib/actions/index";
+import { translatePageBlocksWithAi } from "@/lib/actions/translation-ai";
+import { getPages } from "@/lib/actions/index";
 
 interface Locale {
   id: number;
@@ -50,6 +52,11 @@ export default function I18nPage() {
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
   const [showAdd, setShowAdd] = useState(false);
+  const [showTranslate, setShowTranslate] = useState(false);
+  const [translatePageId, setTranslatePageId] = useState("");
+  const [translateTargetLang, setTranslateTargetLang] = useState("");
+  const [translateLoading, setTranslateLoading] = useState(false);
+  const [pages, setPages] = useState<Array<{ id: number; title: string }>>([]);
 
   useEffect(() => {
     getLocales().then((l) => {
@@ -98,6 +105,41 @@ export default function I18nPage() {
     });
   }
 
+  async function handleTranslate() {
+    if (!translatePageId || !translateTargetLang) {
+      toast.error("Select a page and target language.");
+      return;
+    }
+    setTranslateLoading(true);
+    try {
+      const result = await translatePageBlocksWithAi(
+        Number(translatePageId),
+        translateTargetLang
+      );
+      if ("success" in result && result.success) {
+        toast.success(result.message);
+        setShowTranslate(false);
+      } else {
+        toast.error("error" in result ? result.error : result.message);
+      }
+    } catch {
+      toast.error("Translation failed.");
+    } finally {
+      setTranslateLoading(false);
+    }
+  }
+
+  async function openTranslateDialog() {
+    setShowTranslate(true);
+    // Load pages for the current site
+    try {
+      const allPages = await getPages();
+      setPages(Array.isArray(allPages) ? allPages.map((p: { id: number; title: string }) => ({ id: p.id, title: p.title })) : []);
+    } catch {
+      setPages([]);
+    }
+  }
+
   if (loading) {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
@@ -115,7 +157,12 @@ export default function I18nPage() {
             Manage languages for your site. Add locales to enable multi-language content.
           </p>
         </div>
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={openTranslateDialog}>
+            <Sparkles className="mr-2 size-4 text-primary" />
+            AI Translate
+          </Button>
+          <Dialog open={showAdd} onOpenChange={setShowAdd}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="size-4" />
@@ -173,6 +220,7 @@ export default function I18nPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {locales.length === 0 ? (
@@ -233,6 +281,47 @@ export default function I18nPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={showTranslate} onOpenChange={setShowTranslate}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>AI Translate Page</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Page *</Label>
+              <select
+                value={translatePageId}
+                onChange={(e) => setTranslatePageId(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Choose a page...</option>
+                {pages.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Target Language *</Label>
+              <Input
+                value={translateTargetLang}
+                onChange={(e) => setTranslateTargetLang(e.target.value)}
+                placeholder="e.g. French, Spanish, German"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter the full language name (e.g. French, Japanese)
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowTranslate(false)}>Cancel</Button>
+              <Button onClick={handleTranslate} disabled={translateLoading}>
+                {translateLoading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4 text-primary" />}
+                {translateLoading ? "Translating..." : "Translate with AI"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-lg border bg-muted/30 p-4">
         <h3 className="mb-2 font-medium">How translations work</h3>
