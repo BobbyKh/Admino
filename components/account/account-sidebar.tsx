@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { User, Package, MapPin, Heart, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logoutCustomer } from "@/lib/actions/customers";
+import { signOut } from "./account-sidebar-actions";
 
 const NAV_ITEMS = [
   { href: "/account", label: "Profile", icon: User },
@@ -43,7 +43,7 @@ export function AccountSidebar({ isLoggedIn }: { isLoggedIn: boolean }) {
         );
       })}
       {isLoggedIn && (
-        <form action={async () => { "use server"; await logoutCustomer(); }}>
+        <form action={signOut}>
           <button
             type="submit"
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

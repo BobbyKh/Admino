@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { pages, pageBlocks, pageRevisions } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { requirePageAccess, requirePageBlockAccess, requireSiteAccess } from "@/lib/tenant-access";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { validateBlockConfig, validateBlockType } from "@/lib/block-config-validation";
 import { computeBlockDiff, type BlockSummary } from "@/lib/revision-diff";
@@ -20,6 +21,11 @@ export async function getPages(siteId: number) {
   const user = await requireSiteAccess(siteId);
   await requirePagesFeature(user, siteId);
   return db.select().from(pages).where(eq(pages.siteId, siteId)).orderBy(asc(pages.sortOrder));
+}
+
+export async function getPagesForCurrentSite() {
+  const siteId = await getCurrentAdminSiteId();
+  return getPages(siteId);
 }
 
 export async function getPage(id: number) {

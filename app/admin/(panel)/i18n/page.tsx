@@ -22,7 +22,7 @@ import {
   setDefaultLocale,
 } from "@/lib/actions/index";
 import { translatePageBlocksWithAi } from "@/lib/actions/translation-ai";
-import { getPages } from "@/lib/actions/index";
+import { getPagesForCurrentSite } from "@/lib/actions/index";
 
 interface Locale {
   id: number;
@@ -133,7 +133,7 @@ export default function I18nPage() {
     setShowTranslate(true);
     // Load pages for the current site
     try {
-      const allPages = await getPages();
+      const allPages = await getPagesForCurrentSite();
       setPages(Array.isArray(allPages) ? allPages.map((p: { id: number; title: string }) => ({ id: p.id, title: p.title })) : []);
     } catch {
       setPages([]);

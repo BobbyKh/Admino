@@ -217,7 +217,7 @@ export async function getSiteAnalytics(
     countryBreakdown,
     referrerBreakdown,
     utmBreakdown,
-    avgDuration: avgDuration?.avg ?? 0,
+    avgDuration: avgDuration[0]?.avg ?? 0,
   };
 }
 

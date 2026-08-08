@@ -15,6 +15,8 @@ export function useAnalyticsTracking(siteId: number | null) {
   useEffect(() => {
     if (!siteId || typeof window === "undefined") return;
 
+    const resolvedSiteId = siteId;
+
     startTimeRef.current = Date.now();
 
     // Generate or retrieve visitor ID
@@ -42,7 +44,7 @@ export function useAnalyticsTracking(siteId: number | null) {
       startTimeRef.current = Date.now();
 
       void trackPageView({
-        siteId,
+        siteId: resolvedSiteId,
         path,
         visitorId: vid!,
         referrer: document.referrer || undefined,

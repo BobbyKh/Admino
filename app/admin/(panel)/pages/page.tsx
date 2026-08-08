@@ -117,8 +117,8 @@ export default function PagesPage() {
         setCreateOpen(false);
         setCreateOgImage("");
       });
-    } else if (createState?.error) {
-      toast.error(createState.error);
+    } else if (createState?.message) {
+      toast.error(createState.message);
     }
   }, [createState, selectedSiteId]);
 
@@ -130,8 +130,8 @@ export default function PagesPage() {
         setPages(updated);
         setEditingPage(null);
       });
-    } else if (updateState?.error) {
-      toast.error(updateState.error);
+    } else if (updateState?.message) {
+      toast.error(updateState.message);
     }
   }, [updateState, selectedSiteId]);
 

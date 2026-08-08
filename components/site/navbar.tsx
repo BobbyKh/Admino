@@ -89,7 +89,7 @@ export function Navbar({
         <div className="hidden items-center gap-2 md:flex">
           {locales && locales.length > 1 && (
             <LocaleSwitcher
-              locales={locales.map((l) => ({ code: l.code, name: l.name }))}
+              locales={locales}
               currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
             />
           )}
@@ -145,7 +145,7 @@ export function Navbar({
             <div className="mt-2 flex flex-col gap-2 border-t pt-3">
               {locales && locales.length > 1 && (
                 <LocaleSwitcher
-                  locales={locales.map((l) => ({ code: l.code, name: l.name }))}
+                  locales={locales} 
                   currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
                 />
               )}
