@@ -26,3 +26,5 @@ export { generateImage, generateImageForUpload } from "./image-ai";
 export { getLocales, addLocale, deleteLocale, setDefaultLocale, getPageTranslations, getBlockTranslations, savePageTranslation, saveBlockTranslation } from "./i18n";
 export { getExperiments, createExperiment, updateExperimentStatus, deleteExperiment, getExperimentResults } from "./experiments";
 export { trackPageView, trackClickEvent, updatePageViewDuration, getSiteAnalytics, getHeatmapData } from "../analytics-advanced";
+export { getFunnels, createFunnel, deleteFunnel, getFunnelResults } from "./funnels";
+export { getAdminCustomers, getAdminCustomer, getAdminCustomerStats, updateAdminCustomer, deleteAdminCustomer } from "./admin-customers";

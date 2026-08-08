@@ -92,6 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/commerce/products", label: "Products", icon: Package, feature: "commerce" },
       { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag, feature: "commerce" },
       { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard, feature: "commerce" },
+      { href: "/admin/customers", label: "Customers", icon: Users, feature: "commerce" },
     ],
   },
   {
@@ -101,6 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/billing", label: "Billing & Plans", icon: CreditCard, minRole: "admin" },
       { href: "/admin/webhooks", label: "Webhooks", icon: Bell, minRole: "admin" },
       { href: "/admin/experiments", label: "A/B Testing", icon: FlaskConical, minRole: "admin" },
+      { href: "/admin/funnels", label: "Funnels", icon: BarChart3, minRole: "admin" },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
       { href: "/admin/export", label: "Export", icon: Download, minRole: "admin" },
     ],

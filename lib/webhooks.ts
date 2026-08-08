@@ -14,7 +14,11 @@ export type WebhookEvent =
   | "product.updated"
   | "customer.registered"
   | "booking.created"
-  | "message.received";
+  | "message.received"
+  | "subscription.created"
+  | "subscription.updated"
+  | "subscription.cancelled"
+  | "subscription.payment_failed";
 
 const EVENT_DESCRIPTIONS: Record<WebhookEvent, string> = {
   "order.created": "A new order has been placed",
@@ -29,6 +33,10 @@ const EVENT_DESCRIPTIONS: Record<WebhookEvent, string> = {
   "customer.registered": "A new customer has registered",
   "booking.created": "A new booking has been made",
   "message.received": "A new contact message was received",
+  "subscription.created": "A new subscription was created",
+  "subscription.updated": "A subscription was updated",
+  "subscription.cancelled": "A subscription was cancelled",
+  "subscription.payment_failed": "A subscription payment failed",
 };
 
 export const WEBHOOK_EVENTS = Object.keys(EVENT_DESCRIPTIONS) as WebhookEvent[];
