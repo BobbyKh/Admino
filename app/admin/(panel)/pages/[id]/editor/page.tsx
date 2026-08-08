@@ -227,6 +227,7 @@ function SortableBlockItem({
   onToggleExpand,
   onUpdateBlock,
   onDeleteBlock,
+  onDuplicateBlock,
   onConfigChange,
 }: {
   block: PageBlock;
@@ -235,6 +236,7 @@ function SortableBlockItem({
   onToggleExpand: () => void;
   onUpdateBlock: (blockId: number, updates: { title?: string; visible?: boolean; config?: string }) => void;
   onDeleteBlock: (blockId: number) => void;
+  onDuplicateBlock: (blockId: number) => void;
   onConfigChange: (blockId: number, config: string) => void;
 }) {
   const {
@@ -308,6 +310,14 @@ function SortableBlockItem({
             ) : (
               <EyeOff className="size-4 text-muted-foreground" />
             )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDuplicateBlock(block.id)}
+            title="Duplicate block"
+          >
+            <Copy className="size-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -1097,6 +1107,7 @@ export default function BlockEditorPage() {
         const updated = await getPageBlocks(pageId);
         const revisionData = await getPageRevisions(pageId);
         setBlocks(updated);
+        pushHistory(updated);
         setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
@@ -1106,7 +1117,7 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [pageId]
+    [pageId, pushHistory]
   );
 
   const handleUpdateBlock = useCallback(
@@ -1153,6 +1164,22 @@ export default function BlockEditorPage() {
     configSaveTimers.current.forEach((timer) => clearTimeout(timer));
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      if (mod && e.key === "y") { e.preventDefault(); redo(); }
+      if (mod && e.key === "d" && expandedId) {
+        e.preventDefault();
+        void handleDuplicateBlock(expandedId);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, expandedId]);
+
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
       setPending(true);
@@ -1161,7 +1188,9 @@ export default function BlockEditorPage() {
       try {
         await deletePageBlock(blockId);
         const revisionData = await getPageRevisions(pageId);
-        setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+        const newBlocks = blocks.filter((b) => b.id !== blockId);
+        setBlocks(newBlocks);
+        pushHistory(newBlocks);
         setRevisions(revisionData);
         if (expandedId === blockId) setExpandedId(null);
         setSaveStatus("saved");
@@ -1172,7 +1201,36 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [expandedId, pageId]
+    [expandedId, pageId, blocks, pushHistory]
+  );
+
+  const handleDuplicateBlock = useCallback(
+    async (blockId: number) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
+      setPending(true);
+      setSaveStatus("saving");
+      setSaveError(null);
+      try {
+        const formData = new FormData();
+        formData.set("pageId", String(pageId));
+        formData.set("type", block.type);
+        const result = await addPageBlock({}, formData);
+        if (!result.success) throw new Error(result.message || "Unable to duplicate block.");
+        const updated = await getPageBlocks(pageId);
+        const revisionData = await getPageRevisions(pageId);
+        setBlocks(updated);
+        pushHistory(updated);
+        setRevisions(revisionData);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to duplicate block.");
+      } finally {
+        setPending(false);
+      }
+    },
+    [blocks, pageId, pushHistory]
   );
 
   const handleRestoreRevision = useCallback(async (revisionId: number) => {
@@ -1227,6 +1285,7 @@ export default function BlockEditorPage() {
 
       const newBlocks = arrayMove(blocks, oldIndex, newIndex);
       setBlocks(newBlocks);
+      pushHistory(newBlocks);
 
       const orderedIds = newBlocks.map((b) => b.id);
       setSaveStatus("saving");
@@ -1294,6 +1353,40 @@ export default function BlockEditorPage() {
           <span className={`text-xs ${saveStatus === "error" ? "text-destructive" : "text-muted-foreground"}`}>
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? saveError ?? "Save failed" : "Autosave on"}
           </span>
+          <div className="flex items-center gap-1 rounded-lg border p-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="size-8 p-0"
+            >
+              <Undo2 className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="size-8 p-0"
+            >
+              <Redo2 className="size-4" />
+            </Button>
+          </div>
+          {expandedId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDuplicateBlock(expandedId)}
+              title="Duplicate block (Ctrl+D)"
+              className="gap-1.5"
+            >
+              <Copy className="size-3.5" />
+              Duplicate
+            </Button>
+          )}
           <Badge variant={page.published ? "default" : "secondary"}>
             {page.published ? "Published" : "Draft"}
           </Badge>
@@ -1313,6 +1406,16 @@ export default function BlockEditorPage() {
           <div className="mb-4">
             <h2 className="font-semibold">Block palette</h2>
             <p className="text-xs text-muted-foreground">Click or drag a block onto the canvas.</p>
+          </div>
+          <div className="mb-3 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="size-3.5 shrink-0" />
+              <div className="space-y-0.5">
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+Z</kbd> Undo</p>
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+Shift+Z</kbd> Redo</p>
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+D</kbd> Duplicate</p>
+              </div>
+            </div>
           </div>
           <div className="mb-4 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -1433,6 +1536,7 @@ export default function BlockEditorPage() {
                   onToggleExpand={() => setExpandedId(expandedId === block.id ? null : block.id)}
                   onUpdateBlock={handleUpdateBlock}
                   onDeleteBlock={handleDeleteBlock}
+                  onDuplicateBlock={handleDuplicateBlock}
                   onConfigChange={handleConfigChange}
                 />
               ))}
