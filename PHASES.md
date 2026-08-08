@@ -71,28 +71,40 @@
 - Error messages now show actual API URL
 - Fixed Google `systemInstruction` bug in layout-ai
 
-### Phase 9: Production Security & Deployment (commit pending)
-**Security:**
-- Created `proxy.ts` middleware with CSP headers, CSRF protection, rate limiting
-- Hardened `next.config.ts`: standalone output, compression, security headers
-- Added HSTS, X-Frame-Options, X-Content-Type-Options headers
+### Phase 11: UX Polish (commit pending)
+- Skeleton loading states (cart, checkout, admin homepage, navigation)
+- Block editor: undo/redo, duplication, keyboard shortcuts
+- Theme AI rationale max length fix (240 → 1000)
+- bazaarlink.ai jsonMode fix (removed unsupported `response_format`)
 
-**Deployment:**
-- Created `Dockerfile` with multi-stage build (deps → build → production)
-- Created `docker-compose.yml` with PostgreSQL + Redis + app
-- Created `vercel.json` for Vercel deployment
-- Created `.github/workflows/ci.yml` for GitHub Actions CI/CD
-- Created `.dockerignore` for optimized Docker builds
-- Updated `.env.example` with all required variables
+### Phase 12: Self-Hosted Error Tracking (commit pending)
+- Created `error_logs` table with indexes
+- Created `lib/error-tracking.ts` utility (log, query, resolve, stats)
+- Created `lib/actions/error-ai.ts` server actions
+- Created `app/api/errors/log/route.ts` API endpoint
+- Created `app/admin/(panel)/errors/page.tsx` admin error viewer
+- Updated error boundaries to auto-log errors to database
+- Self-hosted PostgreSQL-based tracking (no Sentry dependency)
 
-### Phase 10: Stripe Payment Integration (commit pending)
-- Installed `stripe` SDK (v22.4.0)
-- Created `lib/commerce/stripe.ts` — Stripe client utility with per-site key resolution
-- Created `app/api/payments/stripe/checkout/route.ts` — Stripe Checkout Session creation
-- Updated webhook to handle `checkout.session.completed` for order fulfillment
-- Updated checkout client to redirect to Stripe Checkout when Stripe selected
-- Created `/checkout/success` page for post-payment confirmation
-- Orders are pre-created with pending status, then updated on webhook confirmation
+### Phase 13: Block Editor UX (commit pending)
+- Client-side undo/redo with history stack
+- Block duplication (Ctrl+D, toolbar button, copy button)
+- Keyboard shortcuts help panel in sidebar
+- All block operations push to history
+
+### Phase 14: Performance Optimization (commit pending)
+**Lazy Loading:**
+- `next/dynamic` for recharts (analytics-charts.tsx)
+- `next/dynamic` for TipTap editor (rich-text-editor.tsx)
+- `next/dynamic` for @dnd-kit (homepage, page editor)
+
+**Suspense Boundaries:**
+- Admin dashboard: streaming stats, charts, recent bookings independently
+- Server component pages: bookings, messages, gallery, blog, menu, etc.
+
+**Bug Fixes:**
+- Super admin "No site assigned" fix: replaced `user.siteId` with `getCurrentAdminSiteId()` across 16 functions in 5 files
+- Quick add locale: fixed portal querySelector bug (Dialog renders in portal)
 
 ### Phase 8: UX Improvements & AI Fixes (commit `8b4e2f1`)
 **UI Enhancements:**
