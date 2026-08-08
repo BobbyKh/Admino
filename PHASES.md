@@ -147,6 +147,28 @@
 - `lib/ai-embeddings.ts` (embeddings + lexical fallback + cosine similarity), `lib/ai-rag-retrieval.ts` (chunk retrieval)
 - New tenant features, settings keys (`aiRagEnabled`, `aiRagIndexedAt`), and AI Tools nav group
 
+### Phase 17: Production Readiness & Growth (next)
+**1. Ecommerce Hardening**
+- Live Stripe card checkout with Payment Intents (replace manual/test payment mode)
+- Refunds and partial refunds via Stripe, dispute/chargeback handling UI
+- Webhook reconciliation + order status lifecycle (paid, fulfilled, shipped, cancelled)
+- Order confirmation + fulfillment email notifications via SMTP
+
+**2. Subscriptions & Billing Polish**
+- Enforce plan limits server-side (sites, pages, products, monthly visitors) by tenant plan
+- Upgrade/downgrade with proration, cancel/subscription resume flows, invoice history page
+- Usage metering + plan change mid-billing-cycle handling
+
+**3. Analytics & Growth Tools**
+- Visitor analytics dashboard (pageviews, sources, referrers, device breakdown)
+- A/B testing on landing pages, SEO/sitemap improvements
+- Email campaign + marketing automation, referral program
+
+**4. Multi-Tenant & Performance**
+- Custom-domain setup for tenants (CNAME + TLS), subdomain routing polish
+- CDN integration, image optimization, ISR/SSR caching tuning
+- Cross-tenant data isolation audit, database query optimization, horizontal scaling readiness
+
 ### Phase 8: UX Improvements & AI Fixes (commit `8b4e2f1`)
 **UI Enhancements:**
 - Admin sidebar: mobile Sheet, collapsible nav groups, active state indicators

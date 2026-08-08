@@ -97,3 +97,15 @@ scripts/           Seed and maintenance scripts
 - Rich text and custom HTML are sanitized before rendering.
 - Page-builder changes are snapshotted so recent block edits can be restored from revision history.
 - `npm run lint` currently passes with warnings only.
+
+## Tomorrow's Tasks (Phase 17)
+
+Phase 17 is planned but not yet implemented. Full detail is in `PHASES.md`.
+
+**1. Ecommerce hardening** — live Stripe card checkout (Payment Intents), refunds + disputes, webhook reconciliation, order status lifecycle, order/fullfilment emails.
+
+**2. Subscriptions & billing polish** — enforce plan limits server-side (sites, pages, products, visitors), upgrade/downgrade proration, cancel/resume flows, invoice history, usage metering.
+
+**3. Analytics & growth tools** — visitor analytics dashboard (pageviews, sources, devices), A/B testing, SEO/sitemap improvements, email campaigns, referral program.
+
+**4. Multi-tenant & performance** — custom-domain (CNAME + TLS) setup for tenants, CDN + image optimization, ISR/SSR caching tuning, data-isolation audit, query optimization, scaling readiness.
