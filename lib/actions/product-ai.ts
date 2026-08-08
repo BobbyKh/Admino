@@ -54,7 +54,6 @@ Return ONLY a valid JSON object with keys "description" and "badge".
       baseUrl: settings.aiBaseUrl,
       systemPrompt,
       userPrompt,
-      jsonMode: true,
     });
 
     const parsed = JSON.parse(content) as Record<string, string>;

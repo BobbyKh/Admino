@@ -62,7 +62,9 @@ async function callOpenAI(
   };
   if (jsonMode) body.response_format = { type: "json_object" };
 
-  const res = await fetch(`${baseUrl || "https://api.openai.com/v1"}/chat/completions`, {
+  const url = `${baseUrl || "https://api.openai.com/v1"}/chat/completions`;
+  console.log("[ai-provider] POST", url, "model:", model, "jsonMode:", jsonMode);
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),

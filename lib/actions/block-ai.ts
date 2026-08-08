@@ -46,7 +46,6 @@ Preserve useful existing values unless the instruction requests a change.
 Do not invent image URLs, emails, phone numbers, addresses, prices, or external links. Use empty strings for unknown values.
 The returned JSON must keep compatible field types with this default config: ${JSON.stringify(getDefaultConfig(block.type))}`,
     userPrompt: `Current block config: ${baseConfig}\n\nInstruction: ${request}`,
-    jsonMode: true,
   });
 
   const generated = extractJsonObject(content);

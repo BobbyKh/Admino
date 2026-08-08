@@ -70,7 +70,6 @@ Do not include markdown code block syntax.`;
       userPrompt,
       maxTokens: 600,
       temperature: 0.5,
-      jsonMode: true,
     });
 
     const parsed = extractJsonPayload(content) as Record<string, string>;

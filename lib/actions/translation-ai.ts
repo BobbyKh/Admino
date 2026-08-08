@@ -80,7 +80,6 @@ Do not include markdown code block formatting.`;
       userPrompt,
       maxTokens: 2400,
       temperature: 0.3,
-      jsonMode: true,
     });
 
     let translatedArray: Array<{ id: number; title?: string | null; config?: Record<string, unknown> }>;

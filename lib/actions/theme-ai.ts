@@ -90,7 +90,6 @@ Required keys: name, rationale, ${THEME_KEYS.join(", ")}.`;
     systemPrompt,
     userPrompt,
     maxTokens: 1200,
-    jsonMode: true,
   });
 
   let parsed = parseGeneratedTheme(content);
@@ -103,7 +102,6 @@ Required keys: name, rationale, ${THEME_KEYS.join(", ")}.`;
       systemPrompt,
       userPrompt: `${userPrompt}\n\nYour first result was too neutral. Regenerate with a visibly colored primary, secondary, and accent palette. Use different hues for primary and accent.`,
       maxTokens: 1200,
-      jsonMode: true,
     });
     parsed = parseGeneratedTheme(retry);
     if (isTooNeutral(parsed.data)) {

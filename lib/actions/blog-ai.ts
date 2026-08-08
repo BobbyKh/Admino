@@ -60,7 +60,6 @@ Return ONLY a valid JSON object with keys: "title", "slug", "excerpt", and "cont
       userPrompt,
       maxTokens: 1200,
       temperature: 0.7,
-      jsonMode: true,
     });
 
     const parsed = JSON.parse(content) as Record<string, string>;
