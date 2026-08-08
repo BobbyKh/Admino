@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import { Plus, Trash2, Star, Globe, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ export default function I18nPage() {
   const [translateTargetLang, setTranslateTargetLang] = useState("");
   const [translateLoading, setTranslateLoading] = useState(false);
   const [pages, setPages] = useState<Array<{ id: number; title: string }>>([]);
+  const addFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     getLocales().then((l) => {
@@ -173,7 +174,7 @@ export default function I18nPage() {
             <DialogHeader>
               <DialogTitle>Add Locale</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
+            <form ref={addFormRef} onSubmit={handleAdd} className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Language Code *</Label>
                 <Input name="code" required placeholder="e.g. fr, es, de" />
@@ -195,10 +196,9 @@ export default function I18nPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const form = document.querySelector("form");
-                        if (form) {
-                          const codeInput = form.querySelector<HTMLInputElement>("[name=code]");
-                          const nameInput = form.querySelector<HTMLInputElement>("[name=name]");
+                        if (addFormRef.current) {
+                          const codeInput = addFormRef.current.elements.namedItem("code") as HTMLInputElement;
+                          const nameInput = addFormRef.current.elements.namedItem("name") as HTMLInputElement;
                           if (codeInput) codeInput.value = locale.code;
                           if (nameInput) nameInput.value = locale.name;
                         }
