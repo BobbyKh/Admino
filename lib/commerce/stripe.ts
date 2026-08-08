@@ -40,3 +40,41 @@ export async function getStripeSecretKeyForSite(siteId: number): Promise<string 
   const secrets = decryptCommerceSecrets(row.value);
   return (secrets.secretKey as string) ?? null;
 }
+
+/**
+ * Platform-level Stripe client for Admino's own SaaS subscription billing.
+ * Uses the STRIPE_SECRET_KEY environment variable (the platform account),
+ * NOT the tenant's per-store keys.
+ */
+export async function getPlatformStripe(): Promise<Stripe | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  if (stripeInstance && key === getStripeSecretKey()) return stripeInstance;
+  return new Stripe(key);
+}
+
+/**
+ * Resolves the Stripe Price ID for a plan. Uses the plan's stored
+ * `stripePriceId` if present; otherwise creates a one-time Stripe price
+ * (in the platform account) from the plan's price/interval and returns it.
+ */
+export async function resolvePlatformPriceId(plan: {
+  name: string;
+  slug: string;
+  price: number;
+  currency: string;
+  interval: string;
+  stripePriceId: string | null;
+}): Promise<string | null> {
+  if (plan.stripePriceId) return plan.stripePriceId;
+  const stripe = await getPlatformStripe();
+  if (!stripe) return null;
+
+  const price = await stripe.prices.create({
+    currency: plan.currency || "usd",
+    unit_amount: plan.price,
+    product_data: { name: plan.name, metadata: { planSlug: plan.slug } },
+    recurring: { interval: plan.interval === "year" ? "year" : "month" },
+  });
+  return price.id;
+}

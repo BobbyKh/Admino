@@ -8,6 +8,7 @@ import { plans, subscriptions } from "@/lib/db/schema";
 import { getActivePlans, getSiteSubscription, createOrReactivateSubscription, cancelSiteSubscription } from "@/lib/billing";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
+import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Public Actions ──────────────────────────────────────────────────────────
 
@@ -19,6 +20,82 @@ export async function getCurrentSubscription() {
   const siteId = await getResolvedSiteId();
   if (!siteId) return null;
   return getSiteSubscription(siteId);
+}
+
+/**
+ * Kicks off a Stripe subscription checkout for the admin's active site.
+ * Returns the Checkout Session URL (or free-plan activation result).
+ */
+export async function subscribeToPlan(planSlug: string) {
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
+
+  const plan = await db
+    .select()
+    .from(plans)
+    .where(and(eq(plans.slug, planSlug), eq(plans.active, true)))
+    .limit(1);
+
+  if (plan.length === 0) {
+    return { success: false, message: "Plan not found." };
+  }
+
+  const baseUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const response = await fetch(`${baseUrl}/api/payments/stripe/subscription-checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ planSlug, siteUrl: baseUrl }),
+    cache: "no-store",
+  });
+
+  const result = (await response.json()) as { url?: string; free?: boolean; error?: string };
+  if (!response.ok) {
+    return { success: false, message: result.error ?? "Failed to start checkout." };
+  }
+
+  if (result.free) {
+    revalidatePath("/admin/billing");
+    revalidatePath("/admin/settings");
+    return { success: true, message: "Free plan activated." };
+  }
+
+  if (!result.url) {
+    return { success: false, message: "No checkout URL returned." };
+  }
+
+  return { success: true, url: result.url };
+}
+
+/** Opens the Stripe Billing Portal for the admin's active site. */
+export async function manageSubscription() {
+  await requireAdmin();
+  const siteId = await getCurrentAdminSiteId();
+
+  const [sub] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.siteId, siteId))
+    .limit(1);
+  if (!sub?.stripeCustomerId && !sub?.stripeSubscriptionId) {
+    return { success: false, message: "No active subscription to manage." };
+  }
+
+  const baseUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const response = await fetch(`${baseUrl}/api/payments/stripe/portal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ siteUrl: baseUrl }),
+    cache: "no-store",
+  });
+
+  const result = (await response.json()) as { url?: string; error?: string };
+  if (!response.ok) {
+    return { success: false, message: result.error ?? "Failed to open billing portal." };
+  }
+
+  return { success: true, url: result.url };
 }
 
 export async function selectPlan(planSlug: string) {

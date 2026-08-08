@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Plus, Trash2, CreditCard, Check } from "lucide-react";
+import { Plus, Trash2, CreditCard, Check, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,9 @@ import {
   adminCreatePlan,
   adminDeletePlan,
   getAllSubscriptions,
+  getCurrentSubscription,
+  subscribeToPlan,
+  manageSubscription,
 } from "@/lib/actions/index";
 
 interface Plan {
@@ -53,21 +56,80 @@ interface Subscription {
   };
 }
 
+interface CurrentSub {
+  id: number;
+  status: string;
+  planId: number;
+  currentPeriodEnd: string | null;
+  cancelAt: string | null;
+  plan: {
+    id: number;
+    name: string;
+    slug: string;
+    price: number;
+    currency: string;
+    interval: string;
+    features: string | null;
+    maxPages: number;
+    maxProducts: number;
+    maxStorage: number;
+    maxBandwidth: number;
+  };
+}
+
 export default function BillingPage() {
   const [plansList, setPlansList] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [currentSub, setCurrentSub] = useState<CurrentSub | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
+  const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [showAddPlan, setShowAddPlan] = useState(false);
 
   useEffect(() => {
-    Promise.all([getPlans(), getAllSubscriptions()])
-      .then(([p, s]) => {
+    Promise.all([getPlans(), getAllSubscriptions(), getCurrentSubscription()])
+      .then(([p, s, c]) => {
         setPlansList(p as Plan[]);
         setSubscriptions(s);
+        setCurrentSub((c as CurrentSub) ?? null);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  function handleSubscribe(planSlug: string) {
+    setSubscribingPlan(planSlug);
+    startTransition(async () => {
+      const result = await subscribeToPlan(planSlug);
+      setSubscribingPlan(null);
+      if (result?.success) {
+        if ("url" in result && result.url) {
+          window.location.href = result.url;
+          return;
+        }
+        toast.success(result.message ?? "Plan updated.");
+        const [plans2, subs2, sub2] = await Promise.all([getPlans(), getAllSubscriptions(), getCurrentSubscription()]);
+        setPlansList(plans2 as Plan[]);
+        setSubscriptions(subs2);
+        setCurrentSub((sub2 as CurrentSub) ?? null);
+      } else {
+        toast.error(result?.message ?? "Failed");
+      }
+    });
+  }
+
+  function handleManageSubscription() {
+    setPortalLoading(true);
+    startTransition(async () => {
+      const result = await manageSubscription();
+      setPortalLoading(false);
+      if (result?.success && "url" in result && result.url) {
+        window.location.href = result.url;
+      } else {
+        toast.error(result?.message ?? "Failed to open billing portal.");
+      }
+    });
+  }
 
   function handleCreatePlan(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -205,8 +267,10 @@ export default function BillingPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {plansList.map((plan) => (
-          <Card key={plan.id}>
+        {plansList.map((plan) => {
+          const isCurrent = currentSub?.planId === plan.id;
+          return (
+          <Card key={plan.id} className={isCurrent ? "border-primary/60" : ""}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div>
@@ -255,6 +319,22 @@ export default function BillingPage() {
               )}
               <div className="flex gap-2 pt-2">
                 <Button
+                  size="sm"
+                  className="flex-1 gap-1"
+                  disabled={pending || subscribingPlan === plan.slug || isCurrent}
+                  onClick={() => handleSubscribe(plan.slug)}
+                >
+                  {subscribingPlan === plan.slug ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : isCurrent ? (
+                    "Current plan"
+                  ) : currentSub ? (
+                    "Upgrade"
+                  ) : (
+                    "Subscribe"
+                  )}
+                </Button>
+                <Button
                   variant="destructive"
                   size="sm"
                   disabled={pending}
@@ -265,8 +345,51 @@ export default function BillingPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading">Your subscription</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {currentSub ? (
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant={currentSub.status === "active" ? "default" : "secondary"}>
+                  {currentSub.status}
+                </Badge>
+                <p className="text-sm">
+                  <span className="font-medium">{currentSub.plan.name}</span>
+                  {currentSub.currentPeriodEnd && (
+                    <span className="text-muted-foreground">
+                      {" "}· renews{" "}
+                      {new Date(currentSub.currentPeriodEnd).toLocaleDateString()}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <Button variant="outline" className="gap-2" disabled={portalLoading} onClick={handleManageSubscription}>
+                {portalLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <CreditCard className="size-4" />
+                )}
+                Manage billing (Stripe portal)
+                <ExternalLink className="size-3" />
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Upgrade, downgrade, cancel, or update your payment method from the Stripe billing portal.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No subscription selected. Choose a plan above to get started.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div>
         <h2 className="mb-4 text-lg font-semibold">Active Subscriptions</h2>

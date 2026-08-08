@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, orderItems, products, subscriptions } from "@/lib/db/schema";
+import { orders, orderItems, products, subscriptions, plans } from "@/lib/db/schema";
 import { dispatchWebhook } from "@/lib/webhooks";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
 
@@ -79,8 +79,54 @@ export async function POST(request: NextRequest) {
 
 // ─── Event Handlers ──────────────────────────────────────────────────────────
 
+async function handleSubscriptionCheckoutCompleted(data: Record<string, unknown>) {
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const siteId = metadata.siteId ? parseInt(metadata.siteId, 10) : null;
+  const planId = metadata.planId ? parseInt(metadata.planId, 10) : null;
+  const stripeSubscriptionId = data.subscription as string | null;
+  const stripeCustomerId = data.customer as string | null;
+
+  if (!siteId) return;
+  const fallbackPlanId = planId ?? (await resolvePlanIdFromPrice(data, null)) ?? 1;
+
+  const [existing] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.siteId, siteId))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(subscriptions)
+      .set({
+        planId: planId ?? existing.planId,
+        status: "active",
+        stripeSubscriptionId: stripeSubscriptionId ?? existing.stripeSubscriptionId,
+        stripeCustomerId: stripeCustomerId ?? existing.stripeCustomerId,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(subscriptions.id, existing.id));
+  } else {
+    await db.insert(subscriptions).values({
+      siteId,
+      planId: fallbackPlanId,
+      status: "active",
+      stripeSubscriptionId,
+      stripeCustomerId,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
 async function handleCheckoutCompleted(data: Record<string, unknown>) {
   const metadata = (data.metadata ?? {}) as Record<string, string>;
+
+  // Subscription checkout (Admino SaaS plans): mode === "subscription"
+  if (data.mode === "subscription" || metadata.planId) {
+    await handleSubscriptionCheckoutCompleted(data);
+    return;
+  }
+
   const orderId = metadata.orderId ? parseInt(metadata.orderId, 10) : null;
   if (!orderId) return;
 
@@ -150,6 +196,10 @@ async function handleSubscriptionUpdate(data: Record<string, unknown>) {
   const currentPeriodStart = data.current_period_start as number | null;
   const currentPeriodEnd = data.current_period_end as number | null;
   const cancelAt = data.cancel_at as number | null;
+  const customerId = data.customer as string | null;
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const siteIdFromMetadata = metadata.siteId ? parseInt(metadata.siteId, 10) : null;
+  const planIdFromMetadata = metadata.planId ? parseInt(metadata.planId, 10) : null;
 
   // Find subscription by stripe ID
   const [existing] = await db
@@ -159,9 +209,11 @@ async function handleSubscriptionUpdate(data: Record<string, unknown>) {
     .limit(1);
 
   if (existing) {
+    const planId = (await resolvePlanIdFromPrice(data, existing.planId)) ?? existing.planId;
     await db
       .update(subscriptions)
       .set({
+        planId,
         status,
         currentPeriodStart: currentPeriodStart
           ? new Date(currentPeriodStart * 1000).toISOString()
@@ -172,6 +224,7 @@ async function handleSubscriptionUpdate(data: Record<string, unknown>) {
         cancelAt: cancelAt
           ? new Date(cancelAt * 1000).toISOString()
           : null,
+        stripeCustomerId: customerId ?? existing.stripeCustomerId,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(subscriptions.id, existing.id));
@@ -183,14 +236,60 @@ async function handleSubscriptionUpdate(data: Record<string, unknown>) {
         id: existing.id,
         stripeSubscriptionId,
         status,
-        planId: existing.planId,
+        planId,
       },
     }).catch(() => {});
+    return;
   }
+
+  // No DB row yet — create one. Prefer metadata siteId; fall back to a
+  // site whose customer matches this subscription's customer.
+  let siteId = siteIdFromMetadata;
+  if (!siteId && customerId) {
+    const [byCustomer] = await db
+      .select({ siteId: subscriptions.siteId })
+      .from(subscriptions)
+      .where(eq(subscriptions.stripeCustomerId, customerId))
+      .limit(1);
+    siteId = byCustomer?.siteId ?? null;
+  }
+  if (!siteId) return;
+
+  const planId = planIdFromMetadata ?? (await resolvePlanIdFromPrice(data, null)) ?? 1;
+
+  const [created] = await db
+    .insert(subscriptions)
+    .values({
+      siteId,
+      planId,
+      status,
+      stripeSubscriptionId,
+      stripeCustomerId: customerId,
+      currentPeriodStart: currentPeriodStart
+        ? new Date(currentPeriodStart * 1000).toISOString()
+        : null,
+      currentPeriodEnd: currentPeriodEnd
+        ? new Date(currentPeriodEnd * 1000).toISOString()
+        : null,
+      cancelAt: cancelAt ? new Date(cancelAt * 1000).toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    })
+    .returning();
+
+  const webhookEvent = status === "cancelled" ? "subscription.cancelled" : "subscription.created";
+  void dispatchWebhook(siteId, webhookEvent, {
+    subscription: {
+      id: created.id,
+      stripeSubscriptionId,
+      status,
+      planId,
+    },
+  }).catch(() => {});
 }
 
 async function handleSubscriptionDeleted(data: Record<string, unknown>) {
   const stripeSubscriptionId = data.id as string;
+  const customerId = data.customer as string | null;
 
   const [existing] = await db
     .select()
@@ -216,11 +315,40 @@ async function handleSubscriptionDeleted(data: Record<string, unknown>) {
         planId: existing.planId,
       },
     }).catch(() => {});
+    return;
+  }
+
+  // No linked row — try to cancel via the customer link.
+  if (!customerId) return;
+  const [byCustomer] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeCustomerId, customerId))
+    .limit(1);
+  if (byCustomer) {
+    await db
+      .update(subscriptions)
+      .set({
+        status: "cancelled",
+        cancelAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(subscriptions.id, byCustomer.id));
+
+    void dispatchWebhook(byCustomer.siteId, "subscription.cancelled", {
+      subscription: {
+        id: byCustomer.id,
+        stripeSubscriptionId,
+        status: "cancelled",
+        planId: byCustomer.planId,
+      },
+    }).catch(() => {});
   }
 }
 
 async function handleInvoicePaid(data: Record<string, unknown>) {
   const subscriptionId = data.subscription as string | null;
+  const customerId = data.customer as string | null;
   if (!subscriptionId) return;
 
   const [existing] = await db
@@ -241,7 +369,26 @@ async function handleInvoicePaid(data: Record<string, unknown>) {
         updatedAt: new Date().toISOString(),
       })
       .where(eq(subscriptions.id, existing.id));
+    return;
   }
+
+  // Unknown subscription — try to find the site by customer and link it.
+  if (!customerId) return;
+  const [byCustomer] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeCustomerId, customerId))
+    .limit(1);
+  if (!byCustomer) return;
+
+  await db
+    .update(subscriptions)
+    .set({
+      stripeSubscriptionId: subscriptionId,
+      status: "active",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(subscriptions.id, byCustomer.id));
 }
 
 async function handleInvoicePaymentFailed(data: Record<string, unknown>) {
@@ -275,6 +422,28 @@ async function handleInvoicePaymentFailed(data: Record<string, unknown>) {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Maps a Stripe subscription line-item price back to an internal plan.
+ * Uses the price ID from the subscription's items array to find a plan with
+ * a matching stripe_price_id. Returns null when no match exists.
+ */
+async function resolvePlanIdFromPrice(
+  data: Record<string, unknown>,
+  fallbackPlanId: number | null
+): Promise<number | null> {
+  const items = data.items as { data?: Array<{ price?: { id?: string } }> } | undefined;
+  const priceId = items?.data?.[0]?.price?.id;
+  if (priceId) {
+    const [plan] = await db
+      .select({ id: plans.id })
+      .from(plans)
+      .where(eq(plans.stripePriceId, priceId))
+      .limit(1);
+    if (plan) return plan.id;
+  }
+  return fallbackPlanId;
+}
 
 function mapStripeStatus(
   stripeStatus: string

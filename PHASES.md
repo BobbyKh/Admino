@@ -106,6 +106,22 @@
 - Super admin "No site assigned" fix: replaced `user.siteId` with `getCurrentAdminSiteId()` across 16 functions in 5 files
 - Quick add locale: fixed portal querySelector bug (Dialog renders in portal)
 
+### Phase 15: Subscription Billing (Stripe)
+**Checkout & Portal:**
+- `/api/payments/stripe/subscription-checkout`: subscription-mode Checkout Session; free plans (price 0) activate the DB row directly
+- `/api/payments/stripe/portal`: Stripe Billing Portal session; retrieves customer from subscription when missing
+- `getPlatformStripe()` + `resolvePlatformPriceId()` in `lib/commerce/stripe.ts` (platform-level Stripe key, one-time price creation)
+- Billing page: current subscription card, per-plan Subscribe/Upgrade buttons, Stripe portal button
+
+**Webhooks:**
+- `handleSubscriptionCheckoutCompleted` for subscription-mode checkouts
+- `handleSubscriptionUpdate` creates missing rows (metadata siteId/planId → customer fallback)
+- `handleInvoicePaid` links by customer; `handleSubscriptionDeleted` customer-link fallback
+- `resolvePlanIdFromPrice` maps Stripe price → plan by `stripePriceId`
+
+**Server Actions:**
+- `subscribeToPlan(planSlug)` and `manageSubscription()` in `lib/actions/billing.ts`
+
 ### Phase 8: UX Improvements & AI Fixes (commit `8b4e2f1`)
 **UI Enhancements:**
 - Admin sidebar: mobile Sheet, collapsible nav groups, active state indicators
