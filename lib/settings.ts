@@ -88,6 +88,8 @@ export const SETTING_KEYS = [
   "aiBaseUrl",
   "aiSystemPrompt",
   "aiChatEnabled",
+  "aiRagEnabled",
+  "aiRagIndexedAt",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
@@ -214,6 +216,8 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   aiBaseUrl: "",
   aiSystemPrompt: "",
   aiChatEnabled: "false",
+  aiRagEnabled: "false",
+  aiRagIndexedAt: "",
 };
 
 export interface Feature {
@@ -294,6 +298,8 @@ export interface SiteSettings {
   aiBaseUrl: string;
   aiSystemPrompt: string;
   aiChatEnabled: string;
+  aiRagEnabled: string;
+  aiRagIndexedAt: string;
 }
 
 export function parseFeatures(raw: string): Feature[] {

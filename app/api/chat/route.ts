@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAllServerSettings } from "@/lib/data";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getSiteForRequest } from "@/lib/site-context";
+import { retrieveSiteContext, formatRetrievedContext } from "@/lib/ai-rag-retrieval";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
     }
     const settings = await getAllServerSettings(site.id);
 
-    if (settings.aiChatEnabled !== "true") {
+    if (settings.aiChatEnabled !== "true" && settings.aiRagEnabled !== "true") {
       return NextResponse.json({ error: "AI chat is disabled" }, { status: 403 });
     }
     if (!settings.aiApiKey) {
@@ -128,8 +129,22 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt = buildSystemPrompt(settings, settings.aiSystemPrompt);
+
+    // RAG: enrich the system prompt with the most relevant site content.
+    let fullSystemPrompt = systemPrompt;
+    if (settings.aiRagEnabled === "true") {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const retrieved = lastUser
+        ? await retrieveSiteContext(site.id, lastUser.content)
+        : [];
+      const context = formatRetrievedContext(retrieved);
+      if (context) {
+        fullSystemPrompt = `${systemPrompt}\n\n${context}\n\nIf the answer is not in the site content, say you're not sure and suggest contacting the venue directly.`;
+      }
+    }
+
     const fullMessages: ChatMessage[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: fullSystemPrompt },
       ...messages,
     ];
 

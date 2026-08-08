@@ -30,6 +30,10 @@ import {
   BarChart3,
   Menu,
   ChevronDown,
+  Bot,
+  ShieldAlert,
+  LineChart,
+  MessagesSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -97,6 +101,15 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag, feature: "commerce" },
       { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard, feature: "commerce" },
       { href: "/admin/customers", label: "Customers", icon: Users, feature: "commerce" },
+    ],
+  },
+  {
+    label: "AI Tools",
+    items: [
+      { href: "/admin/ai-builder", label: "AI Site Builder", icon: Bot, feature: "ai_site_builder" },
+      { href: "/admin/ai-auditor", label: "AI Site Auditor", icon: ShieldAlert, feature: "ai_site_auditor" },
+      { href: "/admin/ai-chatbot", label: "AI Storefront Assistant", icon: MessagesSquare, feature: "ai_chatbot_rag" },
+      { href: "/admin/ai-forecast", label: "AI Demand Forecast", icon: LineChart, feature: "ai_forecasting" },
     ],
   },
   {

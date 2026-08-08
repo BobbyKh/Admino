@@ -47,6 +47,7 @@ export const pageViews = pg.pageViews;
 export const clickEvents = pg.clickEvents;
 export const conversionFunnels = pg.conversionFunnels;
 export const errorLogs = pg.errorLogs;
+export const aiChunks = pg.aiChunks;
 
 export type Site = pg.Site;
 export type Page = pg.Page;
@@ -91,6 +92,7 @@ export type PageView = pg.PageView;
 export type ClickEvent = pg.ClickEvent;
 export type ConversionFunnel = pg.ConversionFunnel;
 export type ErrorLog = pg.ErrorLog;
+export type AiChunk = pg.AiChunk;
 
 export type NewBooking = pg.NewBooking;
 export type NewSite = pg.NewSite;

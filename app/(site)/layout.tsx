@@ -32,7 +32,7 @@ export default async function SiteLayout({
       {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showLogo={layout.headerShowLogo} showSiteName={layout.headerShowSiteName} showCart={site.template === "ecommerce" && layout.headerShowCart} locales={locales} />}
       <main id="main-content" data-template={site.template} className="flex-1">{children}</main>
       {layout.footerVisible && <Footer settings={settings} navLinks={navLinks} layout={layout} />}
-      {settings.aiChatEnabled === "true" && settings.hasAiApiKey === "true" && (
+      {(settings.aiChatEnabled === "true" || settings.aiRagEnabled === "true") && settings.hasAiApiKey === "true" && (
         <ChatWidget siteName={settings.siteName} />
       )}
     </StorefrontProviders>

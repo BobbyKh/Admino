@@ -122,6 +122,31 @@
 **Server Actions:**
 - `subscribeToPlan(planSlug)` and `manageSubscription()` in `lib/actions/billing.ts`
 
+### Phase 16: Next-Gen AI Features (beyond market)
+**Agentic AI Site Builder (`/admin/ai-builder`):**
+- Conversational agent that plans + executes DB operations (create/update/delete pages, blocks, products)
+- Plan-execute loop: `runAiSiteBuilder` parses an AI action plan, validates block configs, persists live, then summarizes
+- Feature key `ai_site_builder`; full page builds (hero → content → CTA) from a single prompt
+
+**AI Site Auditor / Guardian (`/admin/ai-auditor`):**
+- `runAiAudit` scans pages, blocks, products, blog, nav for SEO/content/commerce/a11y issues → health score (0–100) + AI summary
+- `applyAuditFix` one-click auto-fixes: generate meta title/description, publish drafts, write product descriptions, blog excerpts
+- Feature key `ai_site_auditor`
+
+**AI Storefront Assistant (RAG) (`/admin/ai-chatbot`):**
+- New `ai_chunks` table stores embedded content chunks; `reindexAiContent` chunks pages/blocks/products/blog/services
+- `retrieveSiteContext` (embeddings via OpenAI-compatible `/embeddings`, lexical fallback for Anthropic/Google) enriches `/api/chat` system prompt
+- Widget mounts when `aiRagEnabled` or `aiChatEnabled`; feature key `ai_chatbot_rag`
+
+**AI Demand Forecasting (`/admin/ai-forecast`):**
+- `getDemandForecast`: EMA + day-of-week factors + trend from last 90 days of paid orders → 30-day orders/revenue forecast
+- Per-product restock alerts with suggested reorder quantities; AI narrative summary
+- Feature key `ai_forecasting`
+
+**Infrastructure:**
+- `lib/ai-embeddings.ts` (embeddings + lexical fallback + cosine similarity), `lib/ai-rag-retrieval.ts` (chunk retrieval)
+- New tenant features, settings keys (`aiRagEnabled`, `aiRagIndexedAt`), and AI Tools nav group
+
 ### Phase 8: UX Improvements & AI Fixes (commit `8b4e2f1`)
 **UI Enhancements:**
 - Admin sidebar: mobile Sheet, collapsible nav groups, active state indicators

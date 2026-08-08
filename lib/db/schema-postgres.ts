@@ -793,6 +793,25 @@ export type NewSite = typeof sites.$inferInsert;
 export type NewPage = typeof pages.$inferInsert;
 export type NewPageBlock = typeof pageBlocks.$inferInsert;
 
+// ─── AI Content Chunks (RAG index) ───────────────────────────────────────────
+
+export const aiChunks = pgTable("ai_chunks", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(), // page | block | blog | product | service | menu
+  sourceId: integer("source_id"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  path: text("path"),
+  embedding: text("embedding"), // JSON array of floats
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("ai_chunks_site_id_idx").on(t.siteId),
+  sourceIdx: index("ai_chunks_source_idx").on(t.sourceType, t.sourceId),
+}));
+
+export type AiChunk = typeof aiChunks.$inferSelect;
+
 // ─── Error Logs ──────────────────────────────────────────────────────────────
 
 export const errorLogs = pgTable("error_logs", {
