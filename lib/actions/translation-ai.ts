@@ -8,6 +8,7 @@ import { hasMinRole, type Role } from "@/lib/auth";
 import { getAllServerSettings } from "@/lib/data";
 import { requirePageAccess, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
+import { callAiProvider } from "@/lib/ai-provider";
 
 export type TranslatePageResult = { success: boolean; message: string; translatedBlocksCount?: number } | { error: string };
 
@@ -70,24 +71,17 @@ Do not include markdown code block formatting.`;
 
     const userPrompt = `Target Language: ${lang}\nBlocks Array:\n${JSON.stringify(blockPayload)}`;
 
-    const res = await fetch(`${settings.aiBaseUrl || "https://api.openai.com/v1"}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.aiApiKey}` },
-      body: JSON.stringify({
-        model: settings.aiModel || "gpt-4o-mini",
-        max_tokens: 2400,
-        temperature: 0.3,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const rawContent = await callAiProvider({
+      provider: settings.aiProvider,
+      apiKey: settings.aiApiKey,
+      model: settings.aiModel,
+      baseUrl: settings.aiBaseUrl,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 2400,
+      temperature: 0.3,
+      jsonMode: true,
     });
-
-    if (!res.ok) throw new Error("AI translation request failed.");
-    const data = await res.json();
-    const rawContent = String(data.choices?.[0]?.message?.content ?? "[]");
 
     let translatedArray: Array<{ id: number; title?: string | null; config?: Record<string, unknown> }>;
     try {

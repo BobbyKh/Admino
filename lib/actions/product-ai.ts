@@ -5,6 +5,7 @@ import { hasMinRole, type Role } from "@/lib/auth";
 import { getAllServerSettings } from "@/lib/data";
 import { getCurrentAdminSiteId, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
+import { callAiProvider } from "@/lib/ai-provider";
 
 export type GeneratedProductCopy = {
   description: string;
@@ -46,24 +47,17 @@ Return ONLY a valid JSON object with keys "description" and "badge".
 
     const userPrompt = `Product: "${cleanName}"\nFeatures/Highlights: ${keyFeatures?.trim() || "Quality craftsmanship and modern design."}`;
 
-    const res = await fetch(`${settings.aiBaseUrl || "https://api.openai.com/v1"}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.aiApiKey}` },
-      body: JSON.stringify({
-        model: settings.aiModel || "gpt-4o-mini",
-        max_tokens: 600,
-        temperature: 0.6,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const content = await callAiProvider({
+      provider: settings.aiProvider,
+      apiKey: settings.aiApiKey,
+      model: settings.aiModel,
+      baseUrl: settings.aiBaseUrl,
+      systemPrompt,
+      userPrompt,
+      jsonMode: true,
     });
 
-    if (!res.ok) throw new Error("AI product copywriting failed.");
-    const data = await res.json();
-    const parsed = JSON.parse(String(data.choices?.[0]?.message?.content ?? "{}")) as Record<string, string>;
+    const parsed = JSON.parse(content) as Record<string, string>;
 
     const schema = z.object({
       description: z.string().trim().min(10),

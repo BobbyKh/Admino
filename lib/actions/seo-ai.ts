@@ -3,11 +3,12 @@
 import { z } from "zod";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { pageBlocks, pages } from "@/lib/db/schema";
+import { pageBlocks } from "@/lib/db/schema";
 import { getAllServerSettings } from "@/lib/data";
 import { requirePageAccess, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { eq, asc } from "drizzle-orm";
+import { callAiProvider } from "@/lib/ai-provider";
 
 export type GeneratedSeoMetadata = {
   metaTitle: string;
@@ -67,6 +68,9 @@ Do not include markdown code block syntax.`;
       baseUrl: settings.aiBaseUrl,
       systemPrompt,
       userPrompt,
+      maxTokens: 600,
+      temperature: 0.5,
+      jsonMode: true,
     });
 
     const parsed = extractJsonPayload(content) as Record<string, string>;
@@ -80,78 +84,6 @@ Do not include markdown code block syntax.`;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to generate SEO metadata." };
   }
-}
-
-async function callAiProvider({
-  provider,
-  apiKey,
-  model,
-  baseUrl,
-  systemPrompt,
-  userPrompt,
-}: {
-  provider: string;
-  apiKey: string;
-  model: string;
-  baseUrl: string;
-  systemPrompt: string;
-  userPrompt: string;
-}) {
-  if (provider === "anthropic") {
-    const res = await fetch(`${baseUrl || "https://api.anthropic.com"}/v1/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: model || "claude-sonnet-4-20250514",
-        max_tokens: 600,
-        temperature: 0.5,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
-    if (!res.ok) throw new Error("AI provider error");
-    const data = await res.json();
-    return String(data.content?.[0]?.text ?? "");
-  }
-  if (provider === "google") {
-    const res = await fetch(
-      `${baseUrl || "https://generativelanguage.googleapis.com/v1beta"}/models/${model || "gemini-2.0-flash"}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          generationConfig: { maxOutputTokens: 600, temperature: 0.5 },
-        }),
-      }
-    );
-    if (!res.ok) throw new Error("AI provider error");
-    const data = await res.json();
-    return String(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
-  }
-
-  const res = await fetch(`${baseUrl || "https://api.openai.com/v1"}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: model || "gpt-4o-mini",
-      max_tokens: 600,
-      temperature: 0.5,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error("AI provider error");
-  const data = await res.json();
-  return String(data.choices?.[0]?.message?.content ?? "");
 }
 
 function extractJsonPayload(content: string): unknown {

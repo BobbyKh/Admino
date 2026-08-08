@@ -3,12 +3,12 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { pageBlocks, pages } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { getAllServerSettings } from "@/lib/data";
 import { requireSiteAccess } from "@/lib/tenant-access";
-import { requireTenantFeature } from "@/lib/tenant-features";
-import { BLOCK_TYPES, getDefaultConfig } from "@/lib/blocks";
+import { BLOCK_TYPES } from "@/lib/blocks";
 import { revalidatePath } from "next/cache";
+import { callAiProvider } from "@/lib/ai-provider";
 
 const generateLayoutSchema = z.object({
   pageId: z.number().int().positive(),
@@ -35,86 +35,6 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
       }
     }
     return null;
-  }
-}
-
-async function callConfiguredAi(
-  provider: string,
-  apiKey: string,
-  model: string,
-  baseUrl: string,
-  systemPrompt: string,
-  userPrompt: string
-): Promise<string> {
-  if (!apiKey) throw new Error("AI API key not configured.");
-
-  switch (provider) {
-    case "anthropic": {
-      const url = `${baseUrl || "https://api.anthropic.com"}/v1/messages`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: model || "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.text().catch(() => "");
-        throw new Error(`Anthropic API error: ${res.status} ${err.slice(0, 200)}`);
-      }
-      const data = await res.json() as { content?: Array<{ text?: string }> };
-      return data.content?.[0]?.text ?? "";
-    }
-
-    case "google": {
-      const url = `${baseUrl || "https://generativelanguage.googleapis.com/v1beta"}/models/${model || "gemini-2.0-flash"}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.text().catch(() => "");
-        throw new Error(`Google API error: ${res.status} ${err.slice(0, 200)}`);
-      }
-      const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    }
-
-    default: {
-      const url = `${baseUrl || "https://api.openai.com/v1"}/chat/completions`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: model || "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          max_tokens: 4096,
-          temperature: 0.7,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.text().catch(() => "");
-        throw new Error(`OpenAI API error: ${res.status} ${err.slice(0, 200)}`);
-      }
-      const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return data.choices?.[0]?.message?.content ?? "";
-    }
   }
 }
 
@@ -174,14 +94,16 @@ The page is on a website. Create a professional, well-structured layout with app
 Return ONLY the JSON array, no other text.`;
 
   try {
-    const response = await callConfiguredAi(
-      settings.aiProvider,
-      settings.aiApiKey,
-      settings.aiModel,
-      settings.aiBaseUrl,
+    const response = await callAiProvider({
+      provider: settings.aiProvider,
+      apiKey: settings.aiApiKey,
+      model: settings.aiModel,
+      baseUrl: settings.aiBaseUrl,
       systemPrompt,
-      userPrompt
-    );
+      userPrompt,
+      maxTokens: 4096,
+      temperature: 0.7,
+    });
 
     const parsed_blocks = extractJsonObject(response);
     if (!parsed_blocks || !Array.isArray(parsed_blocks)) {

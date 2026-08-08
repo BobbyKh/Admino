@@ -5,6 +5,7 @@ import { hasMinRole, type Role } from "@/lib/auth";
 import { getAllServerSettings } from "@/lib/data";
 import { getCurrentAdminSiteId, requireSiteAccess } from "@/lib/tenant-access";
 import { requireTenantFeature } from "@/lib/tenant-features";
+import { callAiProvider } from "@/lib/ai-provider";
 
 export type GeneratedBlogPost = {
   title: string;
@@ -50,24 +51,19 @@ Return ONLY a valid JSON object with keys: "title", "slug", "excerpt", and "cont
 
     const userPrompt = `Topic: "${cleanTopic}"\nTone of voice: ${tone}`;
 
-    const res = await fetch(`${settings.aiBaseUrl || "https://api.openai.com/v1"}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${settings.aiApiKey}` },
-      body: JSON.stringify({
-        model: settings.aiModel || "gpt-4o-mini",
-        max_tokens: 1200,
-        temperature: 0.7,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const content = await callAiProvider({
+      provider: settings.aiProvider,
+      apiKey: settings.aiApiKey,
+      model: settings.aiModel,
+      baseUrl: settings.aiBaseUrl,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 1200,
+      temperature: 0.7,
+      jsonMode: true,
     });
 
-    if (!res.ok) throw new Error("AI blog generation failed.");
-    const data = await res.json();
-    const parsed = JSON.parse(String(data.choices?.[0]?.message?.content ?? "{}")) as Record<string, string>;
+    const parsed = JSON.parse(content) as Record<string, string>;
 
     const schema = z.object({
       title: z.string().trim().min(3),
