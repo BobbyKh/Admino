@@ -26,6 +26,8 @@ import {
   Newspaper,
   Wrench,
   Bell,
+  FlaskConical,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -57,6 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     ],
   },
   {
@@ -64,6 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/sites", label: "Sites", icon: Globe, superAdminOnly: true },
       { href: "/admin/pages", label: "Pages", icon: FileText, feature: "pages" },
+      { href: "/admin/i18n", label: "Languages", icon: Globe, feature: "pages" },
       { href: "/admin/navigation", label: "Navigation", icon: LinkIcon, feature: "navigation" },
       { href: "/admin/layout", label: "Header & Footer", icon: LayoutPanelTop, feature: "layout" },
       { href: "/admin/settings", label: "Settings", icon: Settings, feature: "settings" },
@@ -96,6 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/users", label: "Users", icon: Users, minRole: "admin" },
       { href: "/admin/billing", label: "Billing & Plans", icon: CreditCard, minRole: "admin" },
       { href: "/admin/webhooks", label: "Webhooks", icon: Bell, minRole: "admin" },
+      { href: "/admin/experiments", label: "A/B Testing", icon: FlaskConical, minRole: "admin" },
       { href: "/admin/activity", label: "Activity Log", icon: ScrollText, minRole: "admin" },
       { href: "/admin/export", label: "Export", icon: Download, minRole: "admin" },
     ],

@@ -602,6 +602,161 @@ export const subscriptions = pgTable("subscriptions", {
 export type Plan = typeof plans.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 
+// ─── Internationalization (i18n) ────────────────────────────────────────────
+
+export const siteLocales = pgTable("site_locales", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  code: text("code").notNull(), // e.g. "en", "fr", "es"
+  name: text("name").notNull(), // e.g. "English", "French", "Spanish"
+  isDefault: boolean("is_default").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("site_locales_site_id_idx").on(t.siteId),
+  siteCodeUnique: uniqueIndex("site_locales_site_code_idx").on(t.siteId, t.code),
+}));
+
+export const pageTranslations = pgTable("page_translations", {
+  id: serial("id").primaryKey(),
+  pageId: integer("page_id").notNull().references(() => pages.id, { onDelete: "cascade" }),
+  locale: text("locale").notNull(), // locale code e.g. "fr"
+  title: text("title"),
+  slug: text("slug"),
+  description: text("description"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  pageIdIdx: index("page_translations_page_id_idx").on(t.pageId),
+  pageLocaleUnique: uniqueIndex("page_translations_page_locale_idx").on(t.pageId, t.locale),
+}));
+
+export const blockTranslations = pgTable("block_translations", {
+  id: serial("id").primaryKey(),
+  blockId: integer("block_id").notNull().references(() => pageBlocks.id, { onDelete: "cascade" }),
+  locale: text("locale").notNull(),
+  title: text("title"),
+  config: text("config"), // Translated config JSON
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  blockIdIdx: index("block_translations_block_id_idx").on(t.blockId),
+  blockLocaleUnique: uniqueIndex("block_translations_block_locale_idx").on(t.blockId, t.locale),
+}));
+
+// ─── A/B Testing ────────────────────────────────────────────────────────────
+
+export const experiments = pgTable("experiments", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("draft"), // draft | running | paused | completed
+  trafficPercent: integer("traffic_percent").notNull().default(50), // 0-100
+  variants: text("variants").notNull().default("[]"), // JSON array: [{id, name, weight}]
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("experiments_site_id_idx").on(t.siteId),
+  statusIdx: index("experiments_status_idx").on(t.status),
+}));
+
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id: serial("id").primaryKey(),
+  experimentId: integer("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(), // Cookie-based anonymous ID
+  variantId: text("variant_id").notNull(),
+  assignedAt: text("assigned_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  experimentIdIdx: index("experiment_assignments_experiment_id_idx").on(t.experimentId),
+  visitorIdIdx: index("experiment_assignments_visitor_id_idx").on(t.visitorId),
+  experimentVisitorUnique: uniqueIndex("experiment_assignments_exp_visitor_idx").on(t.experimentId, t.visitorId),
+}));
+
+export const experimentEvents = pgTable("experiment_events", {
+  id: serial("id").primaryKey(),
+  experimentId: integer("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(),
+  variantId: text("variant_id").notNull(),
+  event: text("event").notNull(), // impression | conversion
+  value: integer("value"), // Optional conversion value (cents)
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  experimentIdIdx: index("experiment_events_experiment_id_idx").on(t.experimentId),
+  eventIdx: index("experiment_events_event_idx").on(t.event),
+  createdAtIdx: index("experiment_events_created_at_idx").on(t.createdAt),
+}));
+
+export type SiteLocale = typeof siteLocales.$inferSelect;
+export type PageTranslation = typeof pageTranslations.$inferSelect;
+export type BlockTranslation = typeof blockTranslations.$inferSelect;
+export type Experiment = typeof experiments.$inferSelect;
+export type ExperimentAssignment = typeof experimentAssignments.$inferSelect;
+export type ExperimentEvent = typeof experimentEvents.$inferSelect;
+
+// ─── Advanced Analytics ──────────────────────────────────────────────────────
+
+export const pageViews = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  pageId: integer("page_id").references(() => pages.id, { onDelete: "set null" }),
+  path: text("path").notNull(),
+  visitorId: text("visitor_id").notNull(),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  ipHash: text("ip_hash"), // Hashed IP for unique visitor counting
+  country: text("country"),
+  device: text("device"), // desktop | mobile | tablet
+  browser: text("browser"),
+  os: text("os"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  duration: integer("duration"), // Time on page in seconds
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("page_views_site_id_idx").on(t.siteId),
+  pageIdIdx: index("page_views_page_id_idx").on(t.pageId),
+  pathIdx: index("page_views_path_idx").on(t.path),
+  visitorIdIdx: index("page_views_visitor_id_idx").on(t.visitorId),
+  createdAtIdx: index("page_views_created_at_idx").on(t.createdAt),
+  countryIdx: index("page_views_country_idx").on(t.country),
+}));
+
+export const clickEvents = pgTable("click_events", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(),
+  path: text("path").notNull(),
+  selector: text("selector"), // CSS selector of clicked element
+  x: integer("x"), // Normalized x position (0-1000)
+  y: integer("y"), // Normalized y position (0-1000)
+  label: text("label"), // Text label of clicked element
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("click_events_site_id_idx").on(t.siteId),
+  pathIdx: index("click_events_path_idx").on(t.path),
+  createdAtIdx: index("click_events_created_at_idx").on(t.createdAt),
+}));
+
+export const conversionFunnels = pgTable("conversion_funnels", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  steps: text("steps").notNull().default("[]"), // JSON array of path patterns
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("conversion_funnels_site_id_idx").on(t.siteId),
+}));
+
+export type PageView = typeof pageViews.$inferSelect;
+export type ClickEvent = typeof clickEvents.$inferSelect;
+export type ConversionFunnel = typeof conversionFunnels.$inferSelect;
+
 export type GalleryImage = typeof galleryImages.$inferSelect;
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type MenuItem = typeof menuItems.$inferSelect;

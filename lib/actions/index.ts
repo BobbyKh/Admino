@@ -23,3 +23,6 @@ export { getPlans, getCurrentSubscription, selectPlan, cancelSubscription, admin
 export { getWebhooks, createWebhook, deleteWebhook, toggleWebhook, getWebhookDeliveries, retryWebhookDelivery, getWebhookEvents } from "./webhooks";
 export { generatePageLayoutWithAi, applyGeneratedBlocks } from "./layout-ai";
 export { generateImage, generateImageForUpload } from "./image-ai";
+export { getLocales, addLocale, deleteLocale, setDefaultLocale, getPageTranslations, getBlockTranslations, savePageTranslation, saveBlockTranslation } from "./i18n";
+export { getExperiments, createExperiment, updateExperimentStatus, deleteExperiment, getExperimentResults } from "./experiments";
+export { trackPageView, trackClickEvent, updatePageViewDuration, getSiteAnalytics, getHeatmapData } from "../analytics-advanced";
