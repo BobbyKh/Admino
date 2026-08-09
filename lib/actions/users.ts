@@ -131,7 +131,10 @@ export async function updateAdminUser(
     .select({ siteId: adminUsers.siteId, role: adminUsers.role })
     .from(adminUsers)
     .where(eq(adminUsers.id, id));
-  if (!targetUser || targetUser.siteId !== siteId || targetUser.role === "super_admin") {
+  if (!targetUser || targetUser.role === "super_admin") {
+    return { message: "You can only edit users assigned to the active site." };
+  }
+  if (userRole !== "super_admin" && targetUser.siteId !== siteId) {
     return { message: "You can only edit users assigned to the active site." };
   }
 
@@ -144,12 +147,19 @@ export async function updateAdminUser(
     updateData.passwordHash = await hashPassword(newPassword);
   }
 
-  await db
-    .update(adminUsers)
-    .set(updateData)
-    .where(
-      and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
-    );
+  if (userRole === "super_admin") {
+    await db
+      .update(adminUsers)
+      .set(updateData)
+      .where(and(eq(adminUsers.id, id), ne(adminUsers.role, "super_admin")));
+  } else {
+    await db
+      .update(adminUsers)
+      .set(updateData)
+      .where(
+        and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
+      );
+  }
 
   revalidatePath("/admin/users");
   return { success: true, message: "User updated." };
@@ -171,15 +181,24 @@ export async function deleteAdminUser(id: number) {
     .select({ siteId: adminUsers.siteId, role: adminUsers.role })
     .from(adminUsers)
     .where(eq(adminUsers.id, id));
-  if (!targetUser || targetUser.siteId !== siteId || targetUser.role === "super_admin") {
+  if (!targetUser || targetUser.role === "super_admin") {
+    return { message: "You can only delete users assigned to the active site." };
+  }
+  if (userRole !== "super_admin" && targetUser.siteId !== siteId) {
     return { message: "You can only delete users assigned to the active site." };
   }
 
-  await db
-    .delete(adminUsers)
-    .where(
-      and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
-    );
+  if (userRole === "super_admin") {
+    await db
+      .delete(adminUsers)
+      .where(and(eq(adminUsers.id, id), ne(adminUsers.role, "super_admin")));
+  } else {
+    await db
+      .delete(adminUsers)
+      .where(
+        and(eq(adminUsers.id, id), eq(adminUsers.siteId, siteId), ne(adminUsers.role, "super_admin"))
+      );
+  }
   revalidatePath("/admin/users");
 }
 
