@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import {
   getAdminUsers,
   getSitesForCurrentUser,
+  getCurrentUserRole,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
@@ -80,6 +81,7 @@ const ROLE_BADGE: Record<string, string> = {
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -93,9 +95,10 @@ export default function UsersPage() {
   const [updateState, updateFormAction] = useActionState<AdminActionState, FormData>(updateAdminUser, {});
 
   useEffect(() => {
-    Promise.all([getAdminUsers(), getSitesForCurrentUser()]).then(([u, s]) => {
+    Promise.all([getAdminUsers(), getSitesForCurrentUser(), getCurrentUserRole()]).then(([u, s, role]) => {
       setUsers(u);
       setSites(s);
+      setCurrentUserRole(role);
       setLoading(false);
     });
   }, []);
@@ -196,6 +199,25 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
+              {currentUserRole === "super_admin" && sites.length > 1 && (
+                <div className="space-y-2">
+                  <Label htmlFor="siteId">Site</Label>
+                  <select
+                    id="siteId"
+                    name="siteId"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {currentUserRole === "super_admin" && sites.length <= 1 && (
+                <input type="hidden" name="siteId" value={sites[0]?.id ?? ""} />
+              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Creating..." : "Create User"}
               </Button>
@@ -362,6 +384,25 @@ export default function UsersPage() {
                   ))}
                 </select>
               </div>
+              {currentUserRole === "super_admin" && sites.length > 1 && (
+                <div className="space-y-2">
+                  <Label>Site</Label>
+                  <select
+                    name="siteId"
+                    defaultValue={editingUser.siteId ?? undefined}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {currentUserRole === "super_admin" && sites.length <= 1 && (
+                <input type="hidden" name="siteId" value={editingUser.siteId ?? sites[0]?.id ?? ""} />
+              )}
               <Button type="submit" className="w-full" disabled={pending}>
                 {pending ? "Saving..." : "Save Changes"}
               </Button>
