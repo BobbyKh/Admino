@@ -45,14 +45,6 @@ export function getEventDescription(event: WebhookEvent): string {
   return EVENT_DESCRIPTIONS[event] ?? event;
 }
 
-function generateSignature(payload: string, secret: string): string {
-  const encoder = new TextEncoder();
-  const key = encoder.encode(secret);
-  const data = encoder.encode(payload);
-  // Simple HMAC-SHA256 using SubtleCrypto
-  return `${Buffer.from(data).length}`; // Placeholder - actual impl uses crypto
-}
-
 async function signPayload(payload: string, secret: string | null): Promise<Record<string, string>> {
   if (!secret) return {};
 

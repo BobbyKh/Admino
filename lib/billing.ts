@@ -1,8 +1,8 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { plans, subscriptions } from "@/lib/db/schema";
+import { plans, subscriptions, pages, products } from "@/lib/db/schema";
 
 export async function getActivePlans() {
   return db
@@ -99,6 +99,12 @@ export async function checkSiteQuota(
   const limit =
     resource === "pages" ? sub.plan.maxPages : sub.plan.maxProducts;
 
-  // This is a placeholder - real implementation would count actual resources
-  return { allowed: true, current: 0, limit };
+  const table = resource === "pages" ? pages : products;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(table)
+    .where(eq(table.siteId, siteId));
+
+  const current = row?.count ?? 0;
+  return { allowed: current < limit, current, limit };
 }
