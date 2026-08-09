@@ -341,6 +341,11 @@ export function AdminNav({
           adminName={adminName}
           viewSiteHref={viewSiteHref}
         />
+        {sites.length > 1 && (
+          <div className="border-t p-3">
+            <SiteSelector sites={sites} currentSiteId={currentSiteId} />
+          </div>
+        )}
       </aside>
     </>
   );
