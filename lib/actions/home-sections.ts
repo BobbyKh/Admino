@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { homeSections } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getHomeSections() {
@@ -16,7 +16,7 @@ export async function addHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("pages");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("pages", "editor");
   if (denied) return { message: denied };
   const type = String(formData.get("type") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim() || null;
@@ -39,7 +39,7 @@ export async function updateHomeSection(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("pages");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("pages", "editor");
   if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim() || null;
@@ -53,14 +53,14 @@ export async function updateHomeSection(
 }
 
 export async function deleteHomeSection(id: number) {
-  const siteId = await getCurrentSiteRequiringFeature("pages");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("pages", "editor");
   await db.delete(homeSections).where(and(eq(homeSections.id, id), eq(homeSections.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage");
 }
 
 export async function reorderHomeSections(orderedIds: number[]) {
-  const siteId = await getCurrentSiteRequiringFeature("pages");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("pages", "editor");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(homeSections).set({ sortOrder: i }).where(and(eq(homeSections.id, orderedIds[i]), eq(homeSections.siteId, siteId)));

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { webhooks, webhookDeliveries } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { WEBHOOK_EVENTS, getEventDescription } from "@/lib/webhooks";
 
@@ -19,7 +19,7 @@ export async function getWebhookEvents() {
 }
 
 export async function getWebhooks() {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   return db
@@ -37,7 +37,7 @@ const webhookSchema = z.object({
 });
 
 export async function createWebhook(_prev: unknown, formData: FormData) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const eventsRaw = formData.get("events") as string;
@@ -70,7 +70,7 @@ export async function createWebhook(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteWebhook(webhookId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   await db
@@ -82,7 +82,7 @@ export async function deleteWebhook(webhookId: number) {
 }
 
 export async function toggleWebhook(webhookId: number, active: boolean) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   await db
@@ -95,7 +95,7 @@ export async function toggleWebhook(webhookId: number, active: boolean) {
 }
 
 export async function getWebhookDeliveries(webhookId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   // Verify the webhook belongs to this site
@@ -115,7 +115,7 @@ export async function getWebhookDeliveries(webhookId: number) {
 }
 
 export async function retryWebhookDelivery(deliveryId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const [delivery] = await db

@@ -24,6 +24,7 @@ import {
   getCurrentSubscription,
   subscribeToPlan,
   manageSubscription,
+  getCurrentUserRole,
 } from "@/lib/actions/index";
 
 interface Plan {
@@ -86,13 +87,17 @@ export default function BillingPage() {
   const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showAddPlan, setShowAddPlan] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    Promise.all([getPlans(), getAllSubscriptions(), getCurrentSubscription()])
-      .then(([p, s, c]) => {
+    Promise.all([getPlans(), getCurrentSubscription(), getCurrentUserRole()])
+      .then(async ([p, c, role]) => {
+        const superAdmin = role === "super_admin";
+        const s = superAdmin ? await getAllSubscriptions() : [];
         setPlansList(p as Plan[]);
         setSubscriptions(s);
         setCurrentSub((c as CurrentSub) ?? null);
+        setIsSuperAdmin(superAdmin);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -108,7 +113,8 @@ export default function BillingPage() {
           return;
         }
         toast.success(result.message ?? "Plan updated.");
-        const [plans2, subs2, sub2] = await Promise.all([getPlans(), getAllSubscriptions(), getCurrentSubscription()]);
+        const [plans2, sub2] = await Promise.all([getPlans(), getCurrentSubscription()]);
+        const subs2 = isSuperAdmin ? await getAllSubscriptions() : [];
         setPlansList(plans2 as Plan[]);
         setSubscriptions(subs2);
         setCurrentSub((sub2 as CurrentSub) ?? null);
@@ -176,7 +182,7 @@ export default function BillingPage() {
             Manage subscription plans and view active subscriptions.
           </p>
         </div>
-        <Dialog open={showAddPlan} onOpenChange={setShowAddPlan}>
+        {isSuperAdmin && <Dialog open={showAddPlan} onOpenChange={setShowAddPlan}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="size-4" />
@@ -263,7 +269,7 @@ export default function BillingPage() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -334,14 +340,16 @@ export default function BillingPage() {
                     "Subscribe"
                   )}
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => handleDeletePlan(plan.id)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                {isSuperAdmin && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => handleDeletePlan(plan.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -391,7 +399,7 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      <div>
+      {isSuperAdmin && <div>
         <h2 className="mb-4 text-lg font-semibold">Active Subscriptions</h2>
         {subscriptions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active subscriptions.</p>
@@ -429,7 +437,7 @@ export default function BillingPage() {
             </table>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

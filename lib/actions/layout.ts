@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import { getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import { LAYOUT_SETTING_KEYS, type LayoutSettings } from "@/lib/layout-settings";
 
 export async function updateLayoutSettings(formData: FormData) {
-  const { siteId, denied } = await getCurrentSiteWithFeature("layout");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("layout", "admin");
   if (denied) throw new Error(denied);
   const value = Object.fromEntries(LAYOUT_SETTING_KEYS.map((key) => [key, formData.get(key) === "on"])) as LayoutSettings;
   await db.insert(settings).values({ siteId, key: "site_layout", value: JSON.stringify(value), updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [settings.key, settings.siteId], set: { value: JSON.stringify(value), updatedAt: new Date().toISOString() } });
@@ -16,7 +16,7 @@ export async function updateLayoutSettings(formData: FormData) {
 }
 
 export async function updateThemeCustomizerSettings(formData: FormData) {
-  const { siteId, denied } = await getCurrentSiteWithFeature("layout");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("layout", "admin");
   if (denied) throw new Error(denied);
 
   const fontBody = String(formData.get("fontBody") ?? "Inter").trim();

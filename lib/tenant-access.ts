@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pageBlocks, pages } from "@/lib/db/schema";
-import { requireAdmin, type Role } from "@/lib/auth";
+import { hasMinRole, requireAdmin, type Role } from "@/lib/auth";
 import { getAdminSiteId } from "@/lib/admin-site";
 import {
   checkTenantFeature,
@@ -38,10 +38,26 @@ export async function getCurrentSiteWithFeature(feature: TenantFeature) {
   return { siteId, denied };
 }
 
+/** Active tenant context with a minimum backend role for mutation actions. */
+export async function getCurrentSiteWithFeatureForRole(feature: TenantFeature, minRole: Role) {
+  const { siteId, user } = await getCurrentAdminContext();
+  const role = (user.role as Role) ?? "viewer";
+  if (!hasMinRole(role, minRole)) return { siteId, denied: "You do not have permission to perform this action.", user };
+  const denied = await checkTenantFeature(siteId, feature, { role, userId: user.id });
+  return { siteId, denied, user };
+}
+
 /** Throws unless the active admin context may use the feature. */
 export async function getCurrentSiteRequiringFeature(feature: TenantFeature): Promise<number> {
   const { siteId, user } = await getCurrentAdminContext();
   await requireTenantFeature(siteId, feature, { role: user.role as Role, userId: user.id });
+  return siteId;
+}
+
+/** Throws unless the active tenant has the feature and the user has the required role. */
+export async function getCurrentSiteRequiringFeatureForRole(feature: TenantFeature, minRole: Role): Promise<number> {
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole(feature, minRole);
+  if (denied) throw new Error(denied);
   return siteId;
 }
 

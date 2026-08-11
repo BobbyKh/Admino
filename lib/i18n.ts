@@ -24,6 +24,11 @@ export async function getSiteLocales(): Promise<Locale[]> {
   const siteId = await getResolvedSiteId();
   if (!siteId) return [{ id: 0, code: "en", name: "English", isDefault: true, active: true }];
 
+  return getSiteLocalesById(siteId);
+}
+
+export async function getSiteLocalesById(siteId: number): Promise<Locale[]> {
+
   const locales = await db
     .select()
     .from(siteLocales)

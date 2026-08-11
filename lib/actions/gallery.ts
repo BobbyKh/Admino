@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { galleryImages } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function addGalleryImage(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-const { siteId, denied } = await getCurrentSiteWithFeature("gallery");
+const { siteId, denied } = await getCurrentSiteWithFeatureForRole("gallery", "editor");
   if (denied) return { message: denied };
   const title = String(formData.get("title") ?? "").trim();
   const alt = String(formData.get("alt") ?? "").trim();
@@ -40,7 +40,7 @@ export async function updateGalleryImage(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-const { siteId, denied } = await getCurrentSiteWithFeature("gallery");
+const { siteId, denied } = await getCurrentSiteWithFeatureForRole("gallery", "editor");
   if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const title = String(formData.get("title") ?? "").trim();
@@ -62,7 +62,7 @@ const { siteId, denied } = await getCurrentSiteWithFeature("gallery");
 }
 
 export async function deleteGalleryImage(imageId: number) {
-  const siteId = await getCurrentSiteRequiringFeature("gallery");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("gallery", "editor");
   await db.delete(galleryImages).where(and(eq(galleryImages.id, imageId), eq(galleryImages.siteId, siteId)));
   revalidatePath("/gallery");
   revalidatePath("/", "layout");
@@ -70,7 +70,7 @@ export async function deleteGalleryImage(imageId: number) {
 }
 
 export async function toggleFeatured(imageId: number, featured: boolean) {
-  const siteId = await getCurrentSiteRequiringFeature("gallery");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("gallery", "editor");
   await db
     .update(galleryImages)
     .set({ featured })

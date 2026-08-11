@@ -28,9 +28,9 @@ test("analytics-actions.ts guards dashboard queries by site access", () => {
   assert.match(file, /coalesce\(sum\(\${orders\.total}\), 0\)/);
 });
 
-test("settings.ts exports sendTestEmailAction guarded by tenant settings access", () => {
+test("settings.ts exports sendTestEmailAction guarded by tenant admin access", () => {
   const file = source("lib/actions/settings.ts");
   assert.match(file, /export async function sendTestEmailAction/);
-  assert.match(file, /getCurrentSiteWithFeature\("settings"\)/);
+  assert.match(file, /getCurrentSiteWithFeatureForRole\("settings", "admin"\)/);
   assert.match(file, /sendTestEmail/);
 });

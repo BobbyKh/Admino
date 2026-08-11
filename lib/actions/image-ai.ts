@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAllServerSettings } from "@/lib/data";
 import { requireSiteAccess } from "@/lib/tenant-access";
 import { validateAiBaseUrl } from "@/lib/ai-provider";
+import { hasMinRole, type Role } from "@/lib/auth";
 
 const generateImageSchema = z.object({
   siteId: z.number().int().positive(),
@@ -25,7 +26,7 @@ export async function generateImage(
   const parsed = generateImageSchema.safeParse({ siteId, prompt, size, quality });
   if (!parsed.success) return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid image request." };
   const access = await requireSiteAccess(parsed.data.siteId);
-  if (!access) return { success: false, message: "Access denied." };
+  if (!hasMinRole((access.role as Role) ?? "viewer", "editor")) return { success: false, message: "Access denied." };
 
   const settings = await getAllServerSettings(parsed.data.siteId);
 

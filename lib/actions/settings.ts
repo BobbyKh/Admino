@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { SETTING_KEYS } from "@/lib/settings";
-import { getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import { sendTestEmail } from "@/lib/email";
 import type { AdminActionState } from "./types";
 
@@ -12,7 +12,7 @@ export async function updateSettings(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("settings");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
   if (denied) return { message: denied };
   const now = new Date().toISOString();
   for (const key of SETTING_KEYS) {
@@ -32,7 +32,7 @@ export async function updateSettings(
 }
 
 export async function sendTestEmailAction(email: string) {
-  const { denied } = await getCurrentSiteWithFeature("settings");
+  const { denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
   if (denied) return { success: false, message: denied };
 
   const targetEmail = email.trim();

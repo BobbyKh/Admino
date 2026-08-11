@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { menuCategories, menuItems } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function addMenuCategory(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("menu");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("menu", "editor");
   if (denied) return { message: denied };
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -35,7 +35,7 @@ export async function addMenuCategory(
 }
 
 export async function deleteMenuCategory(categoryId: number) {
-  const siteId = await getCurrentSiteRequiringFeature("menu");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("menu", "editor");
   await db.delete(menuCategories).where(and(eq(menuCategories.id, categoryId), eq(menuCategories.siteId, siteId)));
   revalidatePath("/menu");
   revalidatePath("/admin/menu");
@@ -45,7 +45,7 @@ export async function addMenuItem(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("menu");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("menu", "editor");
   if (denied) return { message: denied };
   const categoryId = Number(formData.get("categoryId"));
   const name = String(formData.get("name") ?? "").trim();
@@ -79,7 +79,7 @@ export async function updateMenuItem(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("menu");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("menu", "editor");
   if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const categoryId = Number(formData.get("categoryId"));
@@ -113,7 +113,7 @@ export async function updateMenuItem(
 }
 
 export async function deleteMenuItem(itemId: number) {
-  const siteId = await getCurrentSiteRequiringFeature("menu");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("menu", "editor");
   await db.delete(menuItems).where(and(eq(menuItems.id, itemId), eq(menuItems.siteId, siteId)));
   revalidatePath("/menu");
   revalidatePath("/", "layout");

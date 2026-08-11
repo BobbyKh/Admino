@@ -5,13 +5,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { conversionFunnels, pageViews } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Admin Actions ───────────────────────────────────────────────────────────
 
 export async function getFunnels() {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   return db
@@ -27,7 +27,7 @@ const funnelSchema = z.object({
 });
 
 export async function createFunnel(_prev: unknown, formData: FormData) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   let steps: string[];
@@ -63,7 +63,7 @@ export async function createFunnel(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteFunnel(funnelId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   await db
@@ -80,7 +80,7 @@ export async function deleteFunnel(funnelId: number) {
 }
 
 export async function getFunnelResults(funnelId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const [funnel] = await db

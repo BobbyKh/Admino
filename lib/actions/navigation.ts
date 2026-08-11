@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { navLinks } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import type { AdminActionState } from "./types";
 
 export async function getNavLinks() {
@@ -16,7 +16,7 @@ export async function addNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("navigation");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("navigation", "editor");
   if (denied) return { message: denied };
   const label = String(formData.get("label") ?? "").trim();
   const href = String(formData.get("href") ?? "").trim();
@@ -34,7 +34,7 @@ export async function updateNavLink(
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("navigation");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("navigation", "editor");
   if (denied) return { message: denied };
   const id = Number(formData.get("id"));
   const label = String(formData.get("label") ?? "").trim();
@@ -49,14 +49,14 @@ export async function updateNavLink(
 }
 
 export async function deleteNavLink(id: number) {
-  const siteId = await getCurrentSiteRequiringFeature("navigation");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("navigation", "editor");
   await db.delete(navLinks).where(and(eq(navLinks.id, id), eq(navLinks.siteId, siteId)));
   revalidatePath("/", "layout");
   revalidatePath("/admin/navigation");
 }
 
 export async function reorderNavLinks(orderedIds: number[]) {
-  const siteId = await getCurrentSiteRequiringFeature("navigation");
+  const siteId = await getCurrentSiteRequiringFeatureForRole("navigation", "editor");
   await db.transaction(async (tx) => {
     for (let i = 0; i < orderedIds.length; i++) {
       await tx.update(navLinks).set({ sortOrder: i }).where(and(eq(navLinks.id, orderedIds[i]), eq(navLinks.siteId, siteId)));

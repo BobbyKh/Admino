@@ -6,9 +6,9 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { plans, subscriptions } from "@/lib/db/schema";
 import { getActivePlans, getSiteSubscription, createOrReactivateSubscription, cancelSiteSubscription } from "@/lib/billing";
-import { getResolvedSiteId } from "@/lib/site-context";
-import { requireAdmin } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { createSubscriptionCheckout, createSubscriptionPortal, getBillingBaseUrl } from "@/lib/commerce/subscription-billing";
 
 // ─── Public Actions ──────────────────────────────────────────────────────────
 
@@ -17,9 +17,8 @@ export async function getPlans() {
 }
 
 export async function getCurrentSubscription() {
-  const siteId = await getResolvedSiteId();
-  if (!siteId) return null;
-  return getSiteSubscription(siteId);
+  await requireActionRole("admin");
+  return getSiteSubscription(await getCurrentAdminSiteId());
 }
 
 /**
@@ -27,31 +26,10 @@ export async function getCurrentSubscription() {
  * Returns the Checkout Session URL (or free-plan activation result).
  */
 export async function subscribeToPlan(planSlug: string) {
-  await requireAdmin();
-
-  const plan = await db
-    .select()
-    .from(plans)
-    .where(and(eq(plans.slug, planSlug), eq(plans.active, true)))
-    .limit(1);
-
-  if (plan.length === 0) {
-    return { success: false, message: "Plan not found." };
-  }
-
-  const baseUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const response = await fetch(`${baseUrl}/api/payments/stripe/subscription-checkout`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ planSlug, siteUrl: baseUrl }),
-    cache: "no-store",
-  });
-
-  const result = (await response.json()) as { url?: string; free?: boolean; error?: string };
-  if (!response.ok) {
-    return { success: false, message: result.error ?? "Failed to start checkout." };
-  }
+  await requireActionRole("admin");
+  const siteId = await getCurrentAdminSiteId();
+  const result = await createSubscriptionCheckout(siteId, planSlug, getBillingBaseUrl());
+  if ("error" in result) return { success: false, message: result.error };
 
   if (result.free) {
     revalidatePath("/admin/billing");
@@ -68,38 +46,17 @@ export async function subscribeToPlan(planSlug: string) {
 
 /** Opens the Stripe Billing Portal for the admin's active site. */
 export async function manageSubscription() {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
-
-  const [sub] = await db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.siteId, siteId))
-    .limit(1);
-  if (!sub?.stripeCustomerId && !sub?.stripeSubscriptionId) {
-    return { success: false, message: "No active subscription to manage." };
-  }
-
-  const baseUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const response = await fetch(`${baseUrl}/api/payments/stripe/portal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ siteUrl: baseUrl }),
-    cache: "no-store",
-  });
-
-  const result = (await response.json()) as { url?: string; error?: string };
-  if (!response.ok) {
-    return { success: false, message: result.error ?? "Failed to open billing portal." };
-  }
+  const result = await createSubscriptionPortal(siteId, getBillingBaseUrl());
+  if ("error" in result) return { success: false, message: result.error };
 
   return { success: true, url: result.url };
 }
 
 export async function selectPlan(planSlug: string) {
-  const siteId = await getResolvedSiteId();
-  if (!siteId) return { success: false, message: "Site not found." };
+  await requireActionRole("admin");
+  const siteId = await getCurrentAdminSiteId();
 
   const plan = await db
     .select()
@@ -118,8 +75,8 @@ export async function selectPlan(planSlug: string) {
 }
 
 export async function cancelSubscription() {
-  const siteId = await getResolvedSiteId();
-  if (!siteId) return { success: false, message: "Site not found." };
+  await requireActionRole("admin");
+  const siteId = await getCurrentAdminSiteId();
 
   await cancelSiteSubscription(siteId);
   revalidatePath("/account");
@@ -146,7 +103,7 @@ const planSchema = z.object({
 });
 
 export async function adminCreatePlan(_prev: unknown, formData: FormData) {
-  await requireAdmin();
+  await requireActionRole("super_admin");
 
   const featuresStr = formData.get("features") as string | null;
   let features: string[] = [];
@@ -184,7 +141,7 @@ export async function adminCreatePlan(_prev: unknown, formData: FormData) {
 }
 
 export async function adminDeletePlan(planId: number) {
-  await requireAdmin();
+  await requireActionRole("super_admin");
 
   const [plan] = await db.select().from(plans).where(eq(plans.id, planId));
   if (!plan) return { success: false, message: "Plan not found." };
@@ -206,7 +163,7 @@ export async function adminDeletePlan(planId: number) {
 }
 
 export async function getAllSubscriptions() {
-  await requireAdmin();
+  await requireActionRole("super_admin");
 
   return db
     .select({

@@ -11,7 +11,7 @@ import {
   wishlists,
   products,
 } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireActionRole, requireAdmin } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Admin Customer Actions ──────────────────────────────────────────────────
@@ -150,7 +150,7 @@ export async function updateAdminCustomer(
   _prev: unknown,
   formData: FormData
 ) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const parsed = updateCustomerSchema.safeParse({
@@ -176,7 +176,7 @@ export async function updateAdminCustomer(
 }
 
 export async function deleteAdminCustomer(customerId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   // Check for orders — don't delete customers with order history

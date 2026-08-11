@@ -9,6 +9,8 @@ import { requireSiteAccess } from "@/lib/tenant-access";
 import { BLOCK_TYPES } from "@/lib/blocks";
 import { revalidatePath } from "next/cache";
 import { callAiProvider } from "@/lib/ai-provider";
+import { hasMinRole, type Role } from "@/lib/auth";
+import { requireTenantFeature } from "@/lib/tenant-features";
 
 const generateLayoutSchema = z.object({
   pageId: z.number().int().positive(),
@@ -56,7 +58,8 @@ export async function generatePageLayoutWithAi(
   const siteId = page[0].siteId;
 
   const access = await requireSiteAccess(siteId);
-  if (!access) return { success: false, message: "Access denied." };
+  if (!hasMinRole((access.role as Role) ?? "viewer", "editor")) return { success: false, message: "Access denied." };
+  await requireTenantFeature(siteId, "ai_block_assistant", { role: access.role as Role, userId: access.id });
 
   const settings = await getAllServerSettings(siteId);
 
@@ -148,7 +151,8 @@ export async function applyGeneratedBlocks(
 
   const siteId = page[0].siteId;
   const access = await requireSiteAccess(siteId);
-  if (!access) return { success: false, message: "Access denied." };
+  if (!hasMinRole((access.role as Role) ?? "viewer", "editor")) return { success: false, message: "Access denied." };
+  await requireTenantFeature(siteId, "ai_block_assistant", { role: access.role as Role, userId: access.id });
 
   // Get current max sort order
   const existing = await db

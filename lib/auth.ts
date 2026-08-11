@@ -7,6 +7,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
 import { verifyPassword } from "@/lib/password";
+import { hasMinRole, type Role } from "@/lib/roles";
+
+export { ROLES, hasPermission, hasMinRole } from "@/lib/roles";
+export type { Role } from "@/lib/roles";
 
 const SESSION_COOKIE = "admino_session";
 
@@ -18,35 +22,6 @@ function getAuthSecret(): Uint8Array {
     );
   }
   return new TextEncoder().encode(process.env.AUTH_SECRET);
-}
-
-// ─── Roles ───────────────────────────────────────────────────────────────────
-
-export const ROLES = ["super_admin", "admin", "editor", "viewer"] as const;
-export type Role = (typeof ROLES)[number];
-
-/** Permission matrix — higher roles inherit lower permissions. */
-const ROLE_HIERARCHY: Record<Role, number> = {
-  viewer: 0,
-  editor: 1,
-  admin: 2,
-  super_admin: 3,
-};
-
-/** Permissions per role. */
-const ROLE_PERMISSIONS: Record<Role, string[]> = {
-  viewer: ["read"],
-  editor: ["read", "write"],
-  admin: ["read", "write", "manage_content", "manage_users"],
-  super_admin: ["read", "write", "manage_content", "manage_users", "manage_site", "delete"],
-};
-
-export function hasPermission(role: Role, permission: string): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
-}
-
-export function hasMinRole(userRole: Role, requiredRole: Role): boolean {
-  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
 
 // ─── Session Management ──────────────────────────────────────────────────────
@@ -107,6 +82,15 @@ export async function requireRole(minRole: Role) {
   const userRole = (user.role as Role) ?? "viewer";
   if (!hasMinRole(userRole, minRole)) {
     redirect("/admin");
+  }
+  return user;
+}
+
+/** Guard for server actions and route handlers. Throws instead of redirecting. */
+export async function requireActionRole(minRole: Role) {
+  const user = await getSessionUser();
+  if (!user || !hasMinRole((user.role as Role) ?? "viewer", minRole)) {
+    throw new Error("Forbidden");
   }
   return user;
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
-import { getSessionUser, type Role } from "@/lib/auth";
+import { getSessionUser, hasMinRole, type Role } from "@/lib/auth";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const siteId = await getAdminSiteId();
     await requireTenantFeature(siteId, "media", { role: user.role as Role, userId: user.id });

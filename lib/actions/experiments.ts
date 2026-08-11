@@ -10,7 +10,7 @@ import {
   experimentEvents,
 } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
-import { requireAdmin } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 
 // ─── Public Actions ──────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export async function trackConversion(
 // ─── Admin Actions ───────────────────────────────────────────────────────────
 
 export async function getExperiments() {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   return db
@@ -167,7 +167,7 @@ const experimentSchema = z.object({
 });
 
 export async function createExperiment(_prev: unknown, formData: FormData) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   let variants: Array<{ id: string; name: string; weight: number }>;
@@ -206,7 +206,7 @@ export async function updateExperimentStatus(
   experimentId: number,
   status: "draft" | "running" | "paused" | "completed"
 ) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   await db
@@ -221,7 +221,7 @@ export async function updateExperimentStatus(
 }
 
 export async function deleteExperiment(experimentId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   await db
@@ -235,7 +235,7 @@ export async function deleteExperiment(experimentId: number) {
 }
 
 export async function getExperimentResults(experimentId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const [experiment] = await db

@@ -56,7 +56,7 @@ export async function reindexAiContent(): Promise<ReindexResult> {
   try {
     const siteId = await getCurrentSiteRequiringFeature("ai_chatbot_rag");
     const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
+    if (!hasMinRole((user.role as Role) ?? "viewer", "admin")) {
       return { success: false, error: "Permission denied." };
     }
 

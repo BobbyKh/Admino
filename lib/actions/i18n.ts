@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -11,15 +11,16 @@ import {
   pageTranslations,
   blockTranslations,
 } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/auth";
-import { getSiteLocales, DEFAULT_LOCALE } from "@/lib/i18n";
+import { requireActionRole } from "@/lib/auth";
+import { getSiteLocalesById, DEFAULT_LOCALE } from "@/lib/i18n";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { requirePageAccess, requirePageBlockAccess } from "@/lib/tenant-access";
 
 // ─── Locale Management ───────────────────────────────────────────────────────
 
 export async function getLocales() {
-  return getSiteLocales();
+  await requireActionRole("viewer");
+  return getSiteLocalesById(await getCurrentAdminSiteId());
 }
 
 const localeSchema = z.object({
@@ -28,7 +29,7 @@ const localeSchema = z.object({
 });
 
 export async function addLocale(_prev: unknown, formData: FormData) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const parsed = localeSchema.safeParse({
@@ -74,7 +75,7 @@ export async function addLocale(_prev: unknown, formData: FormData) {
 }
 
 export async function deleteLocale(localeId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
   const [locale] = await db
@@ -85,30 +86,35 @@ export async function deleteLocale(localeId: number) {
   if (!locale) return { success: false, message: "Locale not found." };
   if (locale.isDefault) return { success: false, message: "Cannot delete the default locale." };
 
-  // Delete translations for this locale
-  await db.delete(pageTranslations).where(eq(pageTranslations.locale, locale.code));
-  await db.delete(blockTranslations).where(eq(blockTranslations.locale, locale.code));
-  await db.delete(siteLocales).where(eq(siteLocales.id, localeId));
+  await db.transaction(async (tx) => {
+    const sitePages = await tx.select({ id: pages.id }).from(pages).where(eq(pages.siteId, siteId));
+    const pageIds = sitePages.map((page) => page.id);
+    if (pageIds.length > 0) {
+      const siteBlocks = await tx.select({ id: pageBlocks.id }).from(pageBlocks).where(inArray(pageBlocks.pageId, pageIds));
+      const blockIds = siteBlocks.map((block) => block.id);
+      await tx.delete(pageTranslations).where(and(eq(pageTranslations.locale, locale.code), inArray(pageTranslations.pageId, pageIds)));
+      if (blockIds.length > 0) {
+        await tx.delete(blockTranslations).where(and(eq(blockTranslations.locale, locale.code), inArray(blockTranslations.blockId, blockIds)));
+      }
+    }
+    await tx.delete(siteLocales).where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
+  });
 
   revalidatePath("/admin/i18n");
   return { success: true, message: "Locale deleted." };
 }
 
 export async function setDefaultLocale(localeId: number) {
-  await requireAdmin();
+  await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
 
-  // Unset all defaults
-  await db
-    .update(siteLocales)
-    .set({ isDefault: false })
-    .where(eq(siteLocales.siteId, siteId));
+  const [target] = await db.select({ id: siteLocales.id }).from(siteLocales).where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
+  if (!target) return { success: false, message: "Locale not found." };
 
-  // Set new default
-  await db
-    .update(siteLocales)
-    .set({ isDefault: true })
-    .where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
+  await db.transaction(async (tx) => {
+    await tx.update(siteLocales).set({ isDefault: false }).where(eq(siteLocales.siteId, siteId));
+    await tx.update(siteLocales).set({ isDefault: true }).where(and(eq(siteLocales.id, localeId), eq(siteLocales.siteId, siteId)));
+  });
 
   revalidatePath("/admin/i18n");
   return { success: true, message: "Default locale updated." };
@@ -117,9 +123,9 @@ export async function setDefaultLocale(localeId: number) {
 // ─── Translation Management ──────────────────────────────────────────────────
 
 export async function getPageTranslations(pageId: number) {
-  await requirePageAccess(pageId);
+  const page = await requirePageAccess(pageId);
 
-  const locales = await getSiteLocales();
+  const locales = await getSiteLocalesById(page.siteId);
   const translations = await db
     .select()
     .from(pageTranslations)
@@ -136,9 +142,10 @@ export async function getPageTranslations(pageId: number) {
 }
 
 export async function getBlockTranslations(blockId: number) {
-  await requirePageBlockAccess(blockId);
+  const block = await requirePageBlockAccess(blockId);
+  const page = await requirePageAccess(block.pageId);
 
-  const locales = await getSiteLocales();
+  const locales = await getSiteLocalesById(page.siteId);
   const translations = await db
     .select()
     .from(blockTranslations)
@@ -167,8 +174,9 @@ export async function savePageTranslation(
   _prev: unknown,
   formData: FormData
 ) {
+  await requireActionRole("editor");
   const pageId = Number(formData.get("pageId"));
-  await requirePageAccess(pageId);
+  const page = await requirePageAccess(pageId);
   const parsed = pageTranslationSchema.safeParse({
     locale: formData.get("locale"),
     title: formData.get("title") || undefined,
@@ -181,8 +189,10 @@ export async function savePageTranslation(
   if (!parsed.success) {
     return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  const locale = parsed.data.locale.toLowerCase();
+  if (!(await isSiteLocale(page.siteId, locale))) return { success: false, message: "Locale is not enabled for this site." };
 
-  if (parsed.data.locale === DEFAULT_LOCALE) {
+  if (locale === DEFAULT_LOCALE) {
     // Update the original page
     const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
     if (parsed.data.title) updates.title = parsed.data.title;
@@ -197,18 +207,19 @@ export async function savePageTranslation(
     const existing = await db
       .select({ id: pageTranslations.id })
       .from(pageTranslations)
-      .where(and(eq(pageTranslations.pageId, pageId), eq(pageTranslations.locale, parsed.data.locale)))
+      .where(and(eq(pageTranslations.pageId, pageId), eq(pageTranslations.locale, locale)))
       .limit(1);
 
     if (existing.length > 0) {
       await db
         .update(pageTranslations)
-        .set({ ...parsed.data, updatedAt: new Date().toISOString() })
+        .set({ ...parsed.data, locale, updatedAt: new Date().toISOString() })
         .where(eq(pageTranslations.id, existing[0].id));
     } else {
       await db.insert(pageTranslations).values({
         pageId,
         ...parsed.data,
+        locale,
       });
     }
   }
@@ -228,8 +239,10 @@ export async function saveBlockTranslation(
   _prev: unknown,
   formData: FormData
 ) {
+  await requireActionRole("editor");
   const blockId = Number(formData.get("blockId"));
-  await requirePageBlockAccess(blockId);
+  const block = await requirePageBlockAccess(blockId);
+  const page = await requirePageAccess(block.pageId);
   const parsed = blockTranslationSchema.safeParse({
     locale: formData.get("locale"),
     title: formData.get("title") || undefined,
@@ -239,34 +252,46 @@ export async function saveBlockTranslation(
   if (!parsed.success) {
     return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  const locale = parsed.data.locale.toLowerCase();
+  if (!(await isSiteLocale(page.siteId, locale))) return { success: false, message: "Locale is not enabled for this site." };
 
-  if (parsed.data.locale === DEFAULT_LOCALE) {
+  if (locale === DEFAULT_LOCALE) {
     // Update the original block
     const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
     if (parsed.data.title) updates.title = parsed.data.title;
     if (parsed.data.config) updates.config = parsed.data.config;
 
-    await db.update(pageBlocks).set(updates).where(eq(pageBlocks.id, blockId));
+    await db.update(pageBlocks).set(updates).where(and(eq(pageBlocks.id, blockId), eq(pageBlocks.pageId, page.id)));
   } else {
     const existing = await db
       .select({ id: blockTranslations.id })
       .from(blockTranslations)
-      .where(and(eq(blockTranslations.blockId, blockId), eq(blockTranslations.locale, parsed.data.locale)))
+      .where(and(eq(blockTranslations.blockId, blockId), eq(blockTranslations.locale, locale)))
       .limit(1);
 
     if (existing.length > 0) {
       await db
         .update(blockTranslations)
-        .set({ ...parsed.data, updatedAt: new Date().toISOString() })
+        .set({ ...parsed.data, locale, updatedAt: new Date().toISOString() })
         .where(eq(blockTranslations.id, existing[0].id));
     } else {
       await db.insert(blockTranslations).values({
         blockId,
         ...parsed.data,
+        locale,
       });
     }
   }
 
   revalidatePath("/");
   return { success: true, message: "Block translation saved." };
+}
+
+async function isSiteLocale(siteId: number, locale: string) {
+  if (locale === DEFAULT_LOCALE) return true;
+  const [row] = await db
+    .select({ id: siteLocales.id })
+    .from(siteLocales)
+    .where(and(eq(siteLocales.siteId, siteId), eq(siteLocales.code, locale), eq(siteLocales.active, true)));
+  return Boolean(row);
 }

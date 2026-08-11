@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { eq, asc } from "drizzle-orm";
+import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pageBlocks, pageRevisions } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
@@ -93,16 +93,17 @@ Do not include markdown code block formatting.`;
     }
 
     let updatedCount = 0;
+    const allowedBlockIds = new Set(blocks.map((block) => block.id));
     await db.transaction(async (tx) => {
       for (const item of translatedArray) {
-        if (typeof item.id !== "number") continue;
+        if (typeof item.id !== "number" || !allowedBlockIds.has(item.id)) continue;
         const updates: { title?: string | null; config?: string; updatedAt: string } = {
           updatedAt: new Date().toISOString(),
         };
         if (item.title !== undefined) updates.title = item.title;
         if (item.config !== undefined) updates.config = JSON.stringify(item.config);
 
-        await tx.update(pageBlocks).set(updates).where(eq(pageBlocks.id, item.id));
+        await tx.update(pageBlocks).set(updates).where(and(eq(pageBlocks.id, item.id), eq(pageBlocks.pageId, pageId)));
         updatedCount++;
       }
     });

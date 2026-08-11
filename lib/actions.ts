@@ -12,7 +12,7 @@ import {
   sendBookingConfirmation,
   sendContactAdminAlert,
 } from "@/lib/email";
-import { requireAdmin, type Role } from "@/lib/auth";
+import { requireActionRole, type Role } from "@/lib/auth";
 import type { Booking } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getAdminSiteId } from "@/lib/admin-site";
@@ -181,7 +181,7 @@ export async function updateBookingStatus(
   bookingId: number,
   formData: FormData
 ) {
-  const user = await requireAdmin();
+  const user = await requireActionRole("admin");
   const siteId = await getAdminSiteId();
   await requireTenantFeature(siteId, "bookings", { role: user.role as Role, userId: user.id });
   const status = String(formData.get("status") ?? "");
@@ -203,7 +203,7 @@ export async function updateBookingStatus(
 }
 
 export async function deleteBooking(bookingId: number) {
-  const user = await requireAdmin();
+  const user = await requireActionRole("admin");
   const siteId = await getAdminSiteId();
   await requireTenantFeature(siteId, "bookings", { role: user.role as Role, userId: user.id });
   await db.delete(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.siteId, siteId)));
@@ -211,7 +211,7 @@ export async function deleteBooking(bookingId: number) {
 }
 
 export async function toggleMessageRead(messageId: number, read: boolean) {
-  const user = await requireAdmin();
+  const user = await requireActionRole("admin");
   const siteId = await getAdminSiteId();
   await requireTenantFeature(siteId, "messages", { role: user.role as Role, userId: user.id });
   await db
@@ -222,7 +222,7 @@ export async function toggleMessageRead(messageId: number, read: boolean) {
 }
 
 export async function deleteMessage(messageId: number) {
-  const user = await requireAdmin();
+  const user = await requireActionRole("admin");
   const siteId = await getAdminSiteId();
   await requireTenantFeature(siteId, "messages", { role: user.role as Role, userId: user.id });
   await db.delete(messages).where(and(eq(messages.id, messageId), eq(messages.siteId, siteId)));

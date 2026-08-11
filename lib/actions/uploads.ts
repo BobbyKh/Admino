@@ -1,14 +1,14 @@
 "use server";
 
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-import { getCurrentSiteWithFeature } from "@/lib/tenant-access";
+import { getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
 import { validateUploadBuffer } from "@/lib/upload-validation";
 import type { UploadState } from "./types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function uploadImage(formData: FormData): Promise<UploadState> {
-  const { siteId, denied } = await getCurrentSiteWithFeature("media");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("media", "editor");
   if (denied) return { error: denied };
 
   const file = formData.get("file");
