@@ -27,7 +27,7 @@ export default async function AdminLayout({
   return (
     <AdminSiteProvider siteId={currentSiteId}>
     <style key={currentSiteId} dangerouslySetInnerHTML={{ __html: buildThemeCss(brandSettings) }} />
-    <div className="flex min-h-svh bg-muted/30">
+    <div className="flex min-h-svh flex-col bg-muted/30 lg:flex-row">
       <AdminNav
         adminName={user.name}
         role={user.role}
@@ -49,7 +49,7 @@ export default async function AdminLayout({
             </div>
           </div>
         </header>
-        <main key={currentSiteId} className="flex-1 overflow-x-auto p-6 lg:p-8">{children}</main>
+        <main key={currentSiteId} className="w-full min-w-0 flex-1 overflow-x-auto p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
     </AdminSiteProvider>

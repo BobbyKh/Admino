@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Globe } from "lucide-react";
 import { selectAdminSite } from "@/lib/actions/index";
 
@@ -11,10 +11,6 @@ export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentS
   const router = useRouter();
   const [value, setValue] = useState<string>(currentSiteId ? String(currentSiteId) : "");
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (currentSiteId) void selectAdminSite(currentSiteId);
-  }, [currentSiteId]);
 
   function handleChange(siteId: string) {
     const previous = value;
@@ -33,13 +29,14 @@ export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentS
       <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
         Active Site
       </p>
-      <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+      <div className="flex min-h-11 items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-xs transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
         <Globe className="size-4 shrink-0 text-primary" />
         <select
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           disabled={pending}
-          className="w-full bg-transparent text-sm font-medium outline-none"
+          aria-label="Active site"
+          className="min-w-0 w-full bg-transparent text-sm font-medium outline-none disabled:cursor-wait disabled:opacity-60"
         >
           {sites.map((s) => (
             <option key={s.id} value={s.id}>

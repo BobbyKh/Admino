@@ -145,7 +145,22 @@ test("admin shell shows and themes the active site", () => {
   assert.match(layout, /getSiteSettings\(currentSiteId\)/);
   assert.match(layout, /buildThemeCss\(brandSettings\)/);
   assert.match(layout, /currentSite\?\.name \?\? brandSettings\.siteName/);
-  assert.match(nav, /<SiteSelector sites=\{sites\} currentSiteId=\{currentSiteId\} \/>/);
+  assert.match(nav, /<SiteSelector key=\{currentSiteId\} sites=\{sites\} currentSiteId=\{currentSiteId\} \/>/);
   assert.match(nav, /<SiteSelector[\s\S]*?<nav className="flex-1 overflow-y-auto p-3">/);
   assert.match(nav, /currentSite\?\.name \?\? "Active site"/);
+});
+
+test("admin navigation remains usable on mobile", () => {
+  const layout = source("app/admin/(panel)/layout.tsx");
+  const nav = source("components/admin/admin-nav.tsx");
+  const selector = source("components/admin/site-selector.tsx");
+  assert.match(layout, /min-h-svh flex-col[^"]*lg:flex-row/);
+  assert.match(layout, /p-4 sm:p-6 lg:p-8/);
+  assert.match(nav, /<Sheet open=\{mobileNavOpen\} onOpenChange=\{setMobileNavOpen\}>/);
+  assert.match(nav, /onLinkClick=\{\(\) => setMobileNavOpen\(false\)\}/);
+  assert.match(nav, /w-\[min\(88vw,20rem\)\]/);
+  assert.match(nav, /aria-expanded=\{expanded\}/);
+  assert.match(nav, /min-h-11/);
+  assert.match(selector, /aria-label="Active site"/);
+  assert.doesNotMatch(selector, /void selectAdminSite\(currentSiteId\)/);
 });
