@@ -144,12 +144,16 @@ function NavContent({
   visibleNavGroups,
   pathname,
   adminName,
+  sites,
+  currentSiteId,
   viewSiteHref,
   onLinkClick,
 }: {
   visibleNavGroups: ReturnType<typeof filterNavGroups>;
   pathname: string;
   adminName: string;
+  sites: Site[];
+  currentSiteId: number;
   viewSiteHref: string;
   onLinkClick?: () => void;
 }) {
@@ -186,6 +190,10 @@ function NavContent({
             <p className="text-xs text-muted-foreground">Management Console</p>
           </div>
         </div>
+      </div>
+
+      <div className="border-b px-3 pb-3">
+        <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
@@ -322,6 +330,8 @@ export function AdminNav({
                 visibleNavGroups={visibleNavGroups}
                 pathname={pathname}
                 adminName={adminName}
+                sites={sites}
+                currentSiteId={currentSiteId}
                 viewSiteHref={viewSiteHref}
               />
             </div>
@@ -331,7 +341,6 @@ export function AdminNav({
           <p className="truncate text-sm font-semibold">{brandName || "Admino"}</p>
           <p className="truncate text-xs text-muted-foreground">{currentSite?.name ?? "Active site"}</p>
         </div>
-        <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       </div>
 
       {/* Desktop sidebar */}
@@ -340,13 +349,10 @@ export function AdminNav({
           visibleNavGroups={visibleNavGroups}
           pathname={pathname}
           adminName={adminName}
+          sites={sites}
+          currentSiteId={currentSiteId}
           viewSiteHref={viewSiteHref}
         />
-        {sites.length > 1 && (
-          <div className="border-t p-3">
-            <SiteSelector sites={sites} currentSiteId={currentSiteId} />
-          </div>
-        )}
       </aside>
     </>
   );

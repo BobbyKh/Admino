@@ -4,7 +4,6 @@ import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
 import { getEffectiveTenantFeatureAccess } from "@/lib/tenant-features";
 import { getSiteSettings } from "@/lib/data";
 import { AdminSiteProvider } from "@/components/admin/admin-site-context";
-import { SiteSelector } from "@/components/admin/site-selector";
 import { Globe } from "lucide-react";
 import { buildThemeCss } from "@/lib/theme-css";
 
@@ -39,7 +38,7 @@ export default async function AdminLayout({
         brandName={brandSettings.siteName}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="hidden h-16 shrink-0 items-center justify-between border-b bg-background/95 px-8 backdrop-blur lg:flex">
+        <header className="hidden h-16 shrink-0 items-center border-b bg-background/95 px-8 backdrop-blur lg:flex">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Globe className="size-4" />
@@ -49,7 +48,6 @@ export default async function AdminLayout({
               <p className="truncate text-sm font-semibold">{currentSite?.name ?? brandSettings.siteName}</p>
             </div>
           </div>
-          {sites.length > 1 && <SiteSelector sites={sites} currentSiteId={currentSiteId} compact />}
         </header>
         <main key={currentSiteId} className="flex-1 overflow-x-auto p-6 lg:p-8">{children}</main>
       </div>

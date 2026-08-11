@@ -145,6 +145,7 @@ test("admin shell shows and themes the active site", () => {
   assert.match(layout, /getSiteSettings\(currentSiteId\)/);
   assert.match(layout, /buildThemeCss\(brandSettings\)/);
   assert.match(layout, /currentSite\?\.name \?\? brandSettings\.siteName/);
-  assert.match(layout, /<SiteSelector sites=\{sites\} currentSiteId=\{currentSiteId\} compact/);
+  assert.match(nav, /<SiteSelector sites=\{sites\} currentSiteId=\{currentSiteId\} \/>/);
+  assert.match(nav, /<SiteSelector[\s\S]*?<nav className="flex-1 overflow-y-auto p-3">/);
   assert.match(nav, /currentSite\?\.name \?\? "Active site"/);
 });
