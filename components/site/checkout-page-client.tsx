@@ -45,6 +45,27 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
   function submit(formData: FormData) {
     const token = window.localStorage.getItem("store-cart-token");
     if (!token) return;
+
+    // Stripe Checkout redirect
+    if (provider === "stripe") {
+      startTransition(async () => {
+        try {
+          const res = await fetch("/api/payments/stripe/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, siteUrl: window.location.origin }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Failed to start checkout.");
+          window.localStorage.removeItem("store-cart-token");
+          window.location.href = data.url;
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
+        }
+      });
+      return;
+    }
+
     startTransition(async () => {
       try {
         const result = await completeStoreCheckout(token, formData);
@@ -60,7 +81,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
     });
   }
 
-  if (!cart) return <div className="flex justify-center py-20"><Loader2 className="size-6 animate-spin" /></div>;
+  if (!cart) return <div className="mx-auto max-w-6xl px-4 py-12"><div className="space-y-6"><div className="h-8 w-48 animate-pulse rounded bg-muted" /><div className="grid gap-8 lg:grid-cols-[1fr_20rem]"><div className="space-y-6">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="rounded-xl border p-5"><div className="mb-4 h-5 w-32 animate-pulse rounded bg-muted" /><div className="space-y-3">{Array.from({ length: 2 }).map((_, j) => <div key={j} className="h-10 animate-pulse rounded bg-muted" />)}</div></div>)}</div><div className="h-64 animate-pulse rounded-xl bg-muted" /></div></div></div>;
   if (complete) return <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center"><CheckCircle2 className="size-12 text-primary" /><h1 className="font-heading text-3xl font-semibold">Order confirmed</h1><p className="text-muted-foreground">Thanks for your order. Your reference is <strong>{complete}</strong>.</p><Button asChild><Link href={homeHref}>Continue shopping</Link></Button></div>;
   if (cart.items.length === 0) return <div className="mx-auto max-w-lg px-4 py-24 text-center"><h1 className="font-heading text-3xl font-semibold">Your cart is empty</h1><Button asChild className="mt-5"><Link href={homeHref}>Continue shopping</Link></Button></div>;
 

@@ -7,6 +7,7 @@ import {
   Bot,
   CloudUpload,
   Globe,
+  LifeBuoy,
   Mail,
   Paintbrush,
   Save,
@@ -288,6 +289,48 @@ export function SettingsForm({
             hint="Configure the AI-powered chat widget shown on the public site. Supports OpenAI, Anthropic, and Google Gemini."
           >
             <AiConfigSection initial={initial} />
+          </Section>
+
+          <Section
+            title="Help & FAQ pages"
+            icon={<LifeBuoy className="size-4" />}
+            hint="Toggle the public /help and /faq pages and edit the FAQ questions shown to visitors."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="s-helpEnabled">Show Help page (/help)</Label>
+                <Select name="helpEnabled" defaultValue={initial.helpEnabled}>
+                  <SelectTrigger className="w-full" id="s-helpEnabled">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="s-faqEnabled">Show FAQ page (/faq)</Label>
+                <Select name="faqEnabled" defaultValue={initial.faqEnabled}>
+                  <SelectTrigger className="w-full" id="s-faqEnabled">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <TextareaField
+              label="FAQ items (JSON array)"
+              name="faqItems"
+              value={initial.faqItems}
+              rows={6}
+            />
+            <p className="text-xs text-muted-foreground">
+              {"Format: [{\"question\":\"How can I order?\",\"answer\":\"...\"}]"}
+            </p>
           </Section>
         </TabsContent>
 
@@ -1014,6 +1057,22 @@ function AiConfigSection({ initial }: { initial: Record<SettingKey, string> }) {
               <SelectItem value="false">Disabled</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">Show the floating chat widget on your storefront.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="s-aiRagEnabled">Answer from site content (RAG)</Label>
+          <Select name="aiRagEnabled" defaultValue={initial.aiRagEnabled}>
+            <SelectTrigger className="w-full" id="s-aiRagEnabled">
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="true">Enabled</SelectItem>
+              <SelectItem value="false">Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Ground answers in your pages, products, and blog. Re-index in Admin → AI Storefront Assistant.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="s-aiProvider">Provider Type</Label>

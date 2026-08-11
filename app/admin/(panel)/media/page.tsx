@@ -31,6 +31,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   deleteMediaItem,
   moveMediaToFolder,
   createMediaFolder,
@@ -53,6 +63,8 @@ export default function MediaPage() {
   const [dragOver, setDragOver] = React.useState(false);
   const [showNewFolder, setShowNewFolder] = React.useState(false);
   const [newFolderName, setNewFolderName] = React.useState("");
+  const [folderToDelete, setFolderToDelete] = React.useState<string | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
   const [showMoveDialog, setShowMoveDialog] = React.useState(false);
   const [moveTargetFolder, setMoveTargetFolder] = React.useState("");
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
@@ -152,15 +164,19 @@ export default function MediaPage() {
     }
   }
 
-  async function handleDeleteFolder(folder: string) {
-    if (!confirm(`Delete folder "${folder}" and all its files?`)) return;
+  async function handleDeleteFolder() {
+    if (!folderToDelete) return;
+    setDeletePending(true);
     try {
-      await deleteMediaFolder(folder);
-      setFolders((prev) => prev.filter((f) => f !== folder));
-      if (selectedFolder === folder) setSelectedFolder("all");
-      toast.success(`Folder "${folder}" deleted`);
+      await deleteMediaFolder(folderToDelete);
+      setFolders((prev) => prev.filter((f) => f !== folderToDelete));
+      if (selectedFolder === folderToDelete) setSelectedFolder("all");
+      toast.success(`Folder "${folderToDelete}" deleted`);
     } catch {
       toast.error("Failed to delete folder");
+    } finally {
+      setDeletePending(false);
+      setFolderToDelete(null);
     }
   }
 
@@ -264,8 +280,8 @@ export default function MediaPage() {
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleDeleteFolder(folder); } }}
+                    onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); setFolderToDelete(folder); } }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
                   >
                     <Trash2 className="size-3" />
@@ -698,6 +714,18 @@ export default function MediaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={folderToDelete !== null} onOpenChange={(open) => !open && setFolderToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete the folder &quot;{folderToDelete}&quot; and all its files. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFolder} disabled={deletePending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{deletePending && <Loader2 className="mr-2 size-4 animate-spin" />}Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

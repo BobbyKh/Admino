@@ -5,7 +5,8 @@ import { messages } from "@/lib/db/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { deleteMessage, toggleMessageRead } from "@/lib/actions";
+import { toggleMessageRead } from "@/lib/actions";
+import { MessageDeleteButton } from "@/components/admin/message-delete-button";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
@@ -91,16 +92,7 @@ export default async function AdminMessagesPage({
                             {m.read ? "Mark unread" : "Mark read"}
                           </Button>
                         </form>
-                        <form action={deleteMessage.bind(null, m.id)}>
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            Delete
-                          </Button>
-                        </form>
+                        <MessageDeleteButton messageId={m.id} />
                       </div>
                     </div>
                     <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">

@@ -291,6 +291,47 @@ export const pageRevisions = pgTable("page_revisions", {
 
 // ─── Ecommerce (tenant-scoped) ──────────────────────────────────────────────
 
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  phone: text("phone"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("customers_site_id_idx").on(t.siteId),
+  emailIdx: index("customers_email_idx").on(t.email),
+  siteEmailUnique: uniqueIndex("customers_site_email_idx").on(t.siteId, t.email),
+}));
+
+export const customerAddresses = pgTable("customer_addresses", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  label: text("label").notNull().default("Home"),
+  line1: text("line_1").notNull(),
+  line2: text("line_2"),
+  city: text("city").notNull(),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country").notNull().default("US"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerIdIdx: index("customer_addresses_customer_id_idx").on(t.customerId),
+}));
+
+export const wishlists = pgTable("wishlists", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerProductUnique: uniqueIndex("wishlists_customer_product_idx").on(t.customerId, t.productId),
+  customerIdIdx: index("wishlists_customer_id_idx").on(t.customerId),
+}));
+
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
@@ -368,6 +409,7 @@ export const services = pgTable("services", {
 export const carts = pgTable("carts", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   token: text("token").notNull().unique(),
   email: text("email"),
   currency: text("currency").notNull().default("usd"),
@@ -375,6 +417,7 @@ export const carts = pgTable("carts", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("carts_site_id_idx").on(t.siteId),
+  customerIdIdx: index("carts_customer_id_idx").on(t.customerId),
 }));
 
 export const cartItems = pgTable("cart_items", {
@@ -405,6 +448,7 @@ export const paymentConfigurations = pgTable("payment_configurations", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").references(() => customers.id, { onDelete: "set null" }),
   orderNumber: text("order_number").notNull().unique(),
   email: text("email").notNull(),
   customerName: text("customer_name"),
@@ -427,6 +471,7 @@ export const orders = pgTable("orders", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("orders_site_id_idx").on(t.siteId),
+  customerIdIdx: index("orders_customer_id_idx").on(t.customerId),
   statusIdx: index("orders_status_idx").on(t.status),
   createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
 }));
@@ -477,6 +522,241 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// ─── Webhooks ───────────────────────────────────────────────────────────────
+
+export const webhooks = pgTable("webhooks", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  secret: text("secret"),
+  events: text("events").notNull().default("[]"), // JSON array of event types
+  active: boolean("active").notNull().default(true),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("webhooks_site_id_idx").on(t.siteId),
+}));
+
+export const webhookDeliveries = pgTable("webhook_deliveries", {
+  id: serial("id").primaryKey(),
+  webhookId: integer("webhook_id").notNull().references(() => webhooks.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  payload: text("payload").notNull(),
+  status: text("status").notNull().default("pending"), // pending | success | failed
+  statusCode: integer("status_code"),
+  response: text("response"),
+  attempts: integer("attempts").notNull().default(0),
+  nextRetryAt: text("next_retry_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  webhookIdIdx: index("webhook_deliveries_webhook_id_idx").on(t.webhookId),
+  statusIdx: index("webhook_deliveries_status_idx").on(t.status),
+  eventIdx: index("webhook_deliveries_event_idx").on(t.event),
+  createdAtIdx: index("webhook_deliveries_created_at_idx").on(t.createdAt),
+}));
+
+export type Webhook = typeof webhooks.$inferSelect;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+
+// ─── Subscription Billing ───────────────────────────────────────────────────
+
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  price: integer("price").notNull(), // Minor currency unit (cents)
+  currency: text("currency").notNull().default("usd"),
+  interval: text("interval").notNull().default("month"), // month | year
+  features: text("features"), // JSON array of feature strings
+  maxPages: integer("max_pages").notNull().default(10),
+  maxProducts: integer("max_products").notNull().default(50),
+  maxStorage: integer("max_storage_mb").notNull().default(1000), // MB
+  maxBandwidth: integer("max_bandwidth_gb").notNull().default(10), // GB
+  stripePriceId: text("stripe_price_id"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  planId: integer("plan_id").notNull().references(() => plans.id, { onDelete: "restrict" }),
+  status: text("status").notNull().default("active"), // active | past_due | cancelled | trialing
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCustomerId: text("stripe_customer_id"),
+  currentPeriodStart: text("current_period_start"),
+  currentPeriodEnd: text("current_period_end"),
+  cancelAt: text("cancel_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("subscriptions_site_id_idx").on(t.siteId),
+  statusIdx: index("subscriptions_status_idx").on(t.status),
+  stripeSubIdx: index("subscriptions_stripe_sub_idx").on(t.stripeSubscriptionId),
+}));
+
+export type Plan = typeof plans.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+
+// ─── Internationalization (i18n) ────────────────────────────────────────────
+
+export const siteLocales = pgTable("site_locales", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  code: text("code").notNull(), // e.g. "en", "fr", "es"
+  name: text("name").notNull(), // e.g. "English", "French", "Spanish"
+  isDefault: boolean("is_default").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("site_locales_site_id_idx").on(t.siteId),
+  siteCodeUnique: uniqueIndex("site_locales_site_code_idx").on(t.siteId, t.code),
+}));
+
+export const pageTranslations = pgTable("page_translations", {
+  id: serial("id").primaryKey(),
+  pageId: integer("page_id").notNull().references(() => pages.id, { onDelete: "cascade" }),
+  locale: text("locale").notNull(), // locale code e.g. "fr"
+  title: text("title"),
+  slug: text("slug"),
+  description: text("description"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  pageIdIdx: index("page_translations_page_id_idx").on(t.pageId),
+  pageLocaleUnique: uniqueIndex("page_translations_page_locale_idx").on(t.pageId, t.locale),
+}));
+
+export const blockTranslations = pgTable("block_translations", {
+  id: serial("id").primaryKey(),
+  blockId: integer("block_id").notNull().references(() => pageBlocks.id, { onDelete: "cascade" }),
+  locale: text("locale").notNull(),
+  title: text("title"),
+  config: text("config"), // Translated config JSON
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  blockIdIdx: index("block_translations_block_id_idx").on(t.blockId),
+  blockLocaleUnique: uniqueIndex("block_translations_block_locale_idx").on(t.blockId, t.locale),
+}));
+
+// ─── A/B Testing ────────────────────────────────────────────────────────────
+
+export const experiments = pgTable("experiments", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("draft"), // draft | running | paused | completed
+  trafficPercent: integer("traffic_percent").notNull().default(50), // 0-100
+  variants: text("variants").notNull().default("[]"), // JSON array: [{id, name, weight}]
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("experiments_site_id_idx").on(t.siteId),
+  statusIdx: index("experiments_status_idx").on(t.status),
+}));
+
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id: serial("id").primaryKey(),
+  experimentId: integer("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(), // Cookie-based anonymous ID
+  variantId: text("variant_id").notNull(),
+  assignedAt: text("assigned_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  experimentIdIdx: index("experiment_assignments_experiment_id_idx").on(t.experimentId),
+  visitorIdIdx: index("experiment_assignments_visitor_id_idx").on(t.visitorId),
+  experimentVisitorUnique: uniqueIndex("experiment_assignments_exp_visitor_idx").on(t.experimentId, t.visitorId),
+}));
+
+export const experimentEvents = pgTable("experiment_events", {
+  id: serial("id").primaryKey(),
+  experimentId: integer("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(),
+  variantId: text("variant_id").notNull(),
+  event: text("event").notNull(), // impression | conversion
+  value: integer("value"), // Optional conversion value (cents)
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  experimentIdIdx: index("experiment_events_experiment_id_idx").on(t.experimentId),
+  eventIdx: index("experiment_events_event_idx").on(t.event),
+  createdAtIdx: index("experiment_events_created_at_idx").on(t.createdAt),
+}));
+
+export type SiteLocale = typeof siteLocales.$inferSelect;
+export type PageTranslation = typeof pageTranslations.$inferSelect;
+export type BlockTranslation = typeof blockTranslations.$inferSelect;
+export type Experiment = typeof experiments.$inferSelect;
+export type ExperimentAssignment = typeof experimentAssignments.$inferSelect;
+export type ExperimentEvent = typeof experimentEvents.$inferSelect;
+
+// ─── Advanced Analytics ──────────────────────────────────────────────────────
+
+export const pageViews = pgTable("page_views", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  pageId: integer("page_id").references(() => pages.id, { onDelete: "set null" }),
+  path: text("path").notNull(),
+  visitorId: text("visitor_id").notNull(),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  ipHash: text("ip_hash"), // Hashed IP for unique visitor counting
+  country: text("country"),
+  device: text("device"), // desktop | mobile | tablet
+  browser: text("browser"),
+  os: text("os"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  duration: integer("duration"), // Time on page in seconds
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("page_views_site_id_idx").on(t.siteId),
+  pageIdIdx: index("page_views_page_id_idx").on(t.pageId),
+  pathIdx: index("page_views_path_idx").on(t.path),
+  visitorIdIdx: index("page_views_visitor_id_idx").on(t.visitorId),
+  createdAtIdx: index("page_views_created_at_idx").on(t.createdAt),
+  countryIdx: index("page_views_country_idx").on(t.country),
+}));
+
+export const clickEvents = pgTable("click_events", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  visitorId: text("visitor_id").notNull(),
+  path: text("path").notNull(),
+  selector: text("selector"), // CSS selector of clicked element
+  x: integer("x"), // Normalized x position (0-1000)
+  y: integer("y"), // Normalized y position (0-1000)
+  label: text("label"), // Text label of clicked element
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("click_events_site_id_idx").on(t.siteId),
+  pathIdx: index("click_events_path_idx").on(t.path),
+  createdAtIdx: index("click_events_created_at_idx").on(t.createdAt),
+}));
+
+export const conversionFunnels = pgTable("conversion_funnels", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  steps: text("steps").notNull().default("[]"), // JSON array of path patterns
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("conversion_funnels_site_id_idx").on(t.siteId),
+}));
+
+export type PageView = typeof pageViews.$inferSelect;
+export type ClickEvent = typeof clickEvents.$inferSelect;
+export type ConversionFunnel = typeof conversionFunnels.$inferSelect;
+
 export type GalleryImage = typeof galleryImages.$inferSelect;
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type MenuItem = typeof menuItems.$inferSelect;
@@ -504,8 +784,55 @@ export type Service = typeof services.$inferSelect;
 export type UserFeature = typeof userFeatures.$inferSelect;
 export type RateLimitBucket = typeof rateLimitBuckets.$inferSelect;
 export type NewUserFeature = typeof userFeatures.$inferInsert;
+export type Customer = typeof customers.$inferSelect;
+export type CustomerAddress = typeof customerAddresses.$inferSelect;
+export type Wishlist = typeof wishlists.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;
 export type NewPage = typeof pages.$inferInsert;
 export type NewPageBlock = typeof pageBlocks.$inferInsert;
+
+// ─── AI Content Chunks (RAG index) ───────────────────────────────────────────
+
+export const aiChunks = pgTable("ai_chunks", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(), // page | block | blog | product | service | menu
+  sourceId: integer("source_id"),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  path: text("path"),
+  embedding: text("embedding"), // JSON array of floats
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("ai_chunks_site_id_idx").on(t.siteId),
+  sourceIdx: index("ai_chunks_source_idx").on(t.sourceType, t.sourceId),
+}));
+
+export type AiChunk = typeof aiChunks.$inferSelect;
+
+// ─── Error Logs ──────────────────────────────────────────────────────────────
+
+export const errorLogs = pgTable("error_logs", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  level: text("level").notNull().default("error"), // error | warning | info
+  message: text("message").notNull(),
+  stack: text("stack"),
+  url: text("url"),
+  method: text("method"),
+  statusCode: integer("status_code"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  context: text("context"), // JSON string for extra metadata
+  resolved: integer("resolved").notNull().default(0), // 0 = unresolved, 1 = resolved
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("error_logs_site_id_idx").on(t.siteId),
+  levelIdx: index("error_logs_level_idx").on(t.level),
+  resolvedIdx: index("error_logs_resolved_idx").on(t.resolved),
+  createdAtIdx: index("error_logs_created_at_idx").on(t.createdAt),
+}));
+
+export type ErrorLog = typeof errorLogs.$inferSelect;

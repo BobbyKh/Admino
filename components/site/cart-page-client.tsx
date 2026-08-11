@@ -44,7 +44,7 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
     finally { setPendingId(null); }
   }
 
-  if (!cart) return <div className="flex justify-center py-20"><Loader2 className="size-6 animate-spin" /></div>;
+  if (!cart) return <div className="mx-auto max-w-6xl px-4 py-12"><div className="space-y-4"><div className="h-8 w-48 animate-pulse rounded bg-muted" /><div className="divide-y rounded-xl border">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="flex gap-4 p-4"><div className="size-20 animate-pulse rounded-lg bg-muted" /><div className="flex-1 space-y-2"><div className="h-5 w-3/4 animate-pulse rounded bg-muted" /><div className="h-4 w-1/2 animate-pulse rounded bg-muted" /></div></div>)}</div></div></div>;
   if (cart.items.length === 0) return <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center"><ShoppingBag className="size-10 text-muted-foreground" /><h1 className="font-heading text-3xl font-semibold">Your cart is empty</h1><p className="text-muted-foreground">Add products from the shop to continue.</p><Button asChild><Link href={shopHref}>Continue shopping</Link></Button></div>;
 
   return (

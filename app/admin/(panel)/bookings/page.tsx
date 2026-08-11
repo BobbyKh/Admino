@@ -14,12 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatBookingDate } from "@/lib/format";
-import {
-  deleteBooking,
-  updateBookingStatus,
-} from "@/lib/actions";
+import { updateBookingStatus } from "@/lib/actions";
+import { BookingDeleteButton } from "@/components/admin/booking-delete-button";
 import { Pagination } from "@/components/admin/pagination";
-import { getPaginationParams, paginationMeta, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { assertTenantFeaturePage } from "@/lib/tenant-access";
 
@@ -135,16 +133,7 @@ export default async function AdminBookingsPage({
                                 Save
                               </Button>
                             </form>
-                            <form action={deleteBooking.bind(null, b.id)}>
-                              <Button
-                                type="submit"
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                              >
-                                Delete
-                              </Button>
-                            </form>
+                            <BookingDeleteButton bookingId={b.id} />
                           </div>
                         </TableCell>
                       </TableRow>

@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Globe, Palette, Settings, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, BookOpen, Globe, Palette, Settings, Sparkles } from "lucide-react";
 import { onboardSite } from "@/lib/actions/index";
 import { TENANT_FEATURE_METADATA, FEATURE_CATEGORIES, type TenantFeature } from "@/lib/tenant-features-constants";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
@@ -34,6 +35,13 @@ export function OnboardingForm() {
         <p className="text-sm font-medium text-primary">Tenant onboarding</p>
         <h1 className="font-heading text-3xl font-semibold">Launch a new site</h1>
         <p className="mt-1 text-sm text-muted-foreground">Create the tenant, starter content, branding, contact details, feature plan, and launch checklist baseline in one flow.</p>
+        <Link
+          href="/admin/docs?cat=getting-started"
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          <BookOpen className="size-4" />
+          Read the getting-started guide before you launch
+        </Link>
       </div>
 
       {state.message && !state.success && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{state.message}</p>}

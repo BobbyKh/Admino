@@ -13,3 +13,20 @@ export function formatBookingDate(date: string, time: string) {
     return `${date} at ${time}`;
   }
 }
+
+export function formatPrice(price: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(price / 100);
+}
+
+export function titleCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function withPreviewSite(path: string, siteSlug?: string | null) {
+  if (!siteSlug) return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}site=${encodeURIComponent(siteSlug)}`;
+}

@@ -16,7 +16,30 @@ import {
   Blocks,
   Sparkles,
   Undo2,
+  Redo2,
+  Wand2,
+  Copy,
+  Keyboard,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,6 +78,8 @@ import {
   getPageRevisions,
   restorePageRevision,
   generateBlockConfig,
+  generatePageLayoutWithAi,
+  applyGeneratedBlocks,
 } from "@/lib/actions/index";
 import {
   BLOCK_TYPES,
@@ -62,6 +87,326 @@ import {
   getBlockType,
   getDefaultConfig,
 } from "@/lib/blocks";
+
+// ─── Sortable Block Item ─────────────────────────────────────────────────────
+
+function AiLayoutGenerator({ pageId }: { pageId: number }) {
+  const [open, setOpen] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Array<{ type: string; title?: string; config: Record<string, unknown> }>>([]);
+
+  async function generate() {
+    setPending(true);
+    setError(null);
+    setPreview([]);
+    try {
+      const formData = new FormData();
+      formData.set("pageId", String(pageId));
+      formData.set("description", instruction);
+      const result = await generatePageLayoutWithAi({}, formData);
+      if ("error" in result || !result.success) {
+        setError(result.message);
+        return;
+      }
+      if (result.blocks) {
+        setPreview(result.blocks);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Generation failed.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function applyBlocks() {
+    if (preview.length === 0) return;
+    setPending(true);
+    try {
+      const result = await applyGeneratedBlocks(pageId, preview);
+      if (result.success) {
+        setOpen(false);
+        setPreview([]);
+        setInstruction("");
+        window.location.reload();
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply blocks.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="w-full gap-1.5">
+          <Wand2 className="size-3.5 text-primary" />
+          AI Layout Generator
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wand2 className="size-4 text-primary" />
+            Generate Page Layout
+          </DialogTitle>
+          <ModalDescription>
+            Describe the page you want. AI will generate a complete block layout.
+          </ModalDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Textarea
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            rows={4}
+            placeholder="A modern restaurant homepage with hero section, menu preview, testimonials, and booking CTA..."
+            autoFocus
+          />
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Restaurant homepage",
+              "Portfolio landing page",
+              "Ecommerce product page",
+              "Service business page",
+            ].map((example) => (
+              <Button
+                key={example}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setInstruction(example)}
+              >
+                {example}
+              </Button>
+            ))}
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {preview.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Preview ({preview.length} blocks):</p>
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-3">
+                {preview.map((block, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <Badge variant="outline" className="text-xs">{block.type}</Badge>
+                    <span className="text-muted-foreground">{block.title || "Untitled"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+              Cancel
+            </Button>
+            {preview.length > 0 ? (
+              <Button onClick={applyBlocks} disabled={pending} className="gap-2">
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                Apply {preview.length} Blocks
+              </Button>
+            ) : (
+              <Button onClick={generate} disabled={pending || instruction.trim().length < 10} className="gap-2">
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                Generate Layout
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SortableBlockItem({
+  block,
+  index,
+  isExpanded,
+  onToggleExpand,
+  onUpdateBlock,
+  onDeleteBlock,
+  onDuplicateBlock,
+  onConfigChange,
+}: {
+  block: PageBlock;
+  index: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdateBlock: (blockId: number, updates: { title?: string; visible?: boolean; config?: string }) => void;
+  onDeleteBlock: (blockId: number) => void;
+  onDuplicateBlock: (blockId: number) => void;
+  onConfigChange: (blockId: number, config: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : "auto" as const,
+  };
+
+  const blockType = getBlockType(block.type);
+  const Icon = blockType?.icon ?? Blocks;
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`overflow-hidden transition-shadow ${
+        isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
+      }`}
+    >
+      {/* Block header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+        onClick={onToggleExpand}
+      >
+        <button
+          type="button"
+          className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag to reorder ${block.title || blockType?.label || block.type}`}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
+          <Icon className="size-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {block.title || blockType?.label || block.type}
+            </p>
+            <Badge variant="outline" className="text-xs">
+              {block.type}
+            </Badge>
+            {!block.visible && (
+              <Badge variant="secondary" className="text-xs">
+                Hidden
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onUpdateBlock(block.id, { visible: !block.visible })}
+            title={block.visible ? "Hide" : "Show"}
+          >
+            {block.visible ? (
+              <Eye className="size-4" />
+            ) : (
+              <EyeOff className="size-4 text-muted-foreground" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDuplicateBlock(block.id)}
+            title="Duplicate block"
+          >
+            <Copy className="size-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="size-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this block?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove this block from the page.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDeleteBlock(block.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {isExpanded ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      {/* Block config (expanded) */}
+      {isExpanded && (
+        <CardContent className="border-t bg-muted/30 px-4 py-4">
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <AiBlockAssistant
+                block={block}
+                onConfigChange={(config) => onConfigChange(block.id, config)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Block Title (optional)</Label>
+              <Input
+                value={block.title ?? ""}
+                onChange={(e) => onUpdateBlock(block.id, { title: e.target.value })}
+                placeholder={blockType?.label ?? block.type}
+              />
+            </div>
+            <BlockConfigEditor
+              block={block}
+              onConfigChange={(config) => onConfigChange(block.id, config)}
+            />
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// ─── Drag Overlay Content ────────────────────────────────────────────────────
+
+function DragOverlayContent({ block }: { block: PageBlock }) {
+  const blockType = getBlockType(block.type);
+  const Icon = blockType?.icon ?? Blocks;
+
+  return (
+    <Card className="overflow-hidden shadow-xl ring-2 ring-primary/40 opacity-90 w-full max-w-[600px]">
+      <div className="flex items-center gap-3 px-4 py-3 bg-background">
+        <GripVertical className="size-4 shrink-0 text-primary" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
+          <Icon className="size-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">
+              {block.title || blockType?.label || block.type}
+            </p>
+            <Badge variant="outline" className="text-xs">
+              {block.type}
+            </Badge>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function RepeaterConfigEditor({
   items,
@@ -696,6 +1041,41 @@ export default function BlockEditorPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const configSaveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
 
+  // Undo/Redo history
+  const [history, setHistory] = useState<PageBlock[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isRestoringRef = useRef(false);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const pushHistory = useCallback((newBlocks: PageBlock[]) => {
+    if (isRestoringRef.current) return;
+    setHistory((prev) => {
+      const trimmed = prev.slice(0, historyIndex + 1);
+      return [...trimmed, newBlocks];
+    });
+    setHistoryIndex((prev) => prev + 1);
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (!canUndo) return;
+    isRestoringRef.current = true;
+    const prevBlocks = history[historyIndex - 1];
+    setBlocks(prevBlocks);
+    setHistoryIndex((prev) => prev - 1);
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+  }, [canUndo, history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (!canRedo) return;
+    isRestoringRef.current = true;
+    const nextBlocks = history[historyIndex + 1];
+    setBlocks(nextBlocks);
+    setHistoryIndex((prev) => prev + 1);
+    requestAnimationFrame(() => { isRestoringRef.current = false; });
+  }, [canRedo, history, historyIndex]);
+
   // Load page and blocks
   useEffect(() => {
     async function load() {
@@ -727,6 +1107,7 @@ export default function BlockEditorPage() {
         const updated = await getPageBlocks(pageId);
         const revisionData = await getPageRevisions(pageId);
         setBlocks(updated);
+        pushHistory(updated);
         setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
@@ -736,7 +1117,7 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [pageId]
+    [pageId, pushHistory]
   );
 
   const handleUpdateBlock = useCallback(
@@ -783,6 +1164,22 @@ export default function BlockEditorPage() {
     configSaveTimers.current.forEach((timer) => clearTimeout(timer));
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      if (mod && e.key === "y") { e.preventDefault(); redo(); }
+      if (mod && e.key === "d" && expandedId) {
+        e.preventDefault();
+        void handleDuplicateBlock(expandedId);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, expandedId]);
+
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
       setPending(true);
@@ -791,7 +1188,9 @@ export default function BlockEditorPage() {
       try {
         await deletePageBlock(blockId);
         const revisionData = await getPageRevisions(pageId);
-        setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+        const newBlocks = blocks.filter((b) => b.id !== blockId);
+        setBlocks(newBlocks);
+        pushHistory(newBlocks);
         setRevisions(revisionData);
         if (expandedId === blockId) setExpandedId(null);
         setSaveStatus("saved");
@@ -802,33 +1201,36 @@ export default function BlockEditorPage() {
         setPending(false);
       }
     },
-    [expandedId, pageId]
+    [expandedId, pageId, blocks, pushHistory]
   );
 
-  const handleReorder = useCallback(
-    async (fromIndex: number, toIndex: number) => {
-      if (fromIndex === toIndex) return;
-      const newBlocks = [...blocks];
-      const [moved] = newBlocks.splice(fromIndex, 1);
-      newBlocks.splice(toIndex, 0, moved);
-      setBlocks(newBlocks);
-      const orderedIds = newBlocks.map((b) => b.id);
+  const handleDuplicateBlock = useCallback(
+    async (blockId: number) => {
+      const block = blocks.find((b) => b.id === blockId);
+      if (!block) return;
       setPending(true);
       setSaveStatus("saving");
       setSaveError(null);
       try {
-        await reorderPageBlocks(orderedIds);
+        const formData = new FormData();
+        formData.set("pageId", String(pageId));
+        formData.set("type", block.type);
+        const result = await addPageBlock({}, formData);
+        if (!result.success) throw new Error(result.message || "Unable to duplicate block.");
+        const updated = await getPageBlocks(pageId);
         const revisionData = await getPageRevisions(pageId);
+        setBlocks(updated);
+        pushHistory(updated);
         setRevisions(revisionData);
         setSaveStatus("saved");
       } catch (error) {
         setSaveStatus("error");
-        setSaveError(error instanceof Error ? error.message : "Unable to reorder blocks.");
+        setSaveError(error instanceof Error ? error.message : "Unable to duplicate block.");
       } finally {
         setPending(false);
       }
     },
-    [blocks, pageId]
+    [blocks, pageId, pushHistory]
   );
 
   const handleRestoreRevision = useCallback(async (revisionId: number) => {
@@ -850,19 +1252,67 @@ export default function BlockEditorPage() {
     }
   }, [pageId]);
 
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [activeDragId, setActiveDragId] = useState<number | string | null>(null);
   const filteredBlockTypes = BLOCK_TYPES.filter((blockType) => {
     const query = blockSearch.trim().toLowerCase();
     return !query || `${blockType.label} ${blockType.description}`.toLowerCase().includes(query);
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveDragId(null);
+
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = blocks.findIndex((b) => b.id === active.id);
+      const newIndex = blocks.findIndex((b) => b.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+      setBlocks(newBlocks);
+      pushHistory(newBlocks);
+
+      const orderedIds = newBlocks.map((b) => b.id);
+      setSaveStatus("saving");
+      setSaveError(null);
+      void reorderPageBlocks(orderedIds).then(async () => {
+        const revisionData = await getPageRevisions(pageId);
+        setRevisions(revisionData);
+        setSaveStatus("saved");
+      }).catch((error) => {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Unable to reorder blocks.");
+      });
+    },
+    [blocks, pageId]
+  );
+
   const handlePaletteDrop = (event: React.DragEvent<HTMLElement>) => {
     event.preventDefault();
     const type = event.dataTransfer.getData("text/plain");
-    if (dragIdx === null && getBlockType(type)) {
+    if (getBlockType(type)) {
       handleAddBlock(type);
     }
   };
+
+  const activeDragBlock = activeDragId
+    ? blocks.find((b) => b.id === activeDragId)
+    : null;
 
   if (loading) {
     return (
@@ -903,6 +1353,40 @@ export default function BlockEditorPage() {
           <span className={`text-xs ${saveStatus === "error" ? "text-destructive" : "text-muted-foreground"}`}>
             {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? saveError ?? "Save failed" : "Autosave on"}
           </span>
+          <div className="flex items-center gap-1 rounded-lg border p-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="size-8 p-0"
+            >
+              <Undo2 className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="size-8 p-0"
+            >
+              <Redo2 className="size-4" />
+            </Button>
+          </div>
+          {expandedId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDuplicateBlock(expandedId)}
+              title="Duplicate block (Ctrl+D)"
+              className="gap-1.5"
+            >
+              <Copy className="size-3.5" />
+              Duplicate
+            </Button>
+          )}
           <Badge variant={page.published ? "default" : "secondary"}>
             {page.published ? "Published" : "Draft"}
           </Badge>
@@ -922,6 +1406,16 @@ export default function BlockEditorPage() {
           <div className="mb-4">
             <h2 className="font-semibold">Block palette</h2>
             <p className="text-xs text-muted-foreground">Click or drag a block onto the canvas.</p>
+          </div>
+          <div className="mb-3 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="size-3.5 shrink-0" />
+              <div className="space-y-0.5">
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+Z</kbd> Undo</p>
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+Shift+Z</kbd> Redo</p>
+                <p><kbd className="rounded bg-background px-1 py-0.5 text-[10px] font-mono">Ctrl+D</kbd> Duplicate</p>
+              </div>
+            </div>
           </div>
           <div className="mb-4 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -955,6 +1449,7 @@ export default function BlockEditorPage() {
               </div>
             )}
           </div>
+          <AiLayoutGenerator pageId={pageId} />
           <Input
             value={blockSearch}
             onChange={(event) => setBlockSearch(event.target.value)}
@@ -1021,137 +1516,36 @@ export default function BlockEditorPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {blocks.map((block, index) => {
-            const blockType = getBlockType(block.type);
-            const Icon = blockType?.icon ?? Blocks;
-            const isExpanded = expandedId === block.id;
-
-            return (
-              <Card
-                key={block.id}
-                className={`overflow-hidden transition-all ${
-                  dragIdx === index ? "opacity-50" : ""
-                }`}
-              >
-                {/* Block header */}
-                <div
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
-                  onClick={() => setExpandedId(isExpanded ? null : block.id)}
-                  draggable
-                  onDragStart={() => setDragIdx(index)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(event) => {
-                    event.stopPropagation();
-                    if (dragIdx !== null) {
-                      handleReorder(dragIdx, index);
-                      setDragIdx(null);
-                    } else {
-                      handlePaletteDrop(event);
-                    }
-                  }}
-                  onDragEnd={() => setDragIdx(null)}
-                >
-                  <GripVertical className="size-4 shrink-0 text-muted-foreground/40" />
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
-                    <Icon className="size-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">
-                        {block.title || blockType?.label || block.type}
-                      </p>
-                      <Badge variant="outline" className="text-xs">
-                        {block.type}
-                      </Badge>
-                      {!block.visible && (
-                        <Badge variant="secondary" className="text-xs">
-                          Hidden
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        handleUpdateBlock(block.id, { visible: !block.visible })
-                      }
-                      title={block.visible ? "Hide" : "Show"}
-                    >
-                      {block.visible ? (
-                        <Eye className="size-4" />
-                      ) : (
-                        <EyeOff className="size-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this block?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently remove this block from the page.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteBlock(block.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    {isExpanded ? (
-                      <ChevronUp className="size-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Block config (expanded) */}
-                {isExpanded && (
-                  <CardContent className="border-t bg-muted/30 px-4 py-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-end">
-                        <AiBlockAssistant
-                          block={block}
-                          onConfigChange={(config) => handleConfigChange(block.id, config)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Block Title (optional)</Label>
-                        <Input
-                          value={block.title ?? ""}
-                          onChange={(e) =>
-                            handleUpdateBlock(block.id, { title: e.target.value })
-                          }
-                          placeholder={blockType?.label ?? block.type}
-                        />
-                      </div>
-                      <BlockConfigEditor
-                        block={block}
-                        onConfigChange={(config) => handleConfigChange(block.id, config)}
-                      />
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={blocks.map((b) => b.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {blocks.map((block, index) => (
+                <SortableBlockItem
+                  key={block.id}
+                  block={block}
+                  index={index}
+                  isExpanded={expandedId === block.id}
+                  onToggleExpand={() => setExpandedId(expandedId === block.id ? null : block.id)}
+                  onUpdateBlock={handleUpdateBlock}
+                  onDeleteBlock={handleDeleteBlock}
+                  onDuplicateBlock={handleDuplicateBlock}
+                  onConfigChange={handleConfigChange}
+                />
+              ))}
+            </div>
+          </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeDragBlock ? <DragOverlayContent block={activeDragBlock} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
         </section>
       </div>

@@ -8,6 +8,7 @@ import { carts, cartItems, orderItems, orders, paymentConfigurations, products, 
 import { getResolvedSiteId } from "@/lib/site-context";
 import { isTestPaymentProvider, testPaymentProviderRegistry, type TestPaymentProvider } from "@/lib/commerce/providers";
 import { sendOrderAdminAlert, sendOrderConfirmationEmail } from "@/lib/email";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 const tokenSchema = z.string().uuid();
 const selectedOptionsSchema = z.object({
@@ -151,6 +152,22 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
     void Promise.allSettled([
       sendOrderConfirmationEmail(createdOrder, createdItems),
       sendOrderAdminAlert(createdOrder, createdItems),
+      dispatchWebhook(siteId, "order.created", {
+        order: {
+          id: createdOrder.id,
+          orderNumber: createdOrder.orderNumber,
+          email: createdOrder.email,
+          customerName: createdOrder.customerName,
+          total: createdOrder.total,
+          currency: createdOrder.currency,
+          status: createdOrder.status,
+          items: createdItems.map((item) => ({
+            title: item.title,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        },
+      }),
     ]);
   }
   revalidatePath("/", "layout");

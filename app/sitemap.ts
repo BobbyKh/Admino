@@ -1,55 +1,63 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/lib/db";
-import { blogPosts, pages } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { getResolvedSite } from "@/lib/site-context";
+import { db } from "@/lib/db";
+import { sites, pages, blogPosts, products } from "@/lib/db/schema";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // 1 hour revalidation
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const site = await getResolvedSite();
-  const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL ?? "http://localhost:3000";
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: base, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${base}/menu`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
-    { url: `${base}/gallery`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${base}/book`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${base}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-  ];
-
-  if (!site?.published) return staticPages;
+  const baseUrl = process.env.SITE_URL || "https://example.com";
 
   try {
-    const [allPages, publishedPosts] = await Promise.all([db
-      .select({
-        slug: pages.slug,
-        updatedAt: pages.updatedAt,
-        siteId: pages.siteId,
-      })
-      .from(pages)
-      .where(and(eq(pages.siteId, site.id), eq(pages.published, true))),
-    db.select({ slug: blogPosts.slug, updatedAt: blogPosts.updatedAt }).from(blogPosts)
-      .where(and(eq(blogPosts.siteId, site.id), eq(blogPosts.published, true))),
+    const [publishedSites, publishedPages, posts, activeProducts] = await Promise.all([
+      db.select({ slug: sites.slug, updatedAt: sites.updatedAt }).from(sites).where(eq(sites.published, true)),
+      db.select({ siteId: pages.siteId, slug: pages.slug, updatedAt: pages.updatedAt }).from(pages).where(and(eq(pages.published, true), eq(pages.noindex, false))),
+      db.select({ siteId: blogPosts.siteId, slug: blogPosts.slug, publishedAt: blogPosts.publishedAt }).from(blogPosts).where(eq(blogPosts.published, true)),
+      db.select({ siteId: products.siteId, slug: products.slug, updatedAt: products.updatedAt }).from(products).where(eq(products.status, "active")),
     ]);
 
-    const cmsPages: MetadataRoute.Sitemap = allPages
-      .filter((p) => p.slug && !["menu", "gallery", "book", "contact"].includes(p.slug))
-      .map((p) => ({
-        url: p.slug === "home" ? base : `${base}/${p.slug}`,
-        lastModified: p.updatedAt ? new Date(p.updatedAt) : new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      }));
+    const siteMapBySiteId = new Map<number, string>();
+    const siteEntries: MetadataRoute.Sitemap = publishedSites.map((site) => {
+      const siteUrl = `${baseUrl}?site=${encodeURIComponent(site.slug)}`;
+      return {
+        url: siteUrl,
+        lastModified: site.updatedAt ? new Date(site.updatedAt) : new Date(),
+        changeFrequency: "daily",
+        priority: 1.0,
+      };
+    });
 
-    const blogRoutes: MetadataRoute.Sitemap = publishedPosts.map((post) => ({
-      url: `${base}/blog/${post.slug}`,
-      lastModified: post.updatedAt ? new Date(post.updatedAt) : new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
+    const pageEntries: MetadataRoute.Sitemap = publishedPages.map((page) => ({
+      url: `${baseUrl}/${page.slug}`,
+      lastModified: page.updatedAt ? new Date(page.updatedAt) : new Date(),
+      changeFrequency: "weekly",
+      priority: page.slug === "home" ? 0.9 : 0.7,
     }));
-    return [...staticPages, ...cmsPages, ...blogRoutes];
-  } catch {
-    return staticPages;
+
+    const blogEntries: MetadataRoute.Sitemap = posts.map((post) => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastModified: post.publishedAt ? new Date(post.publishedAt) : new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    }));
+
+    const productEntries: MetadataRoute.Sitemap = activeProducts.map((product) => ({
+      url: `${baseUrl}/products/${product.slug}`,
+      lastModified: product.updatedAt ? new Date(product.updatedAt) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }));
+
+    return [...siteEntries, ...pageEntries, ...blogEntries, ...productEntries];
+  } catch (error) {
+    console.error("Failed to generate sitemap:", error);
+    return [
+      {
+        url: baseUrl,
+        lastModified: new Date(),
+        changeFrequency: "daily",
+        priority: 1.0,
+      },
+    ];
   }
 }

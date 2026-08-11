@@ -74,7 +74,7 @@ export function ChatWidget({ siteName }: { siteName: string }) {
             </span>
             <div className="flex-1">
               <p className="text-sm font-semibold">{siteName} Assistant</p>
-              <p className="text-xs opacity-70">Ask me anything about the resort</p>
+              <p className="text-xs opacity-70">Ask me anything about this site</p>
             </div>
           </div>
 
@@ -84,7 +84,7 @@ export function ChatWidget({ siteName }: { siteName: string }) {
               <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                 <Bot className="mb-3 size-10 opacity-30" />
                 <p className="text-sm font-medium">Hi! How can I help you today?</p>
-                <p className="mt-1 text-xs">Ask about our menu, hours, location, or services.</p>
+                <p className="mt-1 text-xs">Ask about our content, products, or services.</p>
               </div>
             )}
             {messages.map((msg, i) => (

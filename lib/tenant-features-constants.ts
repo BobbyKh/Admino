@@ -18,6 +18,10 @@ export const TENANT_FEATURES = [
   "commerce",
   "ai_theme_generator",
   "ai_block_assistant",
+  "ai_site_builder",
+  "ai_site_auditor",
+  "ai_chatbot_rag",
+  "ai_forecasting",
 ] as const;
 
 export type TenantFeature = (typeof TENANT_FEATURES)[number];
@@ -114,6 +118,30 @@ export const TENANT_FEATURE_METADATA: Record<TenantFeature, TenantFeatureMeta> =
     key: "ai_block_assistant",
     label: "AI Block Assistant",
     description: "Generate content and layout blocks using AI",
+    category: "AI Tools",
+  },
+  ai_site_builder: {
+    key: "ai_site_builder",
+    label: "AI Site Builder",
+    description: "Conversational agent that builds and edits entire pages with AI",
+    category: "AI Tools",
+  },
+  ai_site_auditor: {
+    key: "ai_site_auditor",
+    label: "AI Site Auditor",
+    description: "Automated site audit for SEO, accessibility, and content health",
+    category: "AI Tools",
+  },
+  ai_chatbot_rag: {
+    key: "ai_chatbot_rag",
+    label: "AI Chatbot (Site Knowledge)",
+    description: "Answer visitor questions from your site content (RAG)",
+    category: "AI Tools",
+  },
+  ai_forecasting: {
+    key: "ai_forecasting",
+    label: "AI Demand Forecasting",
+    description: "Predict future sales and restock needs from order history",
     category: "AI Tools",
   },
 };

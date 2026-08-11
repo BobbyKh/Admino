@@ -5,6 +5,7 @@ import { requireRole, type Role } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
 import { requireTenantFeature } from "@/lib/tenant-features";
+import { callAiProvider } from "@/lib/ai-provider";
 
 const THEME_KEYS = [
   "themePrimary",
@@ -36,7 +37,7 @@ const colorSchema = z.string().trim().min(1).max(80).refine(isSafeCssColor, "Inv
 
 const generatedThemeSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  rationale: z.string().trim().max(240).optional(),
+  rationale: z.string().trim().max(1000).optional(),
   themePrimary: colorSchema,
   themePrimaryForeground: colorSchema,
   themeSecondary: colorSchema,
@@ -81,24 +82,26 @@ Unless the request explicitly asks for monochrome, black and white, grayscale, o
 Required keys: name, rationale, ${THEME_KEYS.join(", ")}.`;
   const userPrompt = `Generate a complete theme for this request: ${input}`;
 
-  const content = await callConfiguredAi({
+  const content = await callAiProvider({
     provider: settings.aiProvider,
     apiKey: settings.aiApiKey,
     model: settings.aiModel,
     baseUrl: settings.aiBaseUrl,
     systemPrompt,
     userPrompt,
+    maxTokens: 1200,
   });
 
   let parsed = parseGeneratedTheme(content);
   if (!allowsMonochrome(input) && isTooNeutral(parsed.data)) {
-    const retry = await callConfiguredAi({
+    const retry = await callAiProvider({
       provider: settings.aiProvider,
       apiKey: settings.aiApiKey,
       model: settings.aiModel,
       baseUrl: settings.aiBaseUrl,
       systemPrompt,
       userPrompt: `${userPrompt}\n\nYour first result was too neutral. Regenerate with a visibly colored primary, secondary, and accent palette. Use different hues for primary and accent.`,
+      maxTokens: 1200,
     });
     parsed = parseGeneratedTheme(retry);
     if (isTooNeutral(parsed.data)) {
@@ -139,86 +142,6 @@ function isChromatic(color: string) {
   }
 
   return /^(rgb|rgba|hsl|hsla|oklab|lab|lch)\(/i.test(color);
-}
-
-async function callConfiguredAi({
-  provider,
-  apiKey,
-  model,
-  baseUrl,
-  systemPrompt,
-  userPrompt,
-}: {
-  provider: string;
-  apiKey: string;
-  model: string;
-  baseUrl: string;
-  systemPrompt: string;
-  userPrompt: string;
-}) {
-  if (provider === "anthropic") {
-    const res = await fetch(`${baseUrl || "https://api.anthropic.com"}/v1/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: model || "claude-sonnet-4-20250514",
-        max_tokens: 1200,
-        temperature: 0.6,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
-    if (!res.ok) throw new Error(getProviderError(res));
-    const data = await res.json();
-    return String(data.content?.[0]?.text ?? "");
-  }
-
-  if (provider === "google") {
-    const res = await fetch(`${baseUrl || "https://generativelanguage.googleapis.com/v1beta"}/models/${model || "gemini-2.0-flash"}:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: { maxOutputTokens: 1200, temperature: 0.6 },
-      }),
-    });
-    if (!res.ok) throw new Error(getProviderError(res));
-    const data = await res.json();
-    return String(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
-  }
-
-  const res = await fetch(`${baseUrl || "https://api.openai.com/v1"}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: model || "gpt-4o-mini",
-      max_tokens: 1200,
-      temperature: 0.6,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(getProviderError(res));
-  const data = await res.json();
-  return String(data.choices?.[0]?.message?.content ?? "");
-}
-
-function getProviderError(response: Response) {
-  if (response.status === 401) return "The configured AI API key is invalid.";
-  if (response.status === 402) return "The AI provider has no available credit or billing is not enabled. Add credits or select a funded model in Settings → Integrations.";
-  if (response.status === 429) {
-    const retryAfter = response.headers.get("retry-after");
-    return retryAfter ? `The AI provider rate limit was reached. Try again in about ${retryAfter} seconds.` : "The AI provider rate limit was reached. Wait a moment, then try again.";
-  }
-  return `Theme generation failed (${response.status}).`;
 }
 
 function extractJsonObject(content: string): unknown {

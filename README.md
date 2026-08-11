@@ -278,220 +278,34 @@ Unknown domains in production return no tenant (no fallback to another site).
 
 Use the `?site=<slug>` query parameter to preview any tenant:
 
-```
-http://localhost:3000/?site=my-restaurant
-```
-
----
-
-## Role-Based Access Control
-
-Four roles are supported, with hierarchical permissions:
-
-| Role | Permissions |
-|---|---|
-| `viewer` | Read-only access |
-| `editor` | Read + write content |
-| `admin` | Full content + manage users |
-| `super_admin` | All permissions + site management + delete |
-
-Roles are assigned per-user. A `super_admin` has access to all tenants; other roles are scoped to their assigned `siteId`.
-
----
-
-## Tenant Feature Gating
-
-Features can be enabled/disabled per tenant by a `super_admin` in **Admin → Sites → [Site] → Features**:
-
-| Category | Features |
-|---|---|
-| Site Management | Pages & Blocks, Navigation, Header/Footer Layout, Site Settings |
-| Content | Bookings, Contact Messages, Menu, Gallery, Media Library, Services, Blog |
-| Commerce | E-Commerce (products, orders, payments) |
-| AI Tools | AI Theme Generator, AI Block Assistant |
-
-Additionally, each user within a tenant can be granted a restrictive feature subset — if a user has explicit grants, they can only access those features; otherwise they inherit all site-enabled features.
-
----
-
-## Payment Mode
-
-> ⚠️ **E-commerce checkout is currently manual/test-payment only.**
-
-Enabled payment methods collect QR payment references or send sandbox provider requests. Merchants must **manually verify** payment before fulfilling orders.
-
-**Do not advertise live automated card processing until the following are implemented:**
-- Live Stripe / payment provider credentials and webhooks
-- Reconciliation and settlement flows
-- Refund and dispute handling
-- PCI-DSS compliance review
-
-See [Phase 2](#phase-2--payments--billing-8-10-weeks) below for the roadmap.
-
----
-
-## Development Phases
-
-This section tracks the project's progression from internal tool to public SaaS product.
-
----
-
-### ✅ Phase 0 — MVP Foundation *(Completed)*
-
-The initial working system was built and deployed for internal use.
-
-**Completed:**
-- [x] Multi-tenant data model (sites, pages, blocks, media, users, settings, products, carts, orders)
-- [x] Block-based page builder with autosave and revision history
-- [x] Admin dashboard with analytics charts (bookings, messages)
-- [x] Role-based access control (4 tiers) with JWT session auth
-- [x] Cloudinary media uploads with tenant scoping
-- [x] Transactional email (bookings, orders, password reset) via SMTP
-- [x] E-commerce catalog, cart, and checkout (manual payment mode)
-- [x] AI theme generator and AI block assistant
-- [x] Rate-limited admin login
-- [x] Upload hardening (content-sig validation, SVG rejection, folder sanitization)
-- [x] HTML sanitization via DOMPurify
-- [x] Full activity audit log
-- [x] Page revision snapshots with restore controls
-- [x] Per-tenant feature gating
-- [x] Per-user feature grant overlay
-- [x] Password reset with token expiry
-- [x] Production build passes with lint warnings only
-
----
-
-### 🔧 Phase 1 — Security & Reliability *(In Progress — Target: 6–8 weeks)*
-
-Harden the platform to a level suitable for serving paying customers and passing a security audit.
-
-**Goals:**
-- Bring test coverage to a level that allows confident releases
-- Eliminate security gaps before accepting untrusted customer content
-- Clean up client-specific branding artifacts
-
-**Tasks:**
-- [ ] Fix hardcoded client branding (`maiti_admin_session` cookie name, `maitiresort.com` email defaults)
-- [ ] Add HTTP security headers in `next.config.ts` (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
-- [ ] Extend rate limiting to AI endpoints, upload endpoints, and public form submissions (bookings, contact)
-- [ ] Full multi-tenant security audit — verify all server actions enforce `siteId` scoping
-- [ ] Expand unit test suite to cover all server actions (target: 80% coverage)
-- [ ] Write 20+ end-to-end test scenarios: login, site creation, page builder, publishing, uploads, checkout, tenant isolation
-- [ ] Confirm `sameSite: strict` vs `lax` cookie policy for admin sessions
-- [ ] CSRF review for server actions
-- [ ] Document security architecture decisions
-
----
-
-### 💳 Phase 2 — Payments & Billing *(Planned — Target: 8–10 weeks)*
-
-Enable real revenue — both for tenant customers (e-commerce) and for the platform operator (SaaS subscriptions).
-
-**Tenant E-Commerce Payments:**
-- [ ] Stripe Connect integration — live card processing, webhooks, refunds, disputes
-- [ ] Khalti payment provider (Nepal market)
-- [ ] eSewa payment provider (Nepal market)
-- [ ] ConnectIPS / bank transfer support
-- [ ] Payment webhook handlers and reconciliation
-- [ ] Order fulfillment workflow tied to payment confirmation
-- [ ] Refund management UI in admin panel
-- [ ] PCI-DSS review and documentation
-
-**Platform SaaS Billing (Operator Revenue):**
-- [ ] Define subscription tiers (Starter / Growth / Business / Agency)
-- [ ] Stripe Billing integration for tenant subscriptions
-- [ ] Plan limit enforcement (site count, storage, feature access)
-- [ ] Trial period logic (e.g., 14-day free trial)
-- [ ] Billing portal for tenant self-service (upgrade, cancel, invoices)
-- [ ] Usage metering (storage, AI calls)
-- [ ] Automated downgrade/suspension on payment failure
-
----
-
-### 🚀 Phase 3 — Growth & Acquisition *(Planned — Target: 6–8 weeks)*
-
-Add features that improve customer acquisition, retention, and operator revenue.
-
-**Onboarding:**
-- [ ] Guided site setup wizard (create → template → content → domain → publish)
-- [ ] In-app setup checklist with progress tracking
-- [ ] Empty-state UI with helpful prompts in every admin section
-
-**Domain Management:**
-- [ ] Automated DNS TXT/CNAME verification polling
-- [ ] SSL provisioning status tracking
-- [ ] Customer-facing domain setup guide (step-by-step)
-
-**Analytics:**
-- [ ] Page view analytics integration (Plausible Analytics or PostHog)
-- [ ] E-commerce conversion funnel (revenue, AOV, abandoned carts)
-- [ ] Traffic source breakdown
-- [ ] Analytics data export
-
-**Templates & Marketplace:**
-- [ ] 5–10 industry-specific starter templates (restaurant, resort, salon, retail, portfolio)
-- [ ] Template preview on public marketing site
-- [ ] One-click template apply on site creation
-
-**White-Labeling (Agency tier):**
-- [ ] Custom admin panel branding per tenant (logo, colors)
-- [ ] Remove "Powered by Admino" branding option
-
----
-
-### 🌍 Phase 4 — Public Launch *(Planned)*
-
-Take the product to market with proper go-to-market infrastructure.
-
-- [ ] Marketing / landing page (`admino.com`)
-- [ ] Public documentation / help center (Mintlify or Docusaurus)
-- [ ] Blog / case studies for SEO
-- [ ] Product Hunt launch
-- [ ] Referral and affiliate program
-- [ ] Developer API (public REST API for headless usage)
-- [ ] Zapier / Make integration for workflow automation
-- [ ] Community forum or Discord for tenant customers
-
----
-
-## Current Limitations
-
-| Limitation | Planned Fix |
-|---|---|
-| E-commerce payments are manual/test-only | Phase 2 — Stripe Connect + local payment providers |
-| No SaaS billing for operator | Phase 2 — Stripe Billing for tenant subscriptions |
-| Test coverage is limited (3 unit test files) | Phase 1 — expand to 80% + 20 e2e scenarios |
-| No automated DNS/SSL provisioning UI | Phase 3 — domain management module |
-| No page analytics | Phase 3 — Plausible / PostHog integration |
-| Hardcoded client branding in some internals | Phase 1 — remove before any public release |
-| Database is PostgreSQL-only | No change planned (intentional) |
-| No public API | Phase 4 — headless REST API |
-
----
-
-## Contributing
-
-```bash
-# Fork and clone
-git clone <your-fork>
-
-# Create a feature branch
-git checkout -b feature/your-feature-name
-
-# Make changes, then run lint and tests
-npm run lint
-npm run test
-
-# Open a pull request
+```text
+http://localhost:3000/?site=<site-slug>
 ```
 
-Please ensure:
-- All new server actions enforce `siteId` scoping
-- New features include at least one unit test
-- No hardcoded tenant-specific values
+## Ecommerce Payment Mode
 
----
+Checkout is currently positioned for manual/test payments, not production automated payment processing. Enabled methods can collect QR payment references or send sandbox/test provider requests, and merchants must verify payment before fulfillment. Do not market ecommerce as live card processing until live credentials, webhooks, reconciliation, refunds, and dispute handling are implemented and tested.
 
-## License
+## Project Structure
 
-Private — All rights reserved. Contact the repository owner for licensing inquiries.
+```text
+app/(site)/        Public tenant site routes
+app/admin/         Authenticated admin dashboard
+app/api/           Upload, AI, and payment API routes
+components/admin/  Admin dashboard UI
+components/site/   Public site UI and block renderers
+components/ui/     Shared UI primitives
+lib/actions/       Server actions by domain
+lib/db/            Drizzle schema and PostgreSQL client
+lib/               Auth, settings, tenant resolution, utilities
+drizzle-pg/        PostgreSQL migrations
+scripts/           Seed and maintenance scripts
+```
+
+## Current Notes
+
+- The app is PostgreSQL-only.
+- Public sites must be published before rendering.
+- Rich text and custom HTML are sanitized before rendering.
+- Page-builder changes are snapshotted so recent block edits can be restored from revision history.
+- `npm run lint` currently passes with warnings only.

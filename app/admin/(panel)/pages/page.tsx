@@ -9,7 +9,9 @@ import {
   Pencil,
   Trash2,
   Blocks,
+  Sparkles,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,7 @@ import {
   updatePage,
   deletePage,
 } from "@/lib/actions/index";
+import { generateSeoMetadataWithAi } from "@/lib/actions/seo-ai";
 import { useActionState } from "react";
 
 type AdminActionState = { success?: boolean; message?: string; data?: { pageId?: number } };
@@ -59,6 +62,7 @@ export default function PagesPage() {
   const [createOgImage, setCreateOgImage] = useState("");
   const [editingOgImage, setEditingOgImage] = useState("");
   const [pending, startTransition] = useTransition();
+  const [aiSeoLoading, setAiSeoLoading] = useState(false);
 
   const [createState, createFormAction] = useActionState<AdminActionState, FormData>(createPage, {});
   const [updateState, updateFormAction] = useActionState<AdminActionState, FormData>(updatePage, {});
@@ -81,24 +85,53 @@ export default function PagesPage() {
     return selectedSite ? `${path}?site=${encodeURIComponent(selectedSite.slug)}` : path;
   };
 
+  async function handleGenerateSeo(pageId: number, target: "create" | "edit") {
+    setAiSeoLoading(true);
+    try {
+      const result = await generateSeoMetadataWithAi(pageId);
+      if ("metadata" in result) {
+        // Find the form and set the values
+        const form = document.querySelector(target === "create" ? "[data-create-form]" : "[data-edit-form]") as HTMLFormElement | null;
+        if (form) {
+          const metaTitle = form.querySelector<HTMLInputElement>("[name=metaTitle]");
+          const metaDescription = form.querySelector<HTMLTextAreaElement>("[name=metaDescription]");
+          if (metaTitle) metaTitle.value = result.metadata.metaTitle;
+          if (metaDescription) metaDescription.value = result.metadata.metaDescription;
+        }
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to generate SEO metadata.");
+    } finally {
+      setAiSeoLoading(false);
+    }
+  }
+
   // Handle create success
   useEffect(() => {
     if (createState?.success && selectedSiteId) {
+      toast.success("Page created.");
       getPages(selectedSiteId).then((updated) => {
         setPages(updated);
         setCreateOpen(false);
         setCreateOgImage("");
       });
+    } else if (createState?.message) {
+      toast.error(createState.message);
     }
   }, [createState, selectedSiteId]);
 
   // Handle update success
   useEffect(() => {
     if (updateState?.success && selectedSiteId) {
+      toast.success("Page updated.");
       getPages(selectedSiteId).then((updated) => {
         setPages(updated);
         setEditingPage(null);
       });
+    } else if (updateState?.message) {
+      toast.error(updateState.message);
     }
   }, [updateState, selectedSiteId]);
 
@@ -124,6 +157,7 @@ export default function PagesPage() {
                 <DialogTitle>Create New Page</DialogTitle>
               </DialogHeader>
               <form
+                data-create-form
                 action={(fd) => {
                   fd.set("siteId", String(selectedSiteId));
                   startTransition(() => {
@@ -148,9 +182,20 @@ export default function PagesPage() {
                   <Textarea id="description" name="description" rows={2} />
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-                  <div>
-                    <p className="text-sm font-medium">SEO</p>
-                    <p className="text-xs text-muted-foreground">Optional overrides. Defaults use page title and description.</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">SEO</p>
+                      <p className="text-xs text-muted-foreground">Optional overrides. Defaults use page title and description.</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" disabled={aiSeoLoading} onClick={async () => {
+                      const title = (document.querySelector("[data-create-form] [name=title]") as HTMLInputElement)?.value;
+                      if (!title) { toast.error("Enter a page title first."); return; }
+                      // Create a temporary page for AI to analyze — use title as context
+                      toast.info("Save the page first, then use AI Generate in the edit dialog.");
+                    }}>
+                      <Sparkles className="mr-1 size-3.5 text-primary" />
+                      {aiSeoLoading ? "Generating..." : "AI Generate"}
+                    </Button>
                   </div>
                   <Input name="metaTitle" placeholder="Meta title" maxLength={80} />
                   <Textarea name="metaDescription" placeholder="Meta description" rows={2} maxLength={180} />
@@ -320,6 +365,7 @@ export default function PagesPage() {
               <DialogTitle>Edit {editingPage.title}</DialogTitle>
             </DialogHeader>
             <form
+              data-edit-form
               action={(fd) => {
                 fd.set("id", String(editingPage.id));
                 startTransition(() => {
@@ -344,9 +390,15 @@ export default function PagesPage() {
                 <Textarea name="description" defaultValue={editingPage.description ?? ""} rows={2} />
               </div>
               <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-                <div>
-                  <Label>SEO</Label>
-                  <p className="mt-1 text-xs text-muted-foreground">Control how this page appears in search and social previews.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>SEO</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">Control how this page appears in search and social previews.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" disabled={aiSeoLoading} onClick={() => handleGenerateSeo(editingPage.id, "edit")}>
+                    <Sparkles className="mr-1 size-3.5 text-primary" />
+                    {aiSeoLoading ? "Generating..." : "AI Generate"}
+                  </Button>
                 </div>
                 <div className="space-y-2">
                   <Label>Meta title</Label>
