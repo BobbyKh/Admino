@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Globe } from "lucide-react";
 import { selectAdminSite } from "@/lib/actions/index";
 
@@ -11,6 +11,10 @@ export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentS
   const router = useRouter();
   const [value, setValue] = useState<string>(currentSiteId ? String(currentSiteId) : "");
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (currentSiteId) void selectAdminSite(currentSiteId);
+  }, [currentSiteId]);
 
   function handleChange(siteId: string) {
     const previous = value;

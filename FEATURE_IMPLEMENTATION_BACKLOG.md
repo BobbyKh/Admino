@@ -91,8 +91,9 @@ Relevant code:
 
 Current state: Partial.
 
-- [ ] Resolve SMTP settings using an explicit site ID for public bookings, messages, orders, and password workflows.
-- [ ] Stop resolving public email configuration through the active admin-site fallback.
+- [x] Resolve SMTP settings using an explicit site ID for public bookings, messages, orders, and password workflows.
+- [x] Stop resolving public email configuration through the active admin-site fallback.
+- [x] Resolve Cloudinary credentials using an explicit site ID and tenant-prefixed asset folders.
 - [ ] Encrypt SMTP, Cloudinary, and AI credentials at rest.
 - [ ] Add secret key versioning and rotation.
 - [ ] Add masked credential status APIs instead of returning stored values to clients.
@@ -620,7 +621,7 @@ The detailed implementation is in `THEME_MARKETPLACE_PLAN.md`.
 
 ## P2: Maintenance Cleanup
 
-- [ ] Remove or quarantine obsolete `lib/cms-actions.ts` after confirming no external consumers.
+- [x] Remove obsolete `lib/cms-actions.ts` after confirming no internal consumers.
 - [ ] Consolidate duplicate security-header configuration.
 - [ ] Remove unused Redis or implement a deliberate queue strategy.
 - [ ] Resolve lint warnings and replace important raw images with `next/image`.
