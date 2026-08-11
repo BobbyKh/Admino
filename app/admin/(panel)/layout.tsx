@@ -3,6 +3,7 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
 import { getEffectiveTenantFeatureAccess } from "@/lib/tenant-features";
 import { getSiteSettings } from "@/lib/data";
+import { AdminSiteProvider } from "@/components/admin/admin-site-context";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function AdminLayout({
     getSiteSettings(currentSiteId),
   ]);
   return (
+    <AdminSiteProvider siteId={currentSiteId}>
     <div className="flex min-h-svh bg-muted/30">
       <AdminNav
         adminName={user.name}
@@ -35,5 +37,6 @@ export default async function AdminLayout({
         <main key={currentSiteId} className="flex-1 overflow-x-auto p-6 lg:p-8">{children}</main>
       </div>
     </div>
+    </AdminSiteProvider>
   );
 }

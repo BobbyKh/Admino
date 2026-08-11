@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
+import { useAdminSiteId } from "./admin-site-context";
 
 /**
  * File-upload field that pushes the chosen image to Cloudinary (credentials
@@ -31,6 +32,7 @@ export function ImageUploadField({
   required?: boolean;
   placeholder?: string;
 }) {
+  const siteId = useAdminSiteId();
   const [uploading, setUploading] = React.useState(false);
   const [mediaOpen, setMediaOpen] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -41,6 +43,7 @@ export function ImageUploadField({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("siteId", String(siteId));
       const response = await fetch("/api/upload", { method: "POST", body: formData });
       const result = await response.json();
       if (response.ok && result.url) {

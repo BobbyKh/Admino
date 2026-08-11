@@ -35,6 +35,7 @@ import {
   getMediaFolders,
 } from "@/lib/actions/index";
 import type { Media } from "@/lib/db/schema";
+import { useAdminSiteId } from "./admin-site-context";
 
 interface MediaLibraryProps {
   onSelect?: (media: Media) => void;
@@ -51,6 +52,7 @@ export function MediaLibrary({
   filter,
   title = "Media Library",
 }: MediaLibraryProps) {
+  const siteId = useAdminSiteId();
   const [items, setItems] = React.useState<Media[]>([]);
   const [folders, setFolders] = React.useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = React.useState("all");
@@ -101,6 +103,7 @@ export function MediaLibrary({
     for (const file of fileArray) {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("siteId", String(siteId));
       if (selectedFolder !== "all") formData.append("folder", selectedFolder);
       try {
         const res = await fetch("/api/upload", { method: "POST", body: formData });

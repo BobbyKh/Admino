@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { uploadMedia } from "@/lib/actions/index";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
+import { useAdminSiteId } from "./admin-site-context";
 
 /**
  * Reusable image upload field with Media Library integration.
@@ -36,6 +37,7 @@ export function MediaPicker({
   accept?: string;
   showPreview?: boolean;
 }) {
+  const siteId = useAdminSiteId();
   const [uploading, setUploading] = React.useState(false);
   const [mediaOpen, setMediaOpen] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -46,7 +48,7 @@ export function MediaPicker({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const result = await uploadMedia(formData);
+      const result = await uploadMedia(formData, undefined, siteId);
       if (result?.url) {
         onChange(result.url);
         toast.success("Image uploaded to Media Library");

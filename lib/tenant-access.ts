@@ -83,6 +83,15 @@ export async function requireSiteAccess(siteId: number) {
   return user;
 }
 
+/** Verifies an explicitly selected site, feature, and role for stale-tab-safe actions. */
+export async function requireSiteFeatureForRole(siteId: number, feature: TenantFeature, minRole: Role) {
+  const user = await requireSiteAccess(siteId);
+  const role = (user.role as Role) ?? "viewer";
+  if (!hasMinRole(role, minRole)) throw new Error("Forbidden");
+  await requireTenantFeature(siteId, feature, { role, userId: user.id });
+  return user;
+}
+
 export async function requirePageAccess(pageId: number) {
   const [page] = await db.select().from(pages).where(eq(pages.id, pageId));
   if (!page) throw new Error("Page not found");

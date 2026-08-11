@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MediaLibrary } from "./media-library";
 import type { Media } from "@/lib/db/schema";
+import { useAdminSiteId } from "./admin-site-context";
 
 function getYouTubeId(url: string): string | null {
   const match = url.match(
@@ -49,6 +50,7 @@ export function VideoPicker({
   onChange?: (url: string) => void;
   onPosterChange?: (url: string) => void;
 }) {
+  const siteId = useAdminSiteId();
   const [uploading, setUploading] = React.useState(false);
   const [mediaOpen, setMediaOpen] = React.useState(false);
   const [posterOpen, setPosterOpen] = React.useState(false);
@@ -82,6 +84,7 @@ export function VideoPicker({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("siteId", String(siteId));
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const result = await res.json();
       if (res.ok && result.url) {

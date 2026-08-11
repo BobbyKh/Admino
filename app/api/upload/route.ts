@@ -3,9 +3,9 @@ import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { getSessionUser, hasMinRole, type Role } from "@/lib/auth";
-import { getAdminSiteId } from "@/lib/admin-site";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
+import { requireSiteAccess } from "@/lib/tenant-access";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -15,13 +15,26 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
+    const role = (user.role as Role) ?? "viewer";
+    if (!hasMinRole(role, "editor")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const siteId = await getAdminSiteId();
-    await requireTenantFeature(siteId, "media", { role: user.role as Role, userId: user.id });
 
     const formData = await req.formData();
+    let siteId: number;
+    if (role === "super_admin") {
+      const selectedSiteId = Number(formData.get("siteId"));
+      if (!Number.isInteger(selectedSiteId) || selectedSiteId < 1) {
+        return NextResponse.json({ error: "Select a site before uploading." }, { status: 400 });
+      }
+      await requireSiteAccess(selectedSiteId);
+      siteId = selectedSiteId;
+    } else {
+      if (!user.siteId) return NextResponse.json({ error: "No site is assigned to this user." }, { status: 403 });
+      siteId = user.siteId;
+    }
+    await requireTenantFeature(siteId, "media", { role, userId: user.id });
+
     const file = formData.get("file") as File | null;
     const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "media"));
 

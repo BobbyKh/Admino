@@ -50,8 +50,10 @@ import {
   updateMediaAlt,
 } from "@/lib/actions/index";
 import type { Media } from "@/lib/db/schema";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
 
 export default function MediaPage() {
+  const siteId = useAdminSiteId();
   const [items, setItems] = React.useState<Media[]>([]);
   const [folders, setFolders] = React.useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = React.useState("all");
@@ -100,6 +102,7 @@ export default function MediaPage() {
     for (const file of fileArray) {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("siteId", String(siteId));
       if (selectedFolder !== "all") formData.append("folder", selectedFolder);
       try {
         const res = await fetch("/api/upload", { method: "POST", body: formData });

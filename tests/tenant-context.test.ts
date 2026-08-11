@@ -29,6 +29,24 @@ test("Cloudinary operations require an explicit tenant", () => {
   assert.doesNotMatch(cloudinary, /cloudinary\.config/);
 });
 
+test("super-admin uploads bind to the site displayed in the admin UI", () => {
+  const route = source("app/api/upload/route.ts");
+  const layout = source("app/admin/(panel)/layout.tsx");
+  assert.match(layout, /AdminSiteProvider siteId=\{currentSiteId\}/);
+  assert.match(route, /role === "super_admin"/);
+  assert.match(route, /Number\(formData\.get\("siteId"\)\)/);
+  assert.match(route, /requireSiteAccess\(selectedSiteId\)/);
+  assert.match(route, /siteId = user\.siteId/);
+  for (const path of [
+    "components/admin/image-upload-field.tsx",
+    "components/admin/media-library.tsx",
+    "components/admin/video-picker.tsx",
+    "app/admin/(panel)/media/page.tsx",
+  ]) {
+    assert.match(source(path), /formData\.append\("siteId", String\(siteId\)\)/, path);
+  }
+});
+
 test("tenant email delivery carries an explicit site ID", () => {
   const email = source("lib/email.ts");
   assert.match(email, /sendMail\(siteId: number \| null/);

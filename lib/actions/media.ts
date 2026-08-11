@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { count, eq, desc, ilike, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole, requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { deleteCloudinaryAsset, uploadImageToCloudinary } from "@/lib/cloudinary";
 import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
 import type { MediaUploadState } from "./types";
@@ -13,10 +13,14 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function uploadMedia(
   formData: FormData,
-  folder?: string
+  folder: string | undefined,
+  siteId: number
 ): Promise<MediaUploadState> {
-  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("media", "editor");
-  if (denied) return { error: denied };
+  try {
+    await requireSiteFeatureForRole(siteId, "media", "editor");
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Access denied." };
+  }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
