@@ -8,13 +8,13 @@ import { getStripeForSite } from "@/lib/commerce/stripe";
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, siteUrl } = await request.json() as { token: string; siteUrl?: string };
+    const { token } = await request.json() as { token: string };
     if (!token) {
       return NextResponse.json({ error: "Cart token is required." }, { status: 400 });
     }
 
     const host = request.headers.get("x-request-host") ?? request.headers.get("host") ?? "localhost";
-    const siteSlug = request.nextUrl.searchParams.get("site");
+    const siteSlug = process.env.NODE_ENV === "development" ? request.nextUrl.searchParams.get("site") : null;
     const site = await getSiteForRequest(host, siteSlug);
     if (!site) {
       return NextResponse.json({ error: "Site not found." }, { status: 404 });
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const baseUrl = siteUrl ?? `${request.headers.get("x-forwarded-proto") ?? "https"}://${host}`;
+    const baseUrl = site.domain ? `https://${site.domain}` : request.nextUrl.origin;
     const successUrl = `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/cart`;
 

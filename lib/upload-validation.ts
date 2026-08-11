@@ -47,3 +47,11 @@ export function sanitizeUploadFolder(value: string) {
   const folder = value.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
   return folder || "admino/media";
 }
+
+export function buildTenantUploadFolder(siteId: number, value?: string) {
+  if (!Number.isInteger(siteId) || siteId < 1) throw new Error("Invalid site ID.");
+  const relative = sanitizeUploadFolder(value || "media")
+    .replace(/^sites\/\d+(?:\/|$)/, "")
+    .replace(/^admino(?:\/|$)/, "") || "media";
+  return `sites/${siteId}/${relative}`;
+}

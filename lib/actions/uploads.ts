@@ -25,7 +25,7 @@ export async function uploadImage(formData: FormData): Promise<UploadState> {
     return { error: error instanceof Error ? error.message : "Invalid image file." };
   }
   try {
-    const { secure_url } = await uploadImageToCloudinary(buffer, `sites/${siteId}`);
+    const { secure_url } = await uploadImageToCloudinary(siteId, buffer, "uploads");
     return { url: secure_url };
   } catch (err) {
     console.error("Cloudinary upload failed:", err);

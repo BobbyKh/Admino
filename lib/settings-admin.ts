@@ -4,10 +4,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { DEFAULT_SETTINGS, type SettingKey } from "@/lib/settings";
-import { getAdminSiteId } from "@/lib/admin-site";
 
-export async function getSettingsRows() {
-  const siteId = await getAdminSiteId();
+export async function getSettingsRows(siteId: number) {
   const rows = await db.select().from(settings).where(eq(settings.siteId, siteId));
   const map = new Map(rows.map((r) => [r.key, r.value]));
   const merged: Record<string, string> = { ...DEFAULT_SETTINGS };

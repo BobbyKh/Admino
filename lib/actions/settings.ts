@@ -32,7 +32,7 @@ export async function updateSettings(
 }
 
 export async function sendTestEmailAction(email: string) {
-  const { denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
+  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
   if (denied) return { success: false, message: denied };
 
   const targetEmail = email.trim();
@@ -40,7 +40,7 @@ export async function sendTestEmailAction(email: string) {
     return { success: false, message: "Enter a valid recipient email address." };
   }
 
-  const result = await sendTestEmail(targetEmail);
+  const result = await sendTestEmail(siteId, targetEmail);
   if (result.skipped) {
     return {
       success: true,

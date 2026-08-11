@@ -1,19 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Globe } from "lucide-react";
+import { selectAdminSite } from "@/lib/actions/index";
 
 type Site = { id: number; name: string; slug: string };
 
 export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentSiteId: number | null }) {
   const router = useRouter();
   const [value, setValue] = useState<string>(currentSiteId ? String(currentSiteId) : "");
+  const [pending, startTransition] = useTransition();
 
   function handleChange(siteId: string) {
+    const previous = value;
     setValue(siteId);
-    document.cookie = `admin_site_id=${siteId}; path=/admin; max-age=31536000`;
-    router.refresh();
+    startTransition(async () => {
+      const result = await selectAdminSite(Number(siteId));
+      if (!result.success) setValue(previous);
+      router.refresh();
+    });
   }
 
   if (sites.length === 0) return null;
@@ -28,6 +34,7 @@ export function SiteSelector({ sites, currentSiteId }: { sites: Site[]; currentS
         <select
           value={value}
           onChange={(e) => handleChange(e.target.value)}
+          disabled={pending}
           className="w-full bg-transparent text-sm font-medium outline-none"
         >
           {sites.map((s) => (

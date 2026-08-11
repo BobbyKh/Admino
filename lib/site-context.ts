@@ -21,17 +21,20 @@ import type { Site } from "@/lib/db/schema";
 export const getResolvedSite = cache(async (): Promise<Site | null> => {
   const hdrs = await headers();
   const cookieStore = await cookies();
+  const host = hdrs.get("x-request-host") ?? hdrs.get("x-forwarded-host")?.split(",")[0]?.trim() ?? hdrs.get("host")?.split(":")[0] ?? "";
+  const previewSlug = process.env.NODE_ENV === "development"
+    ? hdrs.get("x-site-slug") ?? cookieStore.get("site_preview")?.value
+    : null;
   return getSiteForRequest(
-    hdrs.get("x-request-host") ?? "",
-    hdrs.get("x-site-slug") ?? cookieStore.get("site_preview")?.value
+    host,
+    previewSlug
   );
 });
 
 /** Resolves a site for a public request without trusting a client-provided ID. */
 export async function getSiteForRequest(host: string, siteSlug?: string | null): Promise<Site | null> {
-
   // 1. Check for slug-based override (?site=<slug>)
-  if (siteSlug) {
+  if (process.env.NODE_ENV !== "production" && siteSlug) {
     const [site] = await db
       .select()
       .from(sites)
@@ -48,7 +51,7 @@ export async function getSiteForRequest(host: string, siteSlug?: string | null):
     if (site) return site;
   }
 
-  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "";
+  const isLocalHost = process.env.NODE_ENV !== "production" && (host === "localhost" || host === "127.0.0.1" || host === "");
   if (!isLocalHost) return null;
 
   // 3. Local development fallback: return the first site.

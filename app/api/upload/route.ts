@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "admino/media"));
+    const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "media"));
 
     if (!file || file.size === 0) {
       return NextResponse.json({ error: "Please choose a file." }, { status: 400 });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid upload file." }, { status: 400 });
     }
-    const result = await uploadImageToCloudinary(buffer, folder, resourceType);
+    const result = await uploadImageToCloudinary(siteId, buffer, folder, resourceType);
 
     const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     await db.insert(media).values({

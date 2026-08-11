@@ -2,10 +2,12 @@
 
 import { resolve4, resolveCname } from "node:dns/promises";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { navLinks, pageBlocks, pages, paymentConfigurations, products, settings, sites } from "@/lib/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireActionRole, requireRole } from "@/lib/auth";
+import { requireSiteAccess } from "@/lib/tenant-access";
 import { createDefaultHomepage } from "@/lib/default-homepage";
 import { createDefaultNavigation } from "@/lib/default-navigation";
 import { createEcommerceTemplate } from "@/lib/default-ecommerce";
@@ -21,6 +23,26 @@ function getPlatformDomain() {
 
 function getExpectedCnameTarget() {
   return (process.env.DOMAIN_CNAME_TARGET || "cname.vercel-dns.com").trim().toLowerCase().replace(/\.$/, "");
+}
+
+export async function selectAdminSite(siteId: number) {
+  await requireActionRole("viewer");
+  if (!Number.isInteger(siteId) || siteId < 1) return { success: false, message: "Invalid site." };
+  await requireSiteAccess(siteId);
+  const [site] = await db.select({ id: sites.id }).from(sites).where(eq(sites.id, siteId));
+  if (!site) return { success: false, message: "Site not found." };
+
+  const cookieStore = await cookies();
+  cookieStore.set("admin_site_id", "", { path: "/admin", maxAge: 0 });
+  cookieStore.set("admin_site_id", String(siteId), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  revalidatePath("/admin", "layout");
+  return { success: true };
 }
 
 function normalizeDomain(value: FormDataEntryValue | null) {

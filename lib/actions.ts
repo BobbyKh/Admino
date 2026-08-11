@@ -160,7 +160,7 @@ export async function submitContact(
     .returning();
 
   if (msg) {
-    void sendContactAdminAlert(msg).catch(() => {});
+    void sendContactAdminAlert({ ...msg, siteId }).catch(() => {});
   }
 
   return {

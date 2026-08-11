@@ -153,10 +153,14 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
 
-  const siteSlug = request.nextUrl.searchParams.get("site");
+  const siteSlug = process.env.NODE_ENV === "development"
+    ? request.nextUrl.searchParams.get("site")
+    : null;
 
   const requestHeaders = new Headers(request.headers);
-  if (siteSlug) {
+  requestHeaders.delete("x-site-slug");
+  requestHeaders.delete("x-request-host");
+  if (siteSlug && process.env.NODE_ENV === "development") {
     requestHeaders.set("x-site-slug", siteSlug);
   }
   requestHeaders.set("x-request-host", hostname);

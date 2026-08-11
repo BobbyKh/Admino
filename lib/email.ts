@@ -1,6 +1,5 @@
 import "server-only";
 
-import { cache } from "react";
 import { and, eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
@@ -16,32 +15,32 @@ import { escapeHtml } from "@/lib/sanitize";
  *   2. Environment variables (SMTP_HOST / SMTP_USER / SMTP_PASS / …)
  * So email credentials can be managed from the admin UI.
  */
-const getSmtpConfig = cache(async () => {
-  const rows = await getSettingsRows();
-  const user = rows.smtpUser || process.env.SMTP_USER || "";
-  const host = rows.smtpHost || process.env.SMTP_HOST || "";
-  const pass = rows.smtpPass || process.env.SMTP_PASS || "";
+async function getSmtpConfig(siteId: number | null) {
+  const rows = siteId ? await getSettingsRows(siteId) : null;
+  const user = rows?.smtpUser || process.env.SMTP_USER || "";
+  const host = rows?.smtpHost || process.env.SMTP_HOST || "";
+  const pass = rows?.smtpPass || process.env.SMTP_PASS || "";
   return {
     host,
     user,
     pass,
-    port: Number(rows.smtpPort || process.env.SMTP_PORT || 587),
-    secure: (rows.smtpSecure || process.env.SMTP_SECURE || "false") === "true",
+    port: Number(rows?.smtpPort || process.env.SMTP_PORT || 587),
+    secure: (rows?.smtpSecure || process.env.SMTP_SECURE || "false") === "true",
     from:
-      rows.smtpFrom ||
+      rows?.smtpFrom ||
       process.env.SMTP_FROM ||
       user ||
       `no-reply@${process.env.PLATFORM_DOMAIN ?? "localhost"}`,
     notifyTo:
-      rows.adminNotifyEmail ||
+      rows?.adminNotifyEmail ||
       process.env.ADMIN_NOTIFY_EMAIL ||
       user ||
       `admin@${process.env.PLATFORM_DOMAIN ?? "localhost"}`,
   };
-});
+}
 
-async function sendMail(to: string, subject: string, html: string) {
-  const config = await getSmtpConfig();
+async function sendMail(siteId: number | null, to: string, subject: string, html: string) {
+  const config = await getSmtpConfig(siteId);
   if (!config.host || !config.user || !config.pass) {
     console.log(`[email:not-configured] To: ${to} | Subject: ${subject}`);
     return { skipped: true } as const;
@@ -81,7 +80,7 @@ export async function sendBookingConfirmation(booking: Booking) {
     </table>
     <p style="color:#666;font-size:12px">${escapeHtml(siteName)}</p>
   </div>`;
-  return sendMail(booking.email, `Booking received — ${siteName}`, html);
+  return sendMail(booking.siteId, booking.email, `Booking received — ${siteName}`, html);
 }
 
 export async function sendBookingAdminAlert(booking: Booking) {
@@ -100,8 +99,8 @@ export async function sendBookingAdminAlert(booking: Booking) {
     </table>
     <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/bookings">Open admin panel</a></p>
   </div>`;
-  const { notifyTo } = await getSmtpConfig();
-  return sendMail(notifyTo, `New booking request #${booking.id} — ${siteName}`, html);
+  const { notifyTo } = await getSmtpConfig(booking.siteId);
+  return sendMail(booking.siteId, notifyTo, `New booking request #${booking.id} — ${siteName}`, html);
 }
 
 export async function sendBookingStatusEmail(booking: Booking, status: string) {
@@ -127,10 +126,11 @@ export async function sendBookingStatusEmail(booking: Booking, status: string) {
     </table>
     <p style="color:#666;font-size:12px">${escapeHtml(siteName)}</p>
   </div>`;
-  return sendMail(booking.email, `Booking ${status} — ${siteName}`, html);
+  return sendMail(booking.siteId, booking.email, `Booking ${status} — ${siteName}`, html);
 }
 
 export async function sendContactAdminAlert(message: {
+  siteId: number;
   name: string;
   email: string;
   phone?: string | null;
@@ -149,8 +149,8 @@ export async function sendContactAdminAlert(message: {
     </table>
     <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/messages">Open admin panel</a></p>
   </div>`;
-  const { notifyTo } = await getSmtpConfig();
-  return sendMail(notifyTo, `New contact message: ${message.subject}`, html);
+  const { notifyTo } = await getSmtpConfig(message.siteId);
+  return sendMail(message.siteId, notifyTo, `New contact message: ${message.subject}`, html);
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
@@ -162,12 +162,12 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
     <p>This link expires in 30 minutes. If you did not request it, you can ignore this email.</p>
     <p style="color:#666;font-size:12px;word-break:break-all">${escapeHtml(resetUrl)}</p>
   </div>`;
-  const result = await sendMail(to, "Reset your Admino password", html);
+  const result = await sendMail(null, to, "Reset your Admino password", html);
   if (result.skipped) console.log(`[password-reset:url] ${resetUrl}`);
   return result;
 }
 
-export async function sendTestEmail(to: string) {
+export async function sendTestEmail(siteId: number, to: string) {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">SMTP Email Test — Admino</h2>
@@ -175,7 +175,7 @@ export async function sendTestEmail(to: string) {
     <p>If you are receiving this email, your SMTP email settings are configured and working correctly!</p>
     <p style="color:#666;font-size:12px">Sent at ${new Date().toLocaleString()}</p>
   </div>`;
-  return sendMail(to, "SMTP Email Test — Admino", html);
+  return sendMail(siteId, to, "SMTP Email Test — Admino", html);
 }
 
 export async function sendOrderConfirmationEmail(order: Order, items: OrderItem[]) {
@@ -187,7 +187,7 @@ export async function sendOrderConfirmationEmail(order: Order, items: OrderItem[
     items,
     siteName,
   });
-  return sendMail(order.email, `Order received — ${siteName}`, html);
+  return sendMail(order.siteId, order.email, `Order received — ${siteName}`, html);
 }
 
 export async function sendOrderAdminAlert(order: Order, items: OrderItem[]) {
@@ -200,8 +200,8 @@ export async function sendOrderAdminAlert(order: Order, items: OrderItem[]) {
     siteName,
     adminLink: `${process.env.SITE_URL ?? "http://localhost:3000"}/admin/commerce/orders`,
   });
-  const { notifyTo } = await getSmtpConfig();
-  return sendMail(notifyTo, `New order ${order.orderNumber} — ${siteName}`, html);
+  const { notifyTo } = await getSmtpConfig(order.siteId);
+  return sendMail(order.siteId, notifyTo, `New order ${order.orderNumber} — ${siteName}`, html);
 }
 
 export async function sendOrderPaymentStatusEmail(order: Order, items: OrderItem[], status: "paid" | "failed" | "fulfilled") {
@@ -212,7 +212,7 @@ export async function sendOrderPaymentStatusEmail(order: Order, items: OrderItem
       ? `Your order <strong>${escapeHtml(order.orderNumber)}</strong> has been marked fulfilled.`
       : `Payment for <strong>${escapeHtml(order.orderNumber)}</strong> could not be verified. Please contact the store if this is incorrect.`;
   const html = orderEmailHtml({ title: `Order ${status} — ${siteName}`, intro, order, items, siteName });
-  return sendMail(order.email, `Order ${status} — ${siteName}`, html);
+  return sendMail(order.siteId, order.email, `Order ${status} — ${siteName}`, html);
 }
 
 function orderEmailHtml({ title, intro, order, items, siteName, adminLink }: { title: string; intro: string; order: Order; items: OrderItem[]; siteName: string; adminLink?: string }) {
@@ -341,7 +341,7 @@ export async function sendActivityNotification(options: {
 
     // Send to all recipients in parallel
     await Promise.allSettled(
-      allEmails.map((email) => sendMail(email, subject, html))
+      allEmails.map((email) => sendMail(options.siteId, email, subject, html))
     );
   } catch (err) {
     // Activity notification should never break the main action

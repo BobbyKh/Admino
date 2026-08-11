@@ -5,8 +5,7 @@ import { count, eq, desc, ilike, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { getCurrentSiteRequiringFeature, getCurrentSiteRequiringFeatureForRole, getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
-import { uploadImageToCloudinary, getCloudinaryConfig } from "@/lib/cloudinary";
-import { v2 as cloudinary } from "cloudinary";
+import { deleteCloudinaryAsset, uploadImageToCloudinary } from "@/lib/cloudinary";
 import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
 import type { MediaUploadState } from "./types";
 
@@ -29,7 +28,7 @@ export async function uploadMedia(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const uploadFolder = sanitizeUploadFolder(folder || "admino/media");
+  const uploadFolder = sanitizeUploadFolder(folder || "media");
   let resourceType: "image" | "video";
   try {
     resourceType = validateUploadBuffer(buffer, file.type);
@@ -38,7 +37,7 @@ export async function uploadMedia(
   }
 
   try {
-    const result = await uploadImageToCloudinary(buffer, uploadFolder, resourceType);
+    const result = await uploadImageToCloudinary(siteId, buffer, uploadFolder, resourceType);
 
     const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     await db.insert(media).values({
@@ -132,6 +131,11 @@ export async function getMediaFolders() {
 
 export async function deleteMediaItem(mediaId: number) {
   const siteId = await getCurrentSiteRequiringFeatureForRole("media", "editor");
+  const [item] = await db.select().from(media).where(and(eq(media.id, mediaId), eq(media.siteId, siteId)));
+  if (!item) return;
+  if (item.publicId) {
+    await deleteCloudinaryAsset(siteId, item.publicId, item.mimeType.startsWith("video/") ? "video" : "image");
+  }
   await db.delete(media).where(and(eq(media.id, mediaId), eq(media.siteId, siteId)));
   revalidatePath("/admin/media");
 }
@@ -170,17 +174,9 @@ export async function createMediaFolder(folderName: string) {
 export async function deleteMediaFolder(folder: string) {
   const siteId = await getCurrentSiteRequiringFeatureForRole("media", "editor");
   const items = await db.select().from(media).where(and(eq(media.folder, folder), eq(media.siteId, siteId)));
-  const config = await getCloudinaryConfig();
-  if (config) {
-    cloudinary.config(config);
-    for (const item of items) {
-      if (item.publicId) {
-        try {
-          await cloudinary.uploader.destroy(item.publicId, {
-            resource_type: item.mimeType.startsWith("video/") ? "video" : "image",
-          });
-        } catch { /* best effort */ }
-      }
+  for (const item of items) {
+    if (item.publicId) {
+      await deleteCloudinaryAsset(siteId, item.publicId, item.mimeType.startsWith("video/") ? "video" : "image");
     }
   }
   await db.delete(media).where(and(eq(media.folder, folder), eq(media.siteId, siteId)));

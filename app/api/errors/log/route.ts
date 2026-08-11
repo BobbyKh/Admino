@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get("user-agent") ?? undefined;
     const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip") ?? undefined;
-    const site = await getSiteForRequest((request.headers.get("host") ?? "").split(":")[0], request.nextUrl.searchParams.get("site"));
+    const siteSlug = process.env.NODE_ENV === "development" ? request.nextUrl.searchParams.get("site") : null;
+    const site = await getSiteForRequest((request.headers.get("host") ?? "").split(":")[0], siteSlug);
 
     await logError({
       siteId: site?.id,

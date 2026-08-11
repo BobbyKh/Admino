@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 
 interface UsageInfo {
   provider: string;
@@ -54,9 +55,8 @@ async function fetchGoogleUsage(apiKey: string): Promise<UsageInfo> {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getSessionUser())) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireActionRole("admin");
+    await getCurrentSiteRequiringFeature("settings");
     const { provider, apiKey } = (await req.json()) as {
       provider: string;
       apiKey: string;
@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof Error && err.message === "Forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const message = err instanceof Error ? err.message : "Failed to check usage";
     return NextResponse.json({ error: message }, { status: 500 });
   }

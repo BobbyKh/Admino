@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
+import { requireActionRole } from "@/lib/auth";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 import { validateAiBaseUrl } from "@/lib/ai-provider";
 
 interface ModelInfo {
@@ -71,9 +72,8 @@ async function fetchGoogleModels(apiKey: string): Promise<ModelInfo[]> {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getSessionUser())) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireActionRole("admin");
+    await getCurrentSiteRequiringFeature("settings");
     const { provider, apiKey, baseUrl } = (await req.json()) as {
       provider: string;
       apiKey: string;
@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ models });
   } catch (err) {
+    if (err instanceof Error && err.message === "Forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const message = err instanceof Error ? err.message : "Failed to fetch models";
     return NextResponse.json({ error: message }, { status: 500 });
   }

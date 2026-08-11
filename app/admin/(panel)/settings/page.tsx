@@ -1,13 +1,16 @@
 import { SettingsForm } from "@/components/admin/settings-form";
-import { getAdminSiteId, getAllAdminSites } from "@/lib/admin-site";
+import { getAllAdminSites } from "@/lib/admin-site";
 import { getSettingsRows } from "@/lib/settings-admin";
+import { requireRole } from "@/lib/auth";
+import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
-  const [rows, activeSiteId, sites] = await Promise.all([
-    getSettingsRows(),
-    getAdminSiteId(),
+  await requireRole("admin");
+  const activeSiteId = await getCurrentSiteRequiringFeature("settings");
+  const [rows, sites] = await Promise.all([
+    getSettingsRows(activeSiteId),
     getAllAdminSites(),
   ]);
   const activeSite = sites.find((site) => site.id === activeSiteId);

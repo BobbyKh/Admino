@@ -6,7 +6,7 @@ export { addMenuCategory, deleteMenuCategory, addMenuItem, updateMenuItem, delet
 export { uploadMedia, getMediaItems, getMediaFolders, deleteMediaItem, updateMediaAlt, moveMediaToFolder, createMediaFolder, deleteMediaFolder } from "./media";
 export { getNavLinks, addNavLink, updateNavLink, deleteNavLink, reorderNavLinks } from "./navigation";
 export { getHomeSections, addHomeSection, updateHomeSection, deleteHomeSection, reorderHomeSections } from "./home-sections";
-export { createSite, onboardSite, updateSite, deleteSite, checkSiteDomain, getSites, getAllTenantFeatureAccess, getSitePublishReadiness, type SitePublishReadiness } from "./sites";
+export { createSite, onboardSite, updateSite, deleteSite, checkSiteDomain, getSites, getAllTenantFeatureAccess, getSitePublishReadiness, selectAdminSite, type SitePublishReadiness } from "./sites";
 export { getPages, getPagesForCurrentSite, getPage, createPage, updatePage, deletePage, reorderPages, getPageBlocks, addPageBlock, updatePageBlock, deletePageBlock, reorderPageBlocks, getPageRevisions, restorePageRevision } from "./pages";
 export { getAdminUsers, getSitesForCurrentUser, getCurrentUserRole, createAdminUser, updateAdminUser, deleteAdminUser, getUserFeatures, updateUserFeatures } from "./users";
 export { uploadImage } from "./uploads";
