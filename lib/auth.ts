@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
 import { verifyPassword } from "@/lib/password";
 
-const SESSION_COOKIE = "maiti_admin_session";
+const SESSION_COOKIE = "admino_session";
 
 function getAuthSecret(): Uint8Array {
   if (!process.env.AUTH_SECRET) {

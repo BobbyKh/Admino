@@ -10,19 +10,14 @@ interface ChatMessage {
 
 function buildSystemPrompt(settings: Record<string, string>, customPrompt: string): string {
   if (customPrompt) return customPrompt;
-  return `You are a friendly, helpful AI assistant for ${settings.siteName || "Maiti Resort"}, a dining and relaxation venue in Kirtipur, Nepal.
+  const siteName = settings.siteName || "our business";
+  const address = settings.address || "";
+  const hours = settings.hours || "";
+  const phone = settings.phone || "";
+  const email = settings.email || "";
+  return `You are a friendly, helpful AI assistant for ${siteName}.${address ? ` Located at ${address}.` : ""}${hours ? ` Open hours: ${hours}.` : ""}${phone ? ` Phone: ${phone}.` : ""}${email ? ` Email: ${email}.` : ""}
 
-Key facts:
-- Address: ${settings.address || "Kirtipur 44600, Nepal"}
-- Hours: ${settings.hours || "Open daily 10 AM – 10 PM"}
-- Phone: ${settings.phone || "+977 974-6510970"}
-- Email: ${settings.email || "hello@maitiresort.com"}
-- Price range: ${settings.priceRange || "NPR 500 – NPR 1,000"}
-- Rating: ${settings.rating || "4.2"} (${settings.reviewCount || "120+"} reviews)
-- Services: Dine-in, Takeout, Curbside pickup
-- Menu categories: Breakfast, Lunch & Dinner, Desserts, Coffee & Bar
-
-Be concise, conversational, and helpful. Answer questions about the menu, hours, location, reservations, and services. If asked about something you don't know, politely suggest contacting the resort directly.`;
+Be concise, conversational, and helpful. Answer questions about the menu, hours, location, reservations, and services. If asked about something you don't know, politely suggest contacting the business directly.`;
 }
 
 async function callOpenAI(apiKey: string, model: string, baseUrl: string, messages: ChatMessage[]): Promise<string> {
@@ -95,9 +90,9 @@ async function callGoogle(apiKey: string, model: string, baseUrl: string, messag
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting
+    // Rate limiting — scoped per IP to prevent AI cost abuse
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-    const { allowed } = await checkRateLimit(ip);
+    const { allowed } = await checkRateLimit(`chat:${ip}`);
     if (!allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },

@@ -31,12 +31,12 @@ const getSmtpConfig = cache(async () => {
       rows.smtpFrom ||
       process.env.SMTP_FROM ||
       user ||
-      "no-reply@maitiresort.com",
+      `no-reply@${process.env.PLATFORM_DOMAIN ?? "example.com"}`,
     notifyTo:
       rows.adminNotifyEmail ||
       process.env.ADMIN_NOTIFY_EMAIL ||
       user ||
-      "admin@maitiresort.com",
+      `admin@${process.env.PLATFORM_DOMAIN ?? "example.com"}`,
   };
 });
 
@@ -66,11 +66,12 @@ async function sendMail(to: string, subject: string, html: string) {
 
 export async function sendBookingConfirmation(booking: Booking) {
   const when = formatBookingDate(booking.date, booking.time);
+  const siteName = await getSiteName(booking.siteId ?? 0);
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
-    <h2 style="color:#166534">Booking Received — Maiti Resort</h2>
+    <h2 style="color:#166534">Booking Received — ${escapeHtml(siteName)}</h2>
     <p>Dear <strong>${escapeHtml(booking.name)}</strong>,</p>
-    <p>Thank you for choosing Maiti Resort! Your booking request has been received and we will confirm it shortly.</p>
+    <p>Thank you for choosing ${escapeHtml(siteName)}! Your booking request has been received and we will confirm it shortly.</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
       <tr><td style="border:1px solid #ddd"><strong>Date &amp; Time</strong></td><td style="border:1px solid #ddd">${escapeHtml(when)}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Guests</strong></td><td style="border:1px solid #ddd">${booking.guests}</td></tr>
@@ -78,14 +79,14 @@ export async function sendBookingConfirmation(booking: Booking) {
       ${booking.notes ? `<tr><td style="border:1px solid #ddd"><strong>Special requests</strong></td><td style="border:1px solid #ddd">${escapeHtml(booking.notes)}</td></tr>` : ""}
       <tr><td style="border:1px solid #ddd"><strong>Booking ID</strong></td><td style="border:1px solid #ddd">#${booking.id}</td></tr>
     </table>
-    <p>Maiti Resort · Kirtipur 44600, Nepal · +977 974-6510970</p>
-    <p style="color:#666;font-size:12px">Open daily 10:00 AM – 10:00 PM</p>
+    <p style="color:#666;font-size:12px">${escapeHtml(siteName)}</p>
   </div>`;
-  return sendMail(booking.email, "Booking received — Maiti Resort", html);
+  return sendMail(booking.email, `Booking received — ${siteName}`, html);
 }
 
 export async function sendBookingAdminAlert(booking: Booking) {
   const when = formatBookingDate(booking.date, booking.time);
+  const siteName = await getSiteName(booking.siteId ?? 0);
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
     <h2 style="color:#166534">New Booking Request #${booking.id}</h2>
@@ -100,22 +101,23 @@ export async function sendBookingAdminAlert(booking: Booking) {
     <p><a href="${process.env.SITE_URL ?? "http://localhost:3000"}/admin/bookings">Open admin panel</a></p>
   </div>`;
   const { notifyTo } = await getSmtpConfig();
-  return sendMail(notifyTo, `New booking request #${booking.id} — Maiti Resort`, html);
+  return sendMail(notifyTo, `New booking request #${booking.id} — ${siteName}`, html);
 }
 
 export async function sendBookingStatusEmail(booking: Booking, status: string) {
   const when = formatBookingDate(booking.date, booking.time);
+  const siteName = await getSiteName(booking.siteId ?? 0);
   const message =
     status === "confirmed"
       ? "Great news — your table has been <strong>confirmed</strong>! We look forward to hosting you."
       : status === "cancelled"
         ? "Unfortunately your booking has been <strong>cancelled</strong>. Please contact us if this is in error."
         : status === "completed"
-          ? "Thank you for visiting Maiti Resort! We hope you had a wonderful time."
+          ? `Thank you for visiting ${escapeHtml(siteName)}! We hope you had a wonderful time.`
           : "Your booking is currently pending confirmation.";
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1a1a1a">
-    <h2 style="color:#166534">Booking Update — Maiti Resort</h2>
+    <h2 style="color:#166534">Booking Update — ${escapeHtml(siteName)}</h2>
     <p>Dear <strong>${escapeHtml(booking.name)}</strong>,</p>
     <p>${message}</p>
     <table style="border-collapse:collapse;width:100%;margin:16px 0" cellpadding="8">
@@ -123,9 +125,9 @@ export async function sendBookingStatusEmail(booking: Booking, status: string) {
       <tr><td style="border:1px solid #ddd"><strong>Guests</strong></td><td style="border:1px solid #ddd">${booking.guests}</td></tr>
       <tr><td style="border:1px solid #ddd"><strong>Booking ID</strong></td><td style="border:1px solid #ddd">#${booking.id}</td></tr>
     </table>
-    <p>Maiti Resort · Kirtipur 44600, Nepal · +977 974-6510970</p>
+    <p style="color:#666;font-size:12px">${escapeHtml(siteName)}</p>
   </div>`;
-  return sendMail(booking.email, `Booking ${status} — Maiti Resort`, html);
+  return sendMail(booking.email, `Booking ${status} — ${siteName}`, html);
 }
 
 export async function sendContactAdminAlert(message: {
