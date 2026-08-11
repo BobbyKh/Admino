@@ -6,6 +6,10 @@ import { getSessionUser, type Role } from "@/lib/auth";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { requireTenantFeature } from "@/lib/tenant-features";
 import { sanitizeUploadFolder, validateUploadBuffer } from "@/lib/upload-validation";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) {
