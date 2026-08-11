@@ -4,7 +4,6 @@ import {
   getResolvedGallery,
   getResolvedHomeSections,
   getResolvedSiteSettings,
-  getPageBlocks,
   getPageBySlug,
   getActiveProducts,
   getActiveServiceCatalog,
@@ -12,12 +11,14 @@ import {
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getResolvedSite } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
+import { getResolvedLocale, getTranslatedPage, getTranslatedPageBlocks } from "@/lib/i18n";
 
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [settings, site, siteId] = await Promise.all([getResolvedSiteSettings(), getResolvedSite(), getResolvedSiteId()]);
-  const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
+  const [settings, site, siteId, locale] = await Promise.all([getResolvedSiteSettings(), getResolvedSite(), getResolvedSiteId(), getResolvedLocale()]);
+  const sourceHomepage = siteId ? await getPageBySlug(siteId, "home") : null;
+  const homepage = sourceHomepage ? await getTranslatedPage(sourceHomepage.id, locale) : null;
   const title = homepage?.metaTitle || (settings.siteName ? `${settings.siteName} — ${settings.tagline || "Welcome"}` : undefined);
   const description = homepage?.metaDescription || settings.description?.slice(0, 160) || undefined;
   const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL;
@@ -34,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const siteId = await getResolvedSiteId();
+  const [siteId, locale] = await Promise.all([getResolvedSiteId(), getResolvedLocale()]);
   const [settings, gallery, featured, sections, products, serviceCatalog] = await Promise.all([
     getResolvedSiteSettings(),
     getResolvedGallery(),
@@ -44,7 +45,7 @@ export default async function HomePage() {
     getActiveServiceCatalog(siteId),
   ]);
   const homepage = siteId ? await getPageBySlug(siteId, "home") : null;
-  const homepageBlocks = homepage?.published ? await getPageBlocks(homepage.id) : [];
+  const homepageBlocks = homepage?.published ? await getTranslatedPageBlocks(homepage.id, locale) : [];
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",

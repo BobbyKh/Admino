@@ -54,39 +54,43 @@ export async function getSiteLocalesById(siteId: number): Promise<Locale[]> {
 export const getResolvedLocale = cache(async (): Promise<string> => {
   const hdrs = await headers();
   const cookieStore = await cookies();
+  const locales = await getSiteLocales();
+  const localeCodes = new Set(locales.map((locale) => locale.code.toLowerCase()));
 
-  // 1. Check for locale in x-locale header (set by middleware)
-  const headerLocale = hdrs.get("x-locale");
-  if (headerLocale) return headerLocale;
-
-  // 2. Check cookie
+  // 1. Check the tenant-validated locale cookie.
   const cookieLocale = cookieStore.get("admino_locale")?.value;
-  if (cookieLocale) return cookieLocale;
+  const matchedCookie = matchLocale(cookieLocale, localeCodes);
+  if (matchedCookie) return matchedCookie;
 
-  // 3. Check Accept-Language header
+  // 2. Check Accept-Language using exact tag then base-language fallback.
   const acceptLanguage = hdrs.get("accept-language");
   if (acceptLanguage) {
     const preferred = acceptLanguage
       .split(",")
       .map((lang) => {
         const [code, q] = lang.trim().split(";");
-        return { code: code.split("-")[0].toLowerCase(), q: q ? parseFloat(q.replace("q=", "")) : 1 };
+        return { code: code.toLowerCase(), q: q ? parseFloat(q.replace("q=", "")) : 1 };
       })
       .sort((a, b) => b.q - a.q);
 
-    const locales = await getSiteLocales();
-    const localeCodes = new Set(locales.map((l) => l.code));
-
     for (const { code } of preferred) {
-      if (localeCodes.has(code)) return code;
+      const matched = matchLocale(code, localeCodes);
+      if (matched) return matched;
     }
   }
 
-  // 4. Default locale
-  const locales = await getSiteLocales();
+  // 3. Default locale
   const defaultLocale = locales.find((l) => l.isDefault);
   return defaultLocale?.code ?? DEFAULT_LOCALE;
 });
+
+function matchLocale(value: string | undefined, localeCodes: Set<string>) {
+  const code = value?.trim().toLowerCase();
+  if (!code) return null;
+  if (localeCodes.has(code)) return code;
+  const base = code.split("-")[0];
+  return localeCodes.has(base) ? base : null;
+}
 
 /**
  * Get a page with its translation for the given locale.

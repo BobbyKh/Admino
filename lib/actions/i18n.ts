@@ -20,17 +20,37 @@ import { requirePageAccess, requirePageBlockAccess } from "@/lib/tenant-access";
 
 export async function getLocales() {
   await requireActionRole("viewer");
-  return getSiteLocalesById(await getCurrentAdminSiteId());
+  const siteId = await getCurrentAdminSiteId();
+  await ensureSourceLocale(siteId);
+  return getSiteLocalesById(siteId);
 }
 
 const localeSchema = z.object({
-  code: z.string().min(2).max(10),
-  name: z.string().min(1).max(50),
+  code: z.string().trim().toLowerCase().regex(/^[a-z]{2,3}(?:-[a-z]{2})?$/, "Use a valid language code such as ne or ne-np."),
+  name: z.string().trim().min(1).max(50),
 });
+
+async function ensureSourceLocale(siteId: number) {
+  const rows = await db.select().from(siteLocales).where(eq(siteLocales.siteId, siteId));
+  if (rows.some((locale) => locale.code === DEFAULT_LOCALE)) return;
+  await db.transaction(async (tx) => {
+    if (rows.length === 1 && rows[0].isDefault) {
+      await tx.update(siteLocales).set({ isDefault: false }).where(and(eq(siteLocales.id, rows[0].id), eq(siteLocales.siteId, siteId)));
+    }
+    await tx.insert(siteLocales).values({
+      siteId,
+      code: DEFAULT_LOCALE,
+      name: "English",
+      isDefault: rows.length === 0 || (rows.length === 1 && rows[0].isDefault),
+      sortOrder: 0,
+    }).onConflictDoNothing();
+  });
+}
 
 export async function addLocale(_prev: unknown, formData: FormData) {
   await requireActionRole("admin");
   const siteId = await getCurrentAdminSiteId();
+  await ensureSourceLocale(siteId);
 
   const parsed = localeSchema.safeParse({
     code: formData.get("code"),
@@ -40,7 +60,7 @@ export async function addLocale(_prev: unknown, formData: FormData) {
     return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const code = parsed.data.code.toLowerCase();
+  const code = parsed.data.code;
 
   // Check if locale already exists for this site
   const existing = await db
@@ -71,6 +91,7 @@ export async function addLocale(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath("/admin/i18n");
+  revalidatePath("/", "layout");
   return { success: true, message: "Locale added." };
 }
 
@@ -101,6 +122,7 @@ export async function deleteLocale(localeId: number) {
   });
 
   revalidatePath("/admin/i18n");
+  revalidatePath("/", "layout");
   return { success: true, message: "Locale deleted." };
 }
 
@@ -117,6 +139,7 @@ export async function setDefaultLocale(localeId: number) {
   });
 
   revalidatePath("/admin/i18n");
+  revalidatePath("/", "layout");
   return { success: true, message: "Default locale updated." };
 }
 

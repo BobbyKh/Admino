@@ -30,7 +30,7 @@ export function LocaleSwitcher({
 
   useEffect(() => {
     if (pendingCode) {
-      document.cookie = `admino_locale=${pendingCode};path=/;max-age=${60 * 60 * 24 * 365}`;
+      document.cookie = `admino_locale=${encodeURIComponent(pendingCode)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPendingCode(null);
       setPending(false);

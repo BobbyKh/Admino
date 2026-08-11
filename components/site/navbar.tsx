@@ -26,6 +26,7 @@ export function Navbar({
   showSiteName = true,
   sticky = true,
   locales,
+  currentLocale = "en",
 }: {
   settings: SiteSettings;
   navLinks: NavLink[];
@@ -34,6 +35,7 @@ export function Navbar({
   showSiteName?: boolean;
   sticky?: boolean;
   locales?: Array<{ code: string; name: string; isDefault: boolean }>;
+  currentLocale?: string;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -90,7 +92,7 @@ export function Navbar({
           {locales && locales.length > 1 && (
             <LocaleSwitcher
               locales={locales}
-              currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
+              currentLocale={currentLocale}
             />
           )}
           {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label="View cart">
@@ -146,7 +148,7 @@ export function Navbar({
               {locales && locales.length > 1 && (
                 <LocaleSwitcher
                   locales={locales} 
-                  currentLocale={locales.find((l) => l.isDefault)?.code ?? "en"}
+                  currentLocale={currentLocale}
                 />
               )}
               {showCart && <Link href={withPreviewSite("/cart", siteSlug)} onClick={() => setOpen(false)}><Button variant="outline" className="w-full gap-2"><ShoppingCart className="size-4" />Cart</Button></Link>}

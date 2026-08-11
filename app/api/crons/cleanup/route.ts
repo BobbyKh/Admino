@@ -12,6 +12,6 @@ function authorized(request: NextRequest) {
 export async function GET(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await deleteExpiredRateLimitBuckets();
+await deleteExpiredRateLimitBuckets();
   return NextResponse.json({ ok: true });
 }

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { navLinks, pageBlocks, pages, paymentConfigurations, products, settings, sites } from "@/lib/db/schema";
+import { navLinks, pageBlocks, pages, paymentConfigurations, products, settings, siteLocales, sites } from "@/lib/db/schema";
 import { requireActionRole, requireRole } from "@/lib/auth";
 import { requireSiteAccess } from "@/lib/tenant-access";
 import { createDefaultHomepage } from "@/lib/default-homepage";
@@ -87,6 +87,7 @@ export async function createSite(
       published: false,
     })
     .returning({ id: sites.id });
+  await db.insert(siteLocales).values({ siteId: site.id, code: "en", name: "English", isDefault: true });
   if (template === "ecommerce") {
     await createEcommerceTemplate(site.id, name);
   } else {
@@ -127,6 +128,7 @@ export async function onboardSite(
     domainError: domain ? "Domain has not been verified yet." : null,
     published: false,
   }).returning({ id: sites.id });
+  await db.insert(siteLocales).values({ siteId: site.id, code: "en", name: "English", isDefault: true });
 
   const now = new Date().toISOString();
   const settingValues: Record<string, string> = {

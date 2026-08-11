@@ -54,7 +54,7 @@ export default function I18nPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showTranslate, setShowTranslate] = useState(false);
   const [translatePageId, setTranslatePageId] = useState("");
-  const [translateTargetLang, setTranslateTargetLang] = useState("");
+  const [translateTargetLocale, setTranslateTargetLocale] = useState("");
   const [translateLoading, setTranslateLoading] = useState(false);
   const [pages, setPages] = useState<Array<{ id: number; title: string }>>([]);
   const addFormRef = useRef<HTMLFormElement>(null);
@@ -70,14 +70,18 @@ export default function I18nPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await addLocale({}, formData);
-      if (result?.success) {
-        toast.success(result.message);
-        setShowAdd(false);
-        const updated = await getLocales();
-        setLocales(updated as Locale[]);
-      } else {
-        toast.error(result?.message ?? "Failed");
+      try {
+        const result = await addLocale({}, formData);
+        if (result?.success) {
+          toast.success(result.message);
+          setShowAdd(false);
+          const updated = await getLocales();
+          setLocales(updated as Locale[]);
+        } else {
+          toast.error(result?.message ?? "Failed");
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to add locale.");
       }
     });
   }
@@ -107,7 +111,7 @@ export default function I18nPage() {
   }
 
   async function handleTranslate() {
-    if (!translatePageId || !translateTargetLang) {
+    if (!translatePageId || !translateTargetLocale) {
       toast.error("Select a page and target language.");
       return;
     }
@@ -115,7 +119,7 @@ export default function I18nPage() {
     try {
       const result = await translatePageBlocksWithAi(
         Number(translatePageId),
-        translateTargetLang
+        translateTargetLocale
       );
       if ("success" in result && result.success) {
         toast.success(result.message);
@@ -123,8 +127,8 @@ export default function I18nPage() {
       } else {
         toast.error("error" in result ? result.error : result.message);
       }
-    } catch {
-      toast.error("Translation failed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Translation failed.");
     } finally {
       setTranslateLoading(false);
     }
@@ -151,14 +155,14 @@ export default function I18nPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Languages (i18n)</h1>
           <p className="text-sm text-muted-foreground">
             Manage languages for your site. Add locales to enable multi-language content.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={openTranslateDialog}>
             <Sparkles className="mr-2 size-4 text-primary" />
             AI Translate
@@ -303,13 +307,12 @@ export default function I18nPage() {
             </div>
             <div className="space-y-2">
               <Label>Target Language *</Label>
-              <Input
-                value={translateTargetLang}
-                onChange={(e) => setTranslateTargetLang(e.target.value)}
-                placeholder="e.g. French, Spanish, German"
-              />
+              <select value={translateTargetLocale} onChange={(e) => setTranslateTargetLocale(e.target.value)} className="w-full rounded-md border bg-background px-3 py-2 text-sm">
+                <option value="">Choose a locale...</option>
+                {locales.filter((locale) => locale.code !== "en").map((locale) => <option key={locale.code} value={locale.code}>{locale.name} ({locale.code})</option>)}
+              </select>
               <p className="text-xs text-muted-foreground">
-                Enter the full language name (e.g. French, Japanese)
+                Translations are stored separately and do not overwrite the source page.
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -327,7 +330,7 @@ export default function I18nPage() {
         <h3 className="mb-2 font-medium">How translations work</h3>
         <ul className="space-y-1 text-sm text-muted-foreground">
           <li>• Add locales above to enable multi-language content</li>
-          <li>• The default locale uses original page content</li>
+          <li>• English is the source content; other locales use separate translations</li>
           <li>• Translations are stored per-page and per-block</li>
           <li>• Visitors are auto-detected via Accept-Language header</li>
           <li>• Users can switch languages via the locale switcher in the navbar</li>

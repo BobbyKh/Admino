@@ -2,8 +2,9 @@
 
 import { z } from "zod";
 import { and, eq, asc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { pageBlocks, pageRevisions } from "@/lib/db/schema";
+import { blockTranslations, pageBlocks, siteLocales } from "@/lib/db/schema";
 import { hasMinRole, type Role } from "@/lib/auth";
 import { getAllServerSettings } from "@/lib/data";
 import { requirePageAccess, requireSiteAccess } from "@/lib/tenant-access";
@@ -17,7 +18,7 @@ export type TranslatePageResult = { success: boolean; message: string; translate
  */
 export async function translatePageBlocksWithAi(
   pageId: number,
-  targetLanguage: string
+  targetLocale: string
 ): Promise<TranslatePageResult> {
   try {
     const page = await requirePageAccess(pageId);
@@ -30,12 +31,16 @@ export async function translatePageBlocksWithAi(
       userId: user.id,
     });
 
+    const localeCode = z.string().trim().toLowerCase().min(2).max(10).parse(targetLocale);
+    const [locale] = await db.select().from(siteLocales).where(and(eq(siteLocales.siteId, page.siteId), eq(siteLocales.code, localeCode), eq(siteLocales.active, true)));
+    if (!locale) throw new Error("Target locale is not enabled for this site.");
+
     const settings = await getAllServerSettings(page.siteId);
     if (!settings.aiApiKey) {
       throw new Error("Configure an AI API key in Settings → Integrations first.");
     }
 
-    const lang = z.string().trim().min(2, "Enter target language.").max(60).parse(targetLanguage);
+    const lang = locale.name;
     const blocks = await db
       .select()
       .from(pageBlocks)
@@ -45,14 +50,6 @@ export async function translatePageBlocksWithAi(
     if (blocks.length === 0) {
       return { success: false, message: "Page has no blocks to translate." };
     }
-
-    // Save snapshot before translation
-    await db.insert(pageRevisions).values({
-      pageId,
-      userId: user.id,
-      label: `Before AI Translation to ${lang}`,
-      snapshot: JSON.stringify({ blocks }),
-    });
 
     const blockPayload = blocks.map((b) => ({
       id: b.id,
@@ -97,20 +94,25 @@ Do not include markdown code block formatting.`;
     await db.transaction(async (tx) => {
       for (const item of translatedArray) {
         if (typeof item.id !== "number" || !allowedBlockIds.has(item.id)) continue;
-        const updates: { title?: string | null; config?: string; updatedAt: string } = {
-          updatedAt: new Date().toISOString(),
-        };
+        const updates: { title?: string | null; config?: string; updatedAt: string } = { updatedAt: new Date().toISOString() };
         if (item.title !== undefined) updates.title = item.title;
         if (item.config !== undefined) updates.config = JSON.stringify(item.config);
+        if (item.title === undefined && item.config === undefined) continue;
 
-        await tx.update(pageBlocks).set(updates).where(and(eq(pageBlocks.id, item.id), eq(pageBlocks.pageId, pageId)));
+        await tx.insert(blockTranslations).values({ blockId: item.id, locale: locale.code, title: updates.title, config: updates.config, updatedAt: updates.updatedAt }).onConflictDoUpdate({
+          target: [blockTranslations.blockId, blockTranslations.locale],
+          set: updates,
+        });
         updatedCount++;
       }
     });
 
+    if (updatedCount === 0) throw new Error("AI returned no usable translated blocks.");
+    revalidatePath("/");
+    revalidatePath(`/${page.slug}`);
     return {
       success: true,
-      message: `Successfully translated ${updatedCount} blocks into ${lang}. Snapshot created.`,
+      message: `Successfully translated ${updatedCount} blocks into ${lang}.`,
       translatedBlocksCount: updatedCount,
     };
   } catch (error) {

@@ -87,8 +87,10 @@ test("locale deletion scopes translations through tenant pages and blocks", () =
   assert.match(file, /isSiteLocale\(page\.siteId, locale\)/);
 });
 
-test("AI translation updates only blocks from the authorized page", () => {
+test("AI translation stores locale rows only for blocks from the authorized page", () => {
   const file = source("lib/actions/translation-ai.ts");
   assert.match(file, /allowedBlockIds\.has\(item\.id\)/);
   assert.match(file, /eq\(pageBlocks\.pageId, pageId\)/);
+  assert.match(file, /tx\.insert\(blockTranslations\)/);
+  assert.doesNotMatch(file, /tx\.update\(pageBlocks\)/);
 });

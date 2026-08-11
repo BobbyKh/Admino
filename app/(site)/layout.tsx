@@ -5,7 +5,7 @@ import { StorefrontProviders } from "@/components/site/storefront-providers";
 import { getResolvedSiteSettings, getResolvedNavLinks } from "@/lib/data";
 import { getResolvedSite } from "@/lib/site-context";
 import { getLayoutSettings } from "@/lib/layout-settings";
-import { getSiteLocales } from "@/lib/i18n";
+import { getResolvedLocale, getSiteLocales } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 
 export default async function SiteLayout({
@@ -13,11 +13,12 @@ export default async function SiteLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [site, settings, navLinks, locales] = await Promise.all([
+  const [site, settings, navLinks, locales, currentLocale] = await Promise.all([
     getResolvedSite(),
     getResolvedSiteSettings(),
     getResolvedNavLinks(),
     getSiteLocales(),
+    getResolvedLocale(),
   ]);
   if (!site?.published) notFound();
   const layout = await getLayoutSettings(site.id);
@@ -29,7 +30,7 @@ export default async function SiteLayout({
       >
         Skip to content
       </a>
-      {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showLogo={layout.headerShowLogo} showSiteName={layout.headerShowSiteName} showCart={site.template === "ecommerce" && layout.headerShowCart} locales={locales} />}
+      {layout.headerVisible && <Navbar settings={settings} navLinks={navLinks} sticky={layout.headerSticky} showLogo={layout.headerShowLogo} showSiteName={layout.headerShowSiteName} showCart={site.template === "ecommerce" && layout.headerShowCart} locales={locales} currentLocale={currentLocale} />}
       <main id="main-content" data-template={site.template} className="flex-1">{children}</main>
       {layout.footerVisible && <Footer settings={settings} navLinks={navLinks} layout={layout} />}
       {(settings.aiChatEnabled === "true" || settings.aiRagEnabled === "true") && settings.hasAiApiKey === "true" && (

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   getPageBySlug,
-  getPageBlocks,
   getResolvedFeaturedItems,
   getResolvedGallery,
   getResolvedSiteSettings,
@@ -12,6 +11,7 @@ import {
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getResolvedSite } from "@/lib/site-context";
 import { SectionRenderer } from "@/components/site/sections/section-renderer";
+import { getResolvedLocale, getTranslatedPage, getTranslatedPageBlocks } from "@/lib/i18n";
 
 export const revalidate = 300;
 
@@ -21,10 +21,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const siteId = await getResolvedSiteId();
+  const [siteId, locale] = await Promise.all([getResolvedSiteId(), getResolvedLocale()]);
   if (!siteId) return {};
-  const [page, site, settings] = await Promise.all([getPageBySlug(siteId, slug), getResolvedSite(), getResolvedSiteSettings()]);
-  if (!page || !page.published) return {};
+  const [sourcePage, site, settings] = await Promise.all([getPageBySlug(siteId, slug), getResolvedSite(), getResolvedSiteSettings()]);
+  if (!sourcePage || !sourcePage.published) return {};
+  const page = await getTranslatedPage(sourcePage.id, locale);
+  if (!page) return {};
   const title = page.metaTitle || page.title;
   const description = page.metaDescription || page.description || undefined;
   const base = site?.domain ? `https://${site.domain}` : process.env.SITE_URL;
@@ -56,14 +58,16 @@ export default async function CmsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const siteId = await getResolvedSiteId();
+  const [siteId, locale] = await Promise.all([getResolvedSiteId(), getResolvedLocale()]);
   if (!siteId) notFound();
 
-  const page = await getPageBySlug(siteId, slug);
-  if (!page || !page.published) notFound();
+  const sourcePage = await getPageBySlug(siteId, slug);
+  if (!sourcePage || !sourcePage.published) notFound();
+  const page = await getTranslatedPage(sourcePage.id, locale);
+  if (!page) notFound();
 
   const [blocks, settings, galleryImages, featuredItems, products, serviceCatalog] = await Promise.all([
-    getPageBlocks(page.id),
+    getTranslatedPageBlocks(page.id, locale),
     getResolvedSiteSettings(),
     getResolvedGallery(),
     getResolvedFeaturedItems(),
