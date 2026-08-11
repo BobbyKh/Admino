@@ -204,7 +204,7 @@ function computeScore(issues: AuditIssue[], stats: AuditReport["stats"]): number
 
 export async function runAiAudit(siteId: number): Promise<AiAuditResult> {
   try {
-    const user = await requireSiteFeatureForRole(siteId, "ai_site_auditor", "editor");
+    await requireSiteFeatureForRole(siteId, "ai_site_auditor", "editor");
 
     const [settings, pageRows, productRows, blogRows, navRows] = await Promise.all([
       getAllServerSettings(siteId),
