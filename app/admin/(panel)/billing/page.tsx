@@ -404,14 +404,14 @@ export default function BillingPage() {
         {subscriptions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active subscriptions.</p>
         ) : (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border overscroll-x-contain">
+            <table className="min-w-[32rem] w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-left font-medium">Site</th>
-                  <th className="px-4 py-2 text-left font-medium">Plan</th>
-                  <th className="px-4 py-2 text-left font-medium">Status</th>
-                  <th className="px-4 py-2 text-left font-medium">Price</th>
+                  <th className="whitespace-nowrap px-4 py-2 text-left font-medium">Site</th>
+                  <th className="whitespace-nowrap px-4 py-2 text-left font-medium">Plan</th>
+                  <th className="whitespace-nowrap px-4 py-2 text-left font-medium">Status</th>
+                  <th className="whitespace-nowrap px-4 py-2 text-left font-medium">Price</th>
                 </tr>
               </thead>
               <tbody>

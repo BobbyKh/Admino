@@ -237,15 +237,15 @@ export default function UsersPage() {
           ) : users.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div>
+              <Table className="min-w-[760px] table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
+                    <TableHead className="w-72">User</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Site</TableHead>
+                    <TableHead className="w-44">Site</TableHead>
                     <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-36 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -255,13 +255,13 @@ export default function UsersPage() {
                     return (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <div className="flex size-9 items-center justify-center rounded-full bg-muted">
                               <RoleIcon className={`size-4 ${ROLES.find((r) => r.value === user.role)?.color ?? ""}`} />
                             </div>
-                            <div>
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                            <div className="w-52 min-w-0">
+                              <p className="truncate font-medium">{user.name}</p>
+                              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -272,9 +272,9 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           {userSite ? (
-                            <Badge variant="outline" className="gap-1">
+                            <Badge variant="outline" className="max-w-40 gap-1">
                               <Globe className="size-3" />
-                              {userSite.name}
+                              <span className="truncate">{userSite.name}</span>
                             </Badge>
                           ) : (
                             <span className="text-xs text-muted-foreground">Global</span>
@@ -284,11 +284,12 @@ export default function UsersPage() {
                           {new Date(user.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex min-w-32 items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => openAccessDialog(user)}
+                              aria-label={`Manage access for ${user.name}`}
                               title="Manage feature access"
                             >
                               <KeyRound className="size-4" />
@@ -297,12 +298,13 @@ export default function UsersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditingUser(user)}
+                              aria-label={`Edit ${user.name}`}
                             >
                               <Pencil className="size-4" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" aria-label={`Delete ${user.name}`}>
                                   <Trash2 className="size-4" />
                                 </Button>
                               </AlertDialogTrigger>

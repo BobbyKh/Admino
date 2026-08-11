@@ -93,11 +93,11 @@ function RenderBlock({ block }: { block: DocBlock }) {
     case "table":
       return (
         <div className="mb-4 overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+          <table className="min-w-[36rem] w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
                 {block.headers.map((h) => (
-                  <th key={h} className="px-4 py-2 text-left font-medium">{h}</th>
+                  <th key={h} className="whitespace-nowrap px-4 py-2 text-left font-medium">{h}</th>
                 ))}
               </tr>
             </thead>

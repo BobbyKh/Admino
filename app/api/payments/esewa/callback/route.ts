@@ -20,7 +20,14 @@ export async function GET(request: NextRequest) {
   ]);
   if (!configuration || !secretRow?.value || !site) return new NextResponse("eSewa configuration not found.", { status: 503 });
   const config = parseSettings(configuration.settings);
-  const secrets = decryptCommerceSecrets(secretRow.value);
+  let secrets: Record<string, string>;
+  try {
+    secrets = decryptCommerceSecrets(secretRow.value);
+  } catch (error) {
+    console.error("Unable to decrypt eSewa callback credentials.", { siteId: order.siteId, errorType: error instanceof Error ? error.name : "UnknownError" });
+    return new NextResponse("eSewa credentials are temporarily unavailable.", { status: 503 });
+  }
+  if (!secrets.secretKey) return new NextResponse("eSewa signing credentials are unavailable.", { status: 503 });
   const signedFields = payload.signed_field_names?.split(",") ?? [];
   const message = signedFields.map((field) => `${field}=${payload[field] ?? ""}`).join(",");
   const expected = createHmac("sha256", secrets.secretKey).update(message).digest("base64");

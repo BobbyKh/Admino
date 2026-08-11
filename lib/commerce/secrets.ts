@@ -26,5 +26,9 @@ export function decryptCommerceSecrets(value: string) {
   if (!ivValue || !tagValue || !encryptedValue) throw new Error("Invalid encrypted payment secret.");
   const decipher = createDecipheriv(ALGORITHM, getEncryptionKey(), Buffer.from(ivValue, "base64"));
   decipher.setAuthTag(Buffer.from(tagValue, "base64"));
-  return JSON.parse(Buffer.concat([decipher.update(Buffer.from(encryptedValue, "base64")), decipher.final()]).toString("utf8")) as Record<string, string>;
+  const parsed: unknown = JSON.parse(Buffer.concat([decipher.update(Buffer.from(encryptedValue, "base64")), decipher.final()]).toString("utf8"));
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid encrypted payment secret payload.");
+  const entries = Object.entries(parsed);
+  if (entries.some(([, entry]) => typeof entry !== "string")) throw new Error("Invalid encrypted payment secret payload.");
+  return Object.fromEntries(entries) as Record<string, string>;
 }

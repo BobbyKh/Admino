@@ -17,7 +17,13 @@ export async function GET(request: NextRequest) {
   ]);
   if (!configuration || !secretRow?.value) return new NextResponse("eSewa is not configured for this store.", { status: 503 });
   const config = parseSettings(configuration.settings);
-  const secrets = decryptCommerceSecrets(secretRow.value);
+  let secrets: Record<string, string>;
+  try {
+    secrets = decryptCommerceSecrets(secretRow.value);
+  } catch (error) {
+    console.error("Unable to decrypt eSewa credentials.", { siteId: order.siteId, errorType: error instanceof Error ? error.name : "UnknownError" });
+    return new NextResponse("eSewa credentials are temporarily unavailable.", { status: 503 });
+  }
   if (!config.merchantId || !secrets.secretKey) return new NextResponse("eSewa service code and signing key are required.", { status: 503 });
   if (config.mode === "live" && !secrets.clientSecret) return new NextResponse("Live eSewa client secret is required.", { status: 503 });
   const amount = (order.subtotal / 100).toFixed(2);

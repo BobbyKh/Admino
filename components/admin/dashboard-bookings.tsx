@@ -38,10 +38,10 @@ export async function DashboardBookings() {
             No bookings yet. Share the site to start receiving requests!
           </p>
         ) : (
-          <Table>
+          <Table className="min-w-[520px] table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Guest</TableHead>
+                <TableHead className="w-56">Guest</TableHead>
                 <TableHead>Date &amp; time</TableHead>
                 <TableHead>Guests</TableHead>
                 <TableHead>Status</TableHead>
@@ -51,8 +51,8 @@ export async function DashboardBookings() {
               {recentBookings.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>
-                    <p className="font-medium">{b.name}</p>
-                    <p className="text-xs text-muted-foreground">{b.email}</p>
+                    <p className="truncate font-medium">{b.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{b.email}</p>
                   </TableCell>
                   <TableCell className="text-sm">{formatBookingDate(b.date, b.time)}</TableCell>
                   <TableCell className="text-sm">{b.guests}</TableCell>

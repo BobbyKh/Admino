@@ -76,27 +76,27 @@ export default async function AdminBookingsPage({
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <Table>
+              <div>
+                <Table className="min-w-[900px] table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Guest</TableHead>
+                      <TableHead className="w-64">Guest</TableHead>
                       <TableHead>Date &amp; time</TableHead>
                       <TableHead>Guests</TableHead>
-                      <TableHead>Occasion</TableHead>
+                      <TableHead className="w-40">Occasion</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="w-72 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {rows.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="align-top">
+                        <TableCell className="align-top whitespace-normal">
                           <p className="font-medium">{b.name}</p>
-                          <p className="text-xs text-muted-foreground">{b.email}</p>
-                          <p className="text-xs text-muted-foreground">{b.phone}</p>
+                          <p className="truncate text-xs text-muted-foreground">{b.email}</p>
+                          <p className="truncate text-xs text-muted-foreground">{b.phone}</p>
                           {b.notes && (
-                            <p className="mt-1 max-w-52 text-xs text-muted-foreground line-clamp-2">
+                            <p className="mt-1 line-clamp-2 max-w-52 break-words text-xs text-muted-foreground">
                               &ldquo;{b.notes}&rdquo;
                             </p>
                           )}
@@ -106,7 +106,7 @@ export default async function AdminBookingsPage({
                         </TableCell>
                         <TableCell className="align-top text-sm">{b.guests}</TableCell>
                         <TableCell className="align-top text-sm">
-                          {b.occasion || "—"}
+                          <span className="block max-w-36 truncate">{b.occasion || "—"}</span>
                         </TableCell>
                         <TableCell className="align-top">
                           <Badge className={STATUS_STYLES[b.status]} variant="outline">
@@ -114,7 +114,7 @@ export default async function AdminBookingsPage({
                           </Badge>
                         </TableCell>
                         <TableCell className="align-top">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex flex-nowrap items-center justify-end gap-2">
                             <form
                               action={updateBookingStatus.bind(null, b.id)}
                               className="flex items-center gap-1"

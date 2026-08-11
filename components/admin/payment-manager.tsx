@@ -13,7 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export function PaymentManager({ configurations, secretStatus }: { configurations: PaymentConfiguration[]; secretStatus: Partial<Record<TestPaymentProvider, string[]>> }) {
+type PaymentSecretStatus = Partial<Record<TestPaymentProvider, { fields: string[]; unreadable: boolean }>>;
+
+export function PaymentManager({ configurations, secretStatus }: { configurations: PaymentConfiguration[]; secretStatus: PaymentSecretStatus }) {
   const [pending, startTransition] = React.useTransition();
 
   return (
@@ -41,7 +43,8 @@ export function PaymentManager({ configurations, secretStatus }: { configuration
               key={provider}
               provider={provider}
               configuration={configurations.find((item) => item.provider === provider)}
-              savedSecrets={secretStatus[provider] ?? []}
+              savedSecrets={secretStatus[provider]?.fields ?? []}
+              secretsUnreadable={secretStatus[provider]?.unreadable ?? false}
               pending={pending}
               startTransition={startTransition}
             />
@@ -52,7 +55,7 @@ export function PaymentManager({ configurations, secretStatus }: { configuration
   );
 }
 
-function ProviderForm({ provider, configuration, savedSecrets, pending, startTransition }: { provider: TestPaymentProvider; configuration?: PaymentConfiguration; savedSecrets: string[]; pending: boolean; startTransition: React.TransitionStartFunction }) {
+function ProviderForm({ provider, configuration, savedSecrets, secretsUnreadable, pending, startTransition }: { provider: TestPaymentProvider; configuration?: PaymentConfiguration; savedSecrets: string[]; secretsUnreadable: boolean; pending: boolean; startTransition: React.TransitionStartFunction }) {
   const registry = testPaymentProviderRegistry[provider];
   const save = configuration ? updatePaymentConfiguration.bind(null, provider) : createPaymentConfiguration;
   const settings = parseSettings(configuration?.settings);
@@ -75,6 +78,7 @@ function ProviderForm({ provider, configuration, savedSecrets, pending, startTra
       className="rounded-lg border p-4"
     >
       <input type="hidden" name="provider" value={provider} />
+      {secretsUnreadable && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">Saved credentials cannot be decrypted. Re-enter every secret field and save, or remove this payment method and configure it again.</div>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-medium">{registry.label}</p>

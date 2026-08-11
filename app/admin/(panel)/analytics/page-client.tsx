@@ -254,13 +254,13 @@ export function AnalyticsPageClient({ siteId }: { siteId: number }) {
             {data.utmBreakdown.length === 0 ? (
               <p className="text-sm text-muted-foreground">No UTM data yet.</p>
             ) : (
-              <div className="rounded-lg border">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto rounded-lg border overscroll-x-contain">
+                <table className="min-w-[36rem] w-full table-fixed text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
                       <th className="px-3 py-2 text-left font-medium">Source</th>
                       <th className="px-3 py-2 text-left font-medium">Medium</th>
-                      <th className="px-3 py-2 text-left font-medium">Campaign</th>
+                      <th className="w-64 px-3 py-2 text-left font-medium">Campaign</th>
                       <th className="px-3 py-2 text-right font-medium">Views</th>
                     </tr>
                   </thead>
@@ -269,7 +269,7 @@ export function AnalyticsPageClient({ siteId }: { siteId: number }) {
                       <tr key={i} className="border-b last:border-0">
                         <td className="px-3 py-2">{u.source}</td>
                         <td className="px-3 py-2">{u.medium}</td>
-                        <td className="px-3 py-2">{u.campaign}</td>
+                        <td className="px-3 py-2"><span className="block max-w-60 truncate" title={u.campaign}>{u.campaign}</span></td>
                         <td className="px-3 py-2 text-right">{u.count.toLocaleString()}</td>
                       </tr>
                     ))}

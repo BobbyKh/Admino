@@ -184,22 +184,33 @@ function paymentSecretInput(provider: TestPaymentProvider, formData: FormData) {
   return Object.fromEntries(fields[provider].map((field) => [field, String(formData.get(field) ?? "").trim()]).filter(([, value]) => value));
 }
 
-async function savePaymentSecrets(siteId: number, provider: TestPaymentProvider, formData: FormData) {
+async function preparePaymentSecrets(siteId: number, provider: TestPaymentProvider, formData: FormData) {
   const updates = paymentSecretInput(provider, formData);
-  if (Object.keys(updates).length === 0) return;
+  if (Object.keys(updates).length === 0) return null;
   const key = `commerce_payment_${provider}_secrets`;
   const [existing] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, key)));
   let current: Record<string, string> = {};
-  if (existing?.value) current = decryptCommerceSecrets(existing.value);
-  const value = encryptCommerceSecrets({ ...current, ...updates });
-  await db.insert(settings).values({ siteId, key, value, updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [settings.key, settings.siteId], set: { value, updatedAt: new Date().toISOString() } });
+  if (existing?.value) {
+    try {
+      current = decryptCommerceSecrets(existing.value);
+    } catch {
+      const requiredReplacementFields = provider === "esewa" ? ["clientSecret", "secretKey"] : provider === "stripe" ? ["secretKey", "webhookSecret"] : provider === "khalti" ? ["secretKey"] : [];
+      if (!requiredReplacementFields.every((field) => updates[field])) {
+        throw new Error("Saved payment credentials cannot be read. Re-enter every secret field or remove this payment method before saving.");
+      }
+    }
+  }
+  return { key, value: encryptCommerceSecrets({ ...current, ...updates }) };
 }
 
 export async function createPaymentConfiguration(formData: FormData) {
   const siteId = await getCommerceSiteId();
   const configuration = paymentConfigurationInput(formData);
-  await db.insert(paymentConfigurations).values({ siteId, ...configuration, updatedAt: new Date().toISOString() });
-  await savePaymentSecrets(siteId, configuration.provider as TestPaymentProvider, formData);
+  const secret = await preparePaymentSecrets(siteId, configuration.provider as TestPaymentProvider, formData);
+  await db.transaction(async (tx) => {
+    await tx.insert(paymentConfigurations).values({ siteId, ...configuration, updatedAt: new Date().toISOString() });
+    if (secret) await tx.insert(settings).values({ siteId, ...secret, updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [settings.key, settings.siteId], set: { value: secret.value, updatedAt: new Date().toISOString() } });
+  });
   revalidateCommerce();
 }
 
@@ -208,23 +219,33 @@ export async function updatePaymentConfiguration(provider: TestPaymentProvider, 
   if (!isTestPaymentProvider(provider)) throw new Error("Unsupported test payment provider.");
   const configuration = paymentConfigurationInput(formData);
   if (configuration.provider !== provider) throw new Error("Provider cannot be changed.");
-  await db.update(paymentConfigurations).set({
-    enabled: configuration.enabled,
-    accountId: configuration.accountId,
-    settings: configuration.settings,
-    updatedAt: new Date().toISOString(),
-  }).where(and(eq(paymentConfigurations.siteId, siteId), eq(paymentConfigurations.provider, provider)));
-  await savePaymentSecrets(siteId, provider, formData);
+  const secret = await preparePaymentSecrets(siteId, provider, formData);
+  await db.transaction(async (tx) => {
+    await tx.update(paymentConfigurations).set({
+      enabled: configuration.enabled,
+      accountId: configuration.accountId,
+      settings: configuration.settings,
+      updatedAt: new Date().toISOString(),
+    }).where(and(eq(paymentConfigurations.siteId, siteId), eq(paymentConfigurations.provider, provider)));
+    if (secret) await tx.insert(settings).values({ siteId, ...secret, updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: [settings.key, settings.siteId], set: { value: secret.value, updatedAt: new Date().toISOString() } });
+  });
   revalidateCommerce();
 }
 
 export async function getPaymentSecretStatus() {
   const siteId = await getCommerceSiteId();
   const providers: TestPaymentProvider[] = ["stripe", "khalti", "esewa", "qr"];
-  const result: Partial<Record<TestPaymentProvider, string[]>> = {};
+  const result: Partial<Record<TestPaymentProvider, { fields: string[]; unreadable: boolean }>> = {};
   for (const provider of providers) {
     const [row] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, `commerce_payment_${provider}_secrets`)));
-    if (row?.value) result[provider] = Object.keys(decryptCommerceSecrets(row.value));
+    if (row?.value) {
+      try {
+        result[provider] = { fields: Object.keys(decryptCommerceSecrets(row.value)), unreadable: false };
+      } catch (error) {
+        console.error("Unable to decrypt stored payment credentials.", { siteId, provider, errorType: error instanceof Error ? error.name : "UnknownError" });
+        result[provider] = { fields: [], unreadable: true };
+      }
+    }
   }
   return result;
 }

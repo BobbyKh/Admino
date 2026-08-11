@@ -45,7 +45,7 @@ export default async function ActivityLogsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const user = await requireAdmin();
+  await requireAdmin();
   const siteId = await getAdminSiteId();
   const params = await searchParams;
 
@@ -91,14 +91,14 @@ export default async function ActivityLogsPage({
             </p>
           ) : (
             <>
-              <Table>
+              <Table className="min-w-[720px] table-fixed">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Action</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead className="text-right">Time</TableHead>
+                    <TableHead className="w-44">User</TableHead>
+                    <TableHead className="w-44">Entity</TableHead>
+                    <TableHead className="w-52">Details</TableHead>
+                    <TableHead className="w-36 text-right">Time</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -113,16 +113,16 @@ export default async function ActivityLogsPage({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{log.userName}</p>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{log.userName}</p>
                           <p className="text-xs text-muted-foreground">{log.userRole}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium">{ENTITY_LABELS[log.entity] ?? log.entity}</p>
                           {log.entityName && (
-                            <p className="text-xs text-muted-foreground">{log.entityName}</p>
+                            <p className="truncate text-xs text-muted-foreground">{log.entityName}</p>
                           )}
                         </div>
                       </TableCell>
