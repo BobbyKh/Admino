@@ -531,7 +531,7 @@ bun run test
 - Plan-based access control
 
 ### Authentication Flow
-1. Admin logs in → JWT cookie `maiti_admin_session`
+1. Admin logs in → JWT cookie `admino_session`
 2. Server component calls `requireAdmin()` → validates JWT
 3. Server action calls `requireAdmin()` → validates + checks tenant
 4. `requireSiteAccess(siteId)` → verifies user belongs to site

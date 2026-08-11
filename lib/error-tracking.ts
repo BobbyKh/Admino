@@ -72,21 +72,21 @@ export async function getErrorLogs(options: {
   };
 }
 
-export async function getErrorLogById(id: number) {
-  const [error] = await db.select().from(errorLogs).where(eq(errorLogs.id, id));
+export async function getErrorLogById(id: number, siteId: number) {
+  const [error] = await db.select().from(errorLogs).where(and(eq(errorLogs.id, id), eq(errorLogs.siteId, siteId)));
   return error ?? null;
 }
 
-export async function markErrorResolved(id: number) {
-  await db.update(errorLogs).set({ resolved: 1 }).where(eq(errorLogs.id, id));
+export async function markErrorResolved(id: number, siteId: number) {
+  await db.update(errorLogs).set({ resolved: 1 }).where(and(eq(errorLogs.id, id), eq(errorLogs.siteId, siteId)));
 }
 
-export async function markErrorUnresolved(id: number) {
-  await db.update(errorLogs).set({ resolved: 0 }).where(eq(errorLogs.id, id));
+export async function markErrorUnresolved(id: number, siteId: number) {
+  await db.update(errorLogs).set({ resolved: 0 }).where(and(eq(errorLogs.id, id), eq(errorLogs.siteId, siteId)));
 }
 
-export async function deleteErrorLog(id: number) {
-  await db.delete(errorLogs).where(eq(errorLogs.id, id));
+export async function deleteErrorLog(id: number, siteId: number) {
+  await db.delete(errorLogs).where(and(eq(errorLogs.id, id), eq(errorLogs.siteId, siteId)));
 }
 
 export async function getErrorStats(siteId?: number) {

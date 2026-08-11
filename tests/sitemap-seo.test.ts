@@ -23,7 +23,7 @@ test("sitemap.ts queries published sites, pages, blog posts, and active products
   const file = source("app/sitemap.ts");
   assert.match(file, /eq\(sites\.published, true\)/);
   assert.match(file, /eq\(pages\.published, true\)/);
-  assert.match(file, /eq\(blogPosts\.status, "published"\)/);
+  assert.match(file, /eq\(blogPosts\.published, true\)/);
   assert.match(file, /eq\(products\.status, "active"\)/);
 });
 

@@ -3,10 +3,11 @@
 import { z } from "zod";
 import { getAllServerSettings } from "@/lib/data";
 import { requireSiteAccess } from "@/lib/tenant-access";
+import { validateAiBaseUrl } from "@/lib/ai-provider";
 
 const generateImageSchema = z.object({
   siteId: z.number().int().positive(),
-  prompt: z.string().min(3).max(1000),
+  prompt: z.string().trim().min(3).max(1000),
   size: z.enum(["1024x1024", "1792x1024", "1024x1792"]).default("1024x1024"),
   quality: z.enum(["standard", "hd"]).default("standard"),
 });
@@ -21,10 +22,12 @@ export async function generateImage(
   size: "1024x1024" | "1792x1024" | "1024x1792" = "1024x1024",
   quality: "standard" | "hd" = "standard"
 ): Promise<GenerateImageResult> {
-  const access = await requireSiteAccess(siteId);
+  const parsed = generateImageSchema.safeParse({ siteId, prompt, size, quality });
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid image request." };
+  const access = await requireSiteAccess(parsed.data.siteId);
   if (!access) return { success: false, message: "Access denied." };
 
-  const settings = await getAllServerSettings(siteId);
+  const settings = await getAllServerSettings(parsed.data.siteId);
 
   if (!settings.aiApiKey) {
     return { success: false, message: "AI is not configured. Add an API key in Settings → AI." };
@@ -39,7 +42,7 @@ export async function generateImage(
   }
 
   try {
-    const baseUrl = settings.aiBaseUrl || "https://api.openai.com/v1";
+    const baseUrl = validateAiBaseUrl(settings.aiBaseUrl) || "https://api.openai.com/v1";
     const res = await fetch(`${baseUrl}/images/generations`, {
       method: "POST",
       headers: {
@@ -48,10 +51,10 @@ export async function generateImage(
       },
       body: JSON.stringify({
         model: "dall-e-3",
-        prompt,
+        prompt: parsed.data.prompt,
         n: 1,
-        size,
-        quality,
+        size: parsed.data.size,
+        quality: parsed.data.quality,
         response_format: "url",
       }),
     });
@@ -95,5 +98,7 @@ export async function generateImageForUpload(
   const size = (formData.get("size") as "1024x1024" | "1792x1024" | "1024x1792") || "1024x1024";
   const quality = (formData.get("quality") as "standard" | "hd") || "standard";
 
-  return generateImage(siteId, prompt, size, quality);
+  const parsed = generateImageSchema.safeParse({ siteId, prompt, size, quality });
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid image request." };
+  return generateImage(parsed.data.siteId, parsed.data.prompt, parsed.data.size, parsed.data.quality);
 }

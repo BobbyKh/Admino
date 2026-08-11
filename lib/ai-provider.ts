@@ -15,6 +15,32 @@ export interface AiProviderConfig {
   jsonMode?: boolean;
 }
 
+/** Reject custom AI endpoints that could expose credentials to local services. */
+export function validateAiBaseUrl(baseUrl?: string): string {
+  const value = baseUrl?.trim().replace(/\/+$/, "") ?? "";
+  if (!value) return "";
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("AI base URL must be a valid URL.");
+  }
+
+  if (url.username || url.password || !["https:", ...(process.env.NODE_ENV === "development" ? ["http:"] : [])].includes(url.protocol)) {
+    throw new Error("AI base URL must use HTTPS and cannot contain credentials.");
+  }
+
+  const host = url.hostname.toLowerCase();
+  const isPrivateIpv4 = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host);
+  const isPrivateIpv6 = host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:");
+  if (host === "localhost" || host === "metadata.google.internal" || isPrivateIpv4 || isPrivateIpv6) {
+    throw new Error("Private or local AI base URLs are not allowed.");
+  }
+
+  return url.toString().replace(/\/+$/, "");
+}
+
 export async function callAiProvider(config: AiProviderConfig): Promise<string> {
   const {
     provider,
@@ -29,15 +55,16 @@ export async function callAiProvider(config: AiProviderConfig): Promise<string> 
   } = config;
 
   if (!apiKey) throw new Error("AI API key not configured.");
+  const safeBaseUrl = validateAiBaseUrl(baseUrl);
 
   switch (provider) {
     case "anthropic":
-      return callAnthropic(apiKey, model, baseUrl, systemPrompt, userPrompt, maxTokens, temperature);
+      return callAnthropic(apiKey, model, safeBaseUrl, systemPrompt, userPrompt, maxTokens, temperature);
     case "google":
-      return callGoogle(apiKey, model, baseUrl, systemPrompt, userPrompt, maxTokens, temperature);
+      return callGoogle(apiKey, model, safeBaseUrl, systemPrompt, userPrompt, maxTokens, temperature);
     default:
       // "openai", "custom", or any OpenAI-compatible provider
-      return callOpenAI(apiKey, model, baseUrl, systemPrompt, userPrompt, maxTokens, temperature, jsonMode);
+      return callOpenAI(apiKey, model, safeBaseUrl, systemPrompt, userPrompt, maxTokens, temperature, jsonMode);
   }
 }
 

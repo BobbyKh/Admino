@@ -9,7 +9,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Menu",
   description:
-    "Explore the menu at Maiti Resort — breakfast, lunch, dinner, dessert, coffee, beer and wine. Fast food favourites in Kirtipur, Nepal.",
+    "Explore our menu, services, and latest offerings.",
 };
 
 export default async function MenuPage() {

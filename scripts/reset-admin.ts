@@ -4,8 +4,11 @@ import { adminUsers } from "../lib/db/schema";
 import { hashPassword } from "../lib/password";
 
 async function main() {
-    const adminEmail = "admin@admino.com";
-    const newPassword = "YourNewSecurePassword123"; // Set your desired password here
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const newPassword = process.env.ADMIN_PASSWORD;
+    if (!adminEmail || !newPassword) {
+        throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD are required.");
+    }
 
     const newHash = await hashPassword(newPassword);
 

@@ -45,5 +45,5 @@ function matchesVideoSignature(buffer: Buffer, mimeType: string) {
 
 export function sanitizeUploadFolder(value: string) {
   const folder = value.trim().toLowerCase().replace(/[^a-z0-9/-]/g, "-").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
-  return folder || "maiti/media";
+  return folder || "admino/media";
 }

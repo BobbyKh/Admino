@@ -273,13 +273,17 @@ async function main() {
       });
   }
 
-  const email = (process.env.ADMIN_EMAIL ?? "admin@admino.local").toLowerCase();
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD are required when seeding an admin user.");
+  }
   const [existingAdmin] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
   if (!existingAdmin) {
     await db.insert(adminUsers).values({
       name: "Admino Super Admin",
       email,
-      passwordHash: await hashPassword(process.env.ADMIN_PASSWORD ?? "admino2026"),
+      passwordHash: await hashPassword(password),
       role: "super_admin",
     });
   }

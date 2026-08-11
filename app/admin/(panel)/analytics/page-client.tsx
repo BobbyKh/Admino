@@ -81,11 +81,12 @@ export function AnalyticsPageClient({ siteId }: { siteId: number }) {
   const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(true), 0);
     getSiteAnalytics(siteId, Number(days)).then((d) => {
       setData(d as AnalyticsData);
       setLoading(false);
     });
+    return () => window.clearTimeout(timer);
   }, [siteId, days]);
 
   if (loading) {

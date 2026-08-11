@@ -11,10 +11,10 @@ import {
   pageTranslations,
   blockTranslations,
 } from "@/lib/db/schema";
-import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
 import { getSiteLocales, DEFAULT_LOCALE } from "@/lib/i18n";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { requirePageAccess, requirePageBlockAccess } from "@/lib/tenant-access";
 
 // ─── Locale Management ───────────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ export async function setDefaultLocale(localeId: number) {
 // ─── Translation Management ──────────────────────────────────────────────────
 
 export async function getPageTranslations(pageId: number) {
-  await requireAdmin();
+  await requirePageAccess(pageId);
 
   const locales = await getSiteLocales();
   const translations = await db
@@ -136,7 +136,7 @@ export async function getPageTranslations(pageId: number) {
 }
 
 export async function getBlockTranslations(blockId: number) {
-  await requireAdmin();
+  await requirePageBlockAccess(blockId);
 
   const locales = await getSiteLocales();
   const translations = await db
@@ -167,9 +167,8 @@ export async function savePageTranslation(
   _prev: unknown,
   formData: FormData
 ) {
-  await requireAdmin();
-
   const pageId = Number(formData.get("pageId"));
+  await requirePageAccess(pageId);
   const parsed = pageTranslationSchema.safeParse({
     locale: formData.get("locale"),
     title: formData.get("title") || undefined,
@@ -229,9 +228,8 @@ export async function saveBlockTranslation(
   _prev: unknown,
   formData: FormData
 ) {
-  await requireAdmin();
-
   const blockId = Number(formData.get("blockId"));
+  await requirePageBlockAccess(blockId);
   const parsed = blockTranslationSchema.safeParse({
     locale: formData.get("locale"),
     title: formData.get("title") || undefined,

@@ -31,12 +31,12 @@ const getSmtpConfig = cache(async () => {
       rows.smtpFrom ||
       process.env.SMTP_FROM ||
       user ||
-      `no-reply@${process.env.PLATFORM_DOMAIN ?? "example.com"}`,
+      `no-reply@${process.env.PLATFORM_DOMAIN ?? "localhost"}`,
     notifyTo:
       rows.adminNotifyEmail ||
       process.env.ADMIN_NOTIFY_EMAIL ||
       user ||
-      `admin@${process.env.PLATFORM_DOMAIN ?? "example.com"}`,
+      `admin@${process.env.PLATFORM_DOMAIN ?? "localhost"}`,
   };
 });
 

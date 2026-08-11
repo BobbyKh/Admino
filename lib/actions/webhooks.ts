@@ -5,10 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { webhooks, webhookDeliveries } from "@/lib/db/schema";
-import { getResolvedSiteId } from "@/lib/site-context";
 import { requireAdmin } from "@/lib/auth";
 import { getCurrentAdminSiteId } from "@/lib/tenant-access";
-import { WEBHOOK_EVENTS, getEventDescription, type WebhookEvent } from "@/lib/webhooks";
+import { WEBHOOK_EVENTS, getEventDescription } from "@/lib/webhooks";
 
 // ─── Public (admin) Actions ──────────────────────────────────────────────────
 

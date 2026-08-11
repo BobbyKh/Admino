@@ -73,7 +73,7 @@ export async function uploadImage(formData: FormData): Promise<UploadState> {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   try {
-    const { secure_url } = await uploadImageToCloudinary(buffer, "maiti");
+    const { secure_url } = await uploadImageToCloudinary(buffer, "admino");
     return { url: secure_url };
   } catch (err) {
     console.error("Cloudinary upload failed:", err);
@@ -325,7 +325,7 @@ export async function uploadMedia(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const uploadFolder = folder || "maiti/media";
+    const uploadFolder = folder || "admino/media";
   const resourceType = isVideo ? "video" : "image";
 
   try {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { validateAiBaseUrl } from "@/lib/ai-provider";
 
 interface ModelInfo {
   id: string;
@@ -79,17 +80,23 @@ export async function POST(req: NextRequest) {
       baseUrl?: string;
     };
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
+    let safeBaseUrl = "";
+    try {
+      safeBaseUrl = validateAiBaseUrl(baseUrl);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid base URL" }, { status: 400 });
+    }
 
     let models: ModelInfo[];
     switch (provider) {
       case "anthropic":
-        models = await fetchAnthropicModels(apiKey, baseUrl || "");
+        models = await fetchAnthropicModels(apiKey, safeBaseUrl);
         break;
       case "google":
         models = await fetchGoogleModels(apiKey);
         break;
       default:
-        models = await fetchOpenAIModels(apiKey, baseUrl || "");
+        models = await fetchOpenAIModels(apiKey, safeBaseUrl);
         break;
     }
     return NextResponse.json({ models });

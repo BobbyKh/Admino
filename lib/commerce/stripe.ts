@@ -4,13 +4,6 @@ import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { decryptCommerceSecrets } from "./secrets";
 
-let stripeInstance: Stripe | null = null;
-
-function getStripeSecretKey(): string | null {
-  if (process.env.STRIPE_SECRET_KEY) return process.env.STRIPE_SECRET_KEY;
-  return null;
-}
-
 export async function getStripeForSite(siteId: number): Promise<Stripe | null> {
   const [row] = await db
     .select({ value: settings.value })
@@ -22,10 +15,6 @@ export async function getStripeForSite(siteId: number): Promise<Stripe | null> {
   const secrets = decryptCommerceSecrets(row.value);
   const secretKey = secrets.secretKey as string | undefined;
   if (!secretKey) return null;
-
-  if (stripeInstance && secretKey === getStripeSecretKey()) {
-    return stripeInstance;
-  }
 
   return new Stripe(secretKey);
 }
@@ -49,7 +38,6 @@ export async function getStripeSecretKeyForSite(siteId: number): Promise<string 
 export async function getPlatformStripe(): Promise<Stripe | null> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  if (stripeInstance && key === getStripeSecretKey()) return stripeInstance;
   return new Stripe(key);
 }
 

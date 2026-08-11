@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "maiti/media"));
+    const folder = sanitizeUploadFolder(String(formData.get("folder") ?? "admino/media"));
 
     if (!file || file.size === 0) {
       return NextResponse.json({ error: "Please choose a file." }, { status: 400 });
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.` },
+        { error: `File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB.` },                                                          
         { status: 400 }
       );
     }

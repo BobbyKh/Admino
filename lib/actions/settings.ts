@@ -32,7 +32,7 @@ export async function updateSettings(
 }
 
 export async function sendTestEmailAction(email: string) {
-  const { siteId, denied } = await getCurrentSiteWithFeature("settings");
+  const { denied } = await getCurrentSiteWithFeature("settings");
   if (denied) return { success: false, message: denied };
 
   const targetEmail = email.trim();

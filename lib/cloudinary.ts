@@ -27,7 +27,7 @@ export const getCloudinaryConfig = cache(async () => {
 
 export async function uploadImageToCloudinary(
   buffer: Buffer,
-  folder = "maiti",
+  folder = "admino",
   resourceType: "image" | "video" | "auto" = "image"
 ): Promise<{ secure_url: string; public_id: string; width: number; height: number }> {
   const config = await getCloudinaryConfig();

@@ -29,7 +29,7 @@ export async function uploadMedia(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const uploadFolder = sanitizeUploadFolder(folder || "maiti/media");
+  const uploadFolder = sanitizeUploadFolder(folder || "admino/media");
   let resourceType: "image" | "video";
   try {
     resourceType = validateUploadBuffer(buffer, file.type);

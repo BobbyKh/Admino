@@ -28,7 +28,6 @@ export async function getCurrentSubscription() {
  */
 export async function subscribeToPlan(planSlug: string) {
   await requireAdmin();
-  const siteId = await getCurrentAdminSiteId();
 
   const plan = await db
     .select()

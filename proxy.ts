@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const SESSION_COOKIE = "maiti_admin_session";
+const SESSION_COOKIE = "admino_session";
 const CSRF_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 100;

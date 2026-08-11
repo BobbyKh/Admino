@@ -42,7 +42,10 @@ export default function ErrorLogsPage() {
     }
   }, [levelFilter, resolvedFilter, page]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function handleResolve(id: number) {
     try {

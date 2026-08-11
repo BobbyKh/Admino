@@ -7,6 +7,7 @@ import { escapeHtml } from "@/lib/sanitize";
 import { sendContactAdminAlert } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { dispatchWebhook } from "@/lib/webhooks";
+import { getResolvedSiteId } from "@/lib/site-context";
 
 const formSubmissionSchema = z.object({
   siteId: z.number().int().positive(),
@@ -46,13 +47,18 @@ export async function submitSiteForm(
     return { success: false, message: "Please fix the validation errors.", fieldErrors };
   }
 
-  const rateCheck = await checkRateLimit(`form:${parsed.data.siteId}:${parsed.data.email}`);
+  const resolvedSiteId = await getResolvedSiteId();
+  if (!resolvedSiteId || resolvedSiteId !== parsed.data.siteId) {
+    return { success: false, message: "Site not found." };
+  }
+
+  const rateCheck = await checkRateLimit(`form:${resolvedSiteId}:${parsed.data.email}`);
   if (!rateCheck.allowed) {
     return { success: false, message: "Too many submissions. Please try again in a few minutes." };
   }
 
   const sanitized = {
-    siteId: parsed.data.siteId,
+    siteId: resolvedSiteId,
     name: escapeHtml(parsed.data.name),
     email: parsed.data.email,
     phone: parsed.data.phone ? escapeHtml(parsed.data.phone) : null,
@@ -69,7 +75,7 @@ export async function submitSiteForm(
   );
 
   // Dispatch webhook
-  void dispatchWebhook(parsed.data.siteId, "message.received", {
+  void dispatchWebhook(resolvedSiteId, "message.received", {
     message: {
       name: sanitized.name,
       email: sanitized.email,

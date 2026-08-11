@@ -278,13 +278,16 @@ async function main() {
   }
 
   // Ensure super admin exists with correct role
-  const adminEmail = "admin@admino.com";
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  if (!adminEmail || !password) {
+    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD are required when seeding an admin user.");
+  }
   const [existingAdmin] = await db
     .select()
     .from(adminUsers)
     .where(eq(adminUsers.email, adminEmail));
   if (!existingAdmin) {
-    const password = process.env.ADMIN_PASSWORD ?? "admino2024";
     await db.insert(adminUsers).values({
       name: "Admino Admin",
       email: adminEmail,
@@ -292,7 +295,7 @@ async function main() {
       role: "super_admin",
       siteId: SITE_ID,
     });
-    console.log(`✔ Created super admin: ${adminEmail} (password: ${password})`);
+    console.log(`✔ Created super admin: ${adminEmail}`);
   } else {
     console.log(`✔ Admin already exists: ${adminEmail}`);
   }

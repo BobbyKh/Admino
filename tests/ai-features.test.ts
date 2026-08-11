@@ -27,5 +27,5 @@ test("product-ai.ts exports generateProductDescriptionWithAi action", () => {
   const file = source("lib/actions/product-ai.ts");
   assert.match(file, /export async function generateProductDescriptionWithAi/);
   assert.match(file, /badge/);
-  assert.match(file, /gpt-4o-mini/);
+  assert.match(file, /callAiProvider/);
 });

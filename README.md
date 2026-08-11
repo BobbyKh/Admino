@@ -178,6 +178,9 @@ COMMERCE_SECRETS_KEY=base64-encoded-32-byte-key   # For encrypted payment secret
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_AI_API_KEY=...
+
+# Vercel cron authentication (required in production)
+CRON_SECRET=your-cron-secret
 ```
 
 > **Note**: SMTP and Cloudinary can also be configured per-tenant from the admin panel under **Settings → Email** and **Settings → Media**.
@@ -371,7 +374,7 @@ Harden the platform to a level suitable for serving paying customers and passing
 - Clean up client-specific branding artifacts
 
 **Tasks:**
-- [ ] Fix hardcoded client branding (`maiti_admin_session` cookie name, `maitiresort.com` email defaults)
+- [x] Remove hardcoded client branding and use platform-safe defaults
 - [ ] Add HTTP security headers in `next.config.ts` (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
 - [ ] Extend rate limiting to AI endpoints, upload endpoints, and public form submissions (bookings, contact)
 - [ ] Full multi-tenant security audit — verify all server actions enforce `siteId` scoping

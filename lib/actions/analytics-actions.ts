@@ -18,7 +18,7 @@ export interface TenantDashboardMetrics {
  * Calculates unified analytics and metrics for the tenant admin dashboard.
  */
 export async function getTenantAnalyticsDashboard(siteId: number): Promise<TenantDashboardMetrics> {
-  const user = await requireSiteAccess(siteId);
+  await requireSiteAccess(siteId);
 
   const [orderStats, pageStats, productStats, activityStats] = await Promise.all([
     db

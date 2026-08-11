@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logError } from "@/lib/error-tracking";
+import { getSiteForRequest } from "@/lib/site-context";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +21,10 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get("user-agent") ?? undefined;
     const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip") ?? undefined;
+    const site = await getSiteForRequest((request.headers.get("host") ?? "").split(":")[0], request.nextUrl.searchParams.get("site"));
 
     await logError({
+      siteId: site?.id,
       level: (body.level as "error" | "warning" | "info") ?? "error",
       message: body.digest ? `${body.message} [digest: ${body.digest}]` : body.message,
       stack: body.stack,

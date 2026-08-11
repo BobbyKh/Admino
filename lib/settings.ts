@@ -117,18 +117,18 @@ export const SECRET_SETTING_KEYS = new Set<SettingKey>([
 ]);
 
 export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
-  siteName: "Maiti Resort",
-  tagline: "A peaceful dining & relaxation getaway in Kirtipur",
+  siteName: "Your Business",
+  tagline: "A better way to serve your customers",
   logo: "",
   favicon: "",
   description:
-    "Maiti Resort is a dining and relaxation venue located in Kirtipur 44600, Nepal. Set within 5 km of Balkhu, it offers a peaceful, scenic getaway away from city traffic and noise, featuring a spacious layout with outdoor seating and a romantic, casual atmosphere suitable for groups and families with children. The resort serves breakfast, lunch, dinner, dessert, coffee, beer, and wine, with options for dine-in, takeout, and curbside pickup, and provides amenities such as restrooms, wheelchair-accessible facilities, NFC payment acceptance, and free lot and street parking.",
-  heroTitle: "Dine, Relax & Unwind in Kirtipur",
+    "Welcome to our business. Discover our services, products, and the experience we create for every customer.",
+  heroTitle: "Welcome to Your Business",
   heroSubtitle:
-    "A scenic dining and relaxation venue just 5 km from Balkhu — away from city noise, surrounded by greenery, open daily from 10:00 AM to 10:00 PM.",
+    "Thoughtful service, quality products, and a customer experience designed around you.",
   heroImage:
     "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80",
-  heroBadge: "Open daily · 10:00 AM – 10:00 PM",
+  heroBadge: "Open for business",
   heroCtaPrimary: "Reserve a Table",
   heroCtaSecondary: "View Menu",
   heroCtaPrimaryLink: "/book",
@@ -141,23 +141,23 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
   showCta: "true",
   // Video section
   videoUrl: "",
-  videoTitle: "Experience Maiti Resort",
-  videoDescription: "Take a virtual tour of our resort and see what makes us special.",
+  videoTitle: "See What Makes Us Special",
+  videoDescription: "Take a closer look at our business and what we offer.",
   videoPoster: "",
   // About
-  aboutTitle: "A Peaceful, Scenic Getaway",
+  aboutTitle: "Built Around Your Needs",
   aboutText:
-    "Set within 5 km of Balkhu, Maiti Resort offers a spacious layout with outdoor seating and a romantic, casual atmosphere — perfect for groups, families with children, and quiet escapes. We serve breakfast, lunch, dinner, dessert, coffee, beer, and wine, with dine-in, takeout, and curbside pickup options. Enjoy free lot and street parking, wheelchair-accessible facilities, NFC payments, and clean restrooms throughout your visit.",
+    "We are committed to dependable service, quality, and creating a welcoming experience for every customer.",
   aboutImage:
     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
-  address: "Kirtipur 44600, Nepal",
-  phone: "+977 974-6510970",
-  email: "hello@maitiresort.com",
-  mapQuery: "Kirtipur 44600, Nepal",
-  hours: "Open daily · 10:00 AM – 10:00 PM",
-  priceRange: "NPR 500 – NPR 1,000",
-  rating: "4.2",
-  reviewCount: "120+",
+  address: "",
+  phone: "",
+  email: "hello@example.com",
+  mapQuery: "",
+  hours: "Contact us for opening hours",
+  priceRange: "",
+  rating: "",
+  reviewCount: "",
   features: JSON.stringify([
     { title: "Scenic Location", text: "Peaceful getaway 5 km from Balkhu, away from city traffic and noise.", icon: "leaf" },
     { title: "Outdoor Seating", text: "Spacious layout with al-fresco seating and a romantic, casual atmosphere.", icon: "sun" },
@@ -177,8 +177,7 @@ export const DEFAULT_SETTINGS: Record<SettingKey, string> = {
     "NFC payments",
     "Restrooms",
   ]),
-  footerNote:
-    "Maiti Resort — a dining and relaxation venue in Kirtipur, Nepal. Open daily 10:00 AM – 10:00 PM.",
+  footerNote: "Your Business — quality service and a welcoming customer experience.",
   navbarCtaLabel: "Contact Us",
   navbarCtaLink: "/contact",
   navbarShowPhone: "true",

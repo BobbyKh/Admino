@@ -24,7 +24,7 @@ export async function checkRateLimit(key: string): Promise<{ allowed: boolean; r
     .returning({ count: rateLimitBuckets.count, resetAt: rateLimitBuckets.resetAt });
 
   if (!bucket) return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1 };
-  if (new Date(bucket.resetAt).getTime() > now && bucket.count > RATE_LIMIT_MAX_REQUESTS) {
+  if (new Date(bucket.resetAt).getTime() > now && bucket.count >= RATE_LIMIT_MAX_REQUESTS) {
     return { allowed: false, remaining: 0 };
   }
 

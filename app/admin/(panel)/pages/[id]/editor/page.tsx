@@ -1164,22 +1164,6 @@ export default function BlockEditorPage() {
     configSaveTimers.current.forEach((timer) => clearTimeout(timer));
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
-      if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
-      if (mod && e.key === "y") { e.preventDefault(); redo(); }
-      if (mod && e.key === "d" && expandedId) {
-        e.preventDefault();
-        void handleDuplicateBlock(expandedId);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, expandedId]);
-
   const handleDeleteBlock = useCallback(
     async (blockId: number) => {
       setPending(true);
@@ -1232,6 +1216,22 @@ export default function BlockEditorPage() {
     },
     [blocks, pageId, pushHistory]
   );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if (mod && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      if (mod && e.key === "y") { e.preventDefault(); redo(); }
+      if (mod && e.key === "d" && expandedId) {
+        e.preventDefault();
+        void handleDuplicateBlock(expandedId);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, expandedId, handleDuplicateBlock]);
 
   const handleRestoreRevision = useCallback(async (revisionId: number) => {
     setPending(true);
