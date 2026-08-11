@@ -3,8 +3,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aiChunks, pages, pageBlocks, products, blogPosts, services, settings as settingsTable } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, requireSiteAccess } from "@/lib/tenant-access";
-import { hasMinRole, type Role } from "@/lib/auth";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
 import { getEmbeddings } from "@/lib/ai-embeddings";
 
@@ -52,13 +51,9 @@ export type ReindexResult =
   | { success: true; message: string; chunks: number }
   | { success: false; error: string };
 
-export async function reindexAiContent(): Promise<ReindexResult> {
+export async function reindexAiContent(siteId: number): Promise<ReindexResult> {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_chatbot_rag");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "admin")) {
-      return { success: false, error: "Permission denied." };
-    }
+    await requireSiteFeatureForRole(siteId, "ai_chatbot_rag", "admin");
 
     const raw: RawChunk[] = [];
 
@@ -172,11 +167,11 @@ export async function reindexAiContent(): Promise<ReindexResult> {
   }
 }
 
-export async function getAiIndexStats(): Promise<
+export async function getAiIndexStats(siteId: number): Promise<
   { success: true; chunks: number; indexedAt: string | null } | { success: false; error: string }
 > {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_chatbot_rag");
+    await requireSiteFeatureForRole(siteId, "ai_chatbot_rag", "admin");
     const rows = await db
       .select({ chunks: sql<number>`count(${aiChunks.id})::int` })
       .from(aiChunks)

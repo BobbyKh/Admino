@@ -30,7 +30,7 @@ test("analytics-actions.ts guards dashboard queries by site access", () => {
 
 test("settings.ts exports sendTestEmailAction guarded by tenant admin access", () => {
   const file = source("lib/actions/settings.ts");
-  assert.match(file, /export async function sendTestEmailAction/);
-  assert.match(file, /getCurrentSiteWithFeatureForRole\("settings", "admin"\)/);
+  assert.match(file, /export async function sendTestEmailAction\(siteId: number,/);
+  assert.match(file, /requireSiteFeatureForRole\(siteId, "settings", "admin"\)/);
   assert.match(file, /sendTestEmail/);
 });

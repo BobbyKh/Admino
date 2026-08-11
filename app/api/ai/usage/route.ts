@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireActionRole } from "@/lib/auth";
-import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 
 interface UsageInfo {
   provider: string;
@@ -55,12 +54,13 @@ async function fetchGoogleUsage(apiKey: string): Promise<UsageInfo> {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireActionRole("admin");
-    await getCurrentSiteRequiringFeature("settings");
-    const { provider, apiKey } = (await req.json()) as {
+    const { siteId, provider, apiKey } = (await req.json()) as {
+      siteId: number;
       provider: string;
       apiKey: string;
     };
+    if (!Number.isInteger(siteId) || siteId < 1) return NextResponse.json({ error: "Valid site ID required" }, { status: 400 });
+    await requireSiteFeatureForRole(siteId, "settings", "admin");
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
 
     let result: UsageInfo;

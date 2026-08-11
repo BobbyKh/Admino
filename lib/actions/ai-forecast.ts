@@ -3,8 +3,7 @@
 import { eq, and, gte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, orderItems, products } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, requireSiteAccess } from "@/lib/tenant-access";
-import { hasMinRole, type Role } from "@/lib/auth";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
 import { callAiProvider } from "@/lib/ai-provider";
 
@@ -46,13 +45,9 @@ function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * DAY_MS).toISOString();
 }
 
-export async function getDemandForecast(): Promise<ForecastResult> {
+export async function getDemandForecast(siteId: number): Promise<ForecastResult> {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_forecasting");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
-      return { success: false, error: "Permission denied." };
-    }
+    await requireSiteFeatureForRole(siteId, "ai_forecasting", "editor");
 
     const startIso = daysAgoIso(90);
     const paidOrders = await db

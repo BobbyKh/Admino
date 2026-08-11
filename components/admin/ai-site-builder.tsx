@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { runAiSiteBuilder, type BuilderMessage } from "@/lib/actions/ai-builder";
+import { useAdminSiteId } from "./admin-site-context";
 
 const SUGGESTIONS = [
   "Build me a homepage for my restaurant with a hero, features, and a reservation CTA",
@@ -21,6 +22,7 @@ interface UiMessage {
 }
 
 export function AiSiteBuilder() {
+  const siteId = useAdminSiteId();
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,7 @@ export function AiSiteBuilder() {
     const userMsg: UiMessage = { role: "user", content: body };
     setMessages((prev) => [...prev, userMsg]);
 
-    const result = await runAiSiteBuilder([...history, { role: "user", content: body }]);
+    const result = await runAiSiteBuilder(siteId, [...history, { role: "user", content: body }]);
     setLoading(false);
 
     if (!result.success) {

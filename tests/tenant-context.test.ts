@@ -63,3 +63,55 @@ test("production tenant resolution ignores preview overrides", () => {
   assert.match(proxy, /requestHeaders\.delete\("x-request-host"\)/);
   assert.match(context, /process\.env\.NODE_ENV !== "production" && siteSlug/);
 });
+
+test("AI admin actions bind to the site displayed in the current tab", () => {
+  const actionCallers: Array<[string, RegExp]> = [
+    ["components/admin/ai-site-builder.tsx", /runAiSiteBuilder\(siteId,/],
+    ["components/admin/ai-rag-manager.tsx", /reindexAiContent\(siteId\)/],
+    ["components/admin/demand-forecast.tsx", /getDemandForecast\(siteId\)/],
+    ["components/admin/settings-form.tsx", /generateThemeFromPrompt\(siteId, prompt\)/],
+    ["components/admin/blog-manager.tsx", /generateBlogPostWithAi\(siteId, topic, aiTone\)/],
+    ["components/admin/product-manager.tsx", /generateProductDescriptionWithAi\(siteId, title\)/],
+  ];
+
+  for (const [path, call] of actionCallers) {
+    const file = source(path);
+    assert.match(file, /useAdminSiteId\(\)/, path);
+    assert.match(file, call, path);
+  }
+
+  for (const path of [
+    "lib/actions/ai-builder.ts",
+    "lib/actions/ai-rag.ts",
+    "lib/actions/ai-forecast.ts",
+    "lib/actions/theme-ai.ts",
+    "lib/actions/blog-ai.ts",
+    "lib/actions/product-ai.ts",
+  ]) {
+    const file = source(path);
+    assert.match(file, /requireSiteFeatureForRole\(siteId,/, path);
+    assert.doesNotMatch(file, /getCurrentAdminSiteId|getCurrentSiteRequiringFeature/, path);
+  }
+});
+
+test("AI settings requests and related mutations use explicit tenant IDs", () => {
+  const settingsAction = source("lib/actions/settings.ts");
+  const settingsForm = source("components/admin/settings-form.tsx");
+  const ragManager = source("components/admin/ai-rag-manager.tsx");
+  assert.match(settingsAction, /updateSettings\(\s*siteId: number,/);
+  assert.match(settingsAction, /requireSiteFeatureForRole\(siteId, "settings", "admin"\)/);
+  assert.match(settingsForm, /updateSettings\.bind\(null, siteId\)/);
+  assert.match(settingsForm, /JSON\.stringify\(\{ siteId, provider:/);
+  assert.match(ragManager, /updateSettings\(siteId, \{\}, form\)/);
+
+  for (const path of ["app/api/ai/models/route.ts", "app/api/ai/usage/route.ts"]) {
+    const route = source(path);
+    assert.match(route, /requireSiteFeatureForRole\(siteId, "settings", "admin"\)/, path);
+    assert.doesNotMatch(route, /getCurrentSiteRequiringFeature/, path);
+  }
+
+  assert.match(source("components/admin/product-manager.tsx"), /createProduct\(siteId, formData\)/);
+  assert.match(source("components/admin/blog-manager.tsx"), /createBlogPost\(siteId, formData\)/);
+  assert.match(source("lib/actions/commerce.ts"), /createProduct\(siteId: number, formData: FormData\)/);
+  assert.match(source("lib/actions/blog.ts"), /createBlogPost\(siteId: number, formData: FormData\)/);
+});

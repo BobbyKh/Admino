@@ -11,6 +11,7 @@ import {
   reindexAiContent,
   getAiIndexStats,
 } from "@/lib/actions/ai-rag";
+import { useAdminSiteId } from "./admin-site-context";
 
 export function AiRagManager({
   ragEnabled,
@@ -21,6 +22,7 @@ export function AiRagManager({
   indexedAt: string | null;
   hasAiKey: boolean;
 }) {
+  const siteId = useAdminSiteId();
   const [enabled, setEnabled] = useState(ragEnabled);
   const [chunks, setChunks] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,27 +31,27 @@ export function AiRagManager({
     setEnabled(next);
     const form = new FormData();
     form.set("aiRagEnabled", next ? "true" : "false");
-    const result = await updateSettings({}, form);
+    const result = await updateSettings(siteId, {}, form);
     if (result?.message && !result.success) toast.error(result.message);
     else toast.success(next ? "Knowledge base enabled." : "Knowledge base disabled.");
   }
 
   function runIndex() {
     startTransition(async () => {
-      const result = await reindexAiContent();
+      const result = await reindexAiContent(siteId);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
       toast.success(result.message);
-      const stats = await getAiIndexStats();
+      const stats = await getAiIndexStats(siteId);
       if (stats.success) setChunks(stats.chunks);
     });
   }
 
   function loadStats() {
     startTransition(async () => {
-      const stats = await getAiIndexStats();
+      const stats = await getAiIndexStats(siteId);
       if (stats.success) setChunks(stats.chunks);
     });
   }

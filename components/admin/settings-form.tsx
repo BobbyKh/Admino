@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tabs";
 import { generateThemeFromPrompt, updateSettings, type AdminActionState, type AiGeneratedTheme } from "@/lib/actions/index";
 import type { SettingKey } from "@/lib/settings";
+import { useAdminSiteId } from "./admin-site-context";
 
 const initialState: AdminActionState = {};
 
@@ -84,7 +85,8 @@ export function SettingsForm({
 }: {
   initial: Record<SettingKey, string>;
 }) {
-  const [state, formAction, pending] = useActionState(updateSettings, initialState);
+  const siteId = useAdminSiteId();
+  const [state, formAction, pending] = useActionState(updateSettings.bind(null, siteId), initialState);
   const router = useRouter();
   const formRef = React.useRef<HTMLFormElement>(null);
   const [themeColors, setThemeColors] = React.useState<Record<string, string>>(() =>
@@ -288,7 +290,7 @@ export function SettingsForm({
             icon={<Bot className="size-4" />}
             hint="Configure the AI-powered chat widget shown on the public site. Supports OpenAI, Anthropic, and Google Gemini."
           >
-            <AiConfigSection initial={initial} />
+            <AiConfigSection initial={initial} siteId={siteId} />
           </Section>
 
           <Section
@@ -341,7 +343,7 @@ export function SettingsForm({
             hint="Describe a mood, industry, brand, or visual style. The generated palette can be previewed before you save it."
             icon={<Sparkles className="size-4" />}
           >
-            <AiThemeGenerator onThemeApply={applyFullPreset} />
+            <AiThemeGenerator siteId={siteId} onThemeApply={applyFullPreset} />
           </Section>
 
           {/* Preset Themes */}
@@ -417,7 +419,7 @@ export function SettingsForm({
 
 /* ========================= SUB COMPONENTS ========================= */
 
-function AiThemeGenerator({ onThemeApply }: { onThemeApply: (colors: Record<string, string>) => void }) {
+function AiThemeGenerator({ siteId, onThemeApply }: { siteId: number; onThemeApply: (colors: Record<string, string>) => void }) {
   const [prompt, setPrompt] = React.useState("");
   const [generated, setGenerated] = React.useState<AiGeneratedTheme | null>(null);
   const [pending, startTransition] = React.useTransition();
@@ -425,7 +427,7 @@ function AiThemeGenerator({ onThemeApply }: { onThemeApply: (colors: Record<stri
   function generate() {
     startTransition(async () => {
       try {
-        const result = await generateThemeFromPrompt(prompt);
+        const result = await generateThemeFromPrompt(siteId, prompt);
         if ("error" in result) {
           toast.error(result.error);
           return;
@@ -968,7 +970,7 @@ interface AiModel {
   capabilities?: string[];
 }
 
-function AiConfigSection({ initial }: { initial: Record<SettingKey, string> }) {
+function AiConfigSection({ initial, siteId }: { initial: Record<SettingKey, string>; siteId: number }) {
   const [provider, setProvider] = React.useState(initial.aiProvider || "openai");
   const [apiKey, setApiKey] = React.useState(initial.aiApiKey || "");
   const [models, setModels] = React.useState<AiModel[]>([]);
@@ -992,12 +994,12 @@ function AiConfigSection({ initial }: { initial: Record<SettingKey, string> }) {
           fetch("/api/ai/models", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ provider: prov, apiKey: key, baseUrl: url }),
+            body: JSON.stringify({ siteId, provider: prov, apiKey: key, baseUrl: url }),
           }).then((r) => r.json()),
           fetch("/api/ai/usage", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ provider: prov, apiKey: key }),
+            body: JSON.stringify({ siteId, provider: prov, apiKey: key }),
           }).then((r) => r.json()),
         ]);
         if (modelsRes.status === "fulfilled") {
@@ -1021,7 +1023,7 @@ function AiConfigSection({ initial }: { initial: Record<SettingKey, string> }) {
         setModelsLoading(false);
       }
     },
-    []
+    [siteId]
   );
 
   const baseUrlValue = React.useRef<HTMLInputElement | null>(null);

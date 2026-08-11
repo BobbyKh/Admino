@@ -1,10 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { requireRole, type Role } from "@/lib/auth";
-import { getCurrentAdminSiteId } from "@/lib/tenant-access";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
-import { requireTenantFeature } from "@/lib/tenant-features";
 import { callAiProvider } from "@/lib/ai-provider";
 
 const THEME_KEYS = [
@@ -55,18 +53,16 @@ const generatedThemeSchema = z.object({
   themeCardForeground: colorSchema,
 });
 
-export async function generateThemeFromPrompt(prompt: string): Promise<GenerateThemeResult> {
+export async function generateThemeFromPrompt(siteId: number, prompt: string): Promise<GenerateThemeResult> {
   try {
-    return { theme: await generateThemeFromPromptOrThrow(prompt) };
+    return { theme: await generateThemeFromPromptOrThrow(siteId, prompt) };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Unable to generate theme." };
   }
 }
 
-async function generateThemeFromPromptOrThrow(prompt: string): Promise<AiGeneratedTheme> {
-  const user = await requireRole("admin");
-  const siteId = await getCurrentAdminSiteId();
-  await requireTenantFeature(siteId, "ai_theme_generator", { role: user.role as Role, userId: user.id });
+async function generateThemeFromPromptOrThrow(siteId: number, prompt: string): Promise<AiGeneratedTheme> {
+  await requireSiteFeatureForRole(siteId, "ai_theme_generator", "admin");
   const settings = await getAllServerSettings(siteId);
   const input = z.string().trim().min(8, "Describe the theme in a little more detail.").max(800).parse(prompt);
 

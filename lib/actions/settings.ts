@@ -4,16 +4,20 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { SETTING_KEYS } from "@/lib/settings";
-import { getCurrentSiteWithFeatureForRole } from "@/lib/tenant-access";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { sendTestEmail } from "@/lib/email";
 import type { AdminActionState } from "./types";
 
 export async function updateSettings(
+  siteId: number,
   _prev: AdminActionState,
   formData: FormData
 ): Promise<AdminActionState> {
-  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
-  if (denied) return { message: denied };
+  try {
+    await requireSiteFeatureForRole(siteId, "settings", "admin");
+  } catch (error) {
+    return { message: error instanceof Error ? error.message : "Forbidden" };
+  }
   const now = new Date().toISOString();
   for (const key of SETTING_KEYS) {
     const value = formData.get(key);
@@ -31,9 +35,12 @@ export async function updateSettings(
   return { success: true, message: "Settings saved." };
 }
 
-export async function sendTestEmailAction(email: string) {
-  const { siteId, denied } = await getCurrentSiteWithFeatureForRole("settings", "admin");
-  if (denied) return { success: false, message: denied };
+export async function sendTestEmailAction(siteId: number, email: string) {
+  try {
+    await requireSiteFeatureForRole(siteId, "settings", "admin");
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Forbidden" };
+  }
 
   const targetEmail = email.trim();
   if (!targetEmail || !targetEmail.includes("@")) {

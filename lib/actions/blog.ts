@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { blogPosts } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, requireSiteFeatureForRole } from "@/lib/tenant-access";
 
 const blogPostSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -54,8 +54,8 @@ export async function listBlogPosts() {
   return db.select().from(blogPosts).where(eq(blogPosts.siteId, siteId)).orderBy(desc(blogPosts.publishedAt), desc(blogPosts.createdAt));
 }
 
-export async function createBlogPost(formData: FormData) {
-  const siteId = await getBlogSiteId();
+export async function createBlogPost(siteId: number, formData: FormData) {
+  await requireSiteFeatureForRole(siteId, "blog", "admin");
   const post = blogPostInput(formData);
   const now = new Date().toISOString();
   await db.insert(blogPosts).values({
@@ -70,8 +70,8 @@ export async function createBlogPost(formData: FormData) {
   revalidateBlog();
 }
 
-export async function updateBlogPost(postId: number, formData: FormData) {
-  const siteId = await getBlogSiteId();
+export async function updateBlogPost(siteId: number, postId: number, formData: FormData) {
+  await requireSiteFeatureForRole(siteId, "blog", "admin");
   if (!Number.isInteger(postId) || postId < 1) throw new Error("Invalid blog post.");
   const post = blogPostInput(formData);
   const [existing] = await db.select({ publishedAt: blogPosts.publishedAt }).from(blogPosts)
@@ -88,8 +88,8 @@ export async function updateBlogPost(postId: number, formData: FormData) {
   revalidateBlog();
 }
 
-export async function deleteBlogPost(postId: number) {
-  const siteId = await getBlogSiteId();
+export async function deleteBlogPost(siteId: number, postId: number) {
+  await requireSiteFeatureForRole(siteId, "blog", "admin");
   if (!Number.isInteger(postId) || postId < 1) throw new Error("Invalid blog post.");
   await db.delete(blogPosts).where(and(eq(blogPosts.id, postId), eq(blogPosts.siteId, siteId)));
   revalidateBlog();

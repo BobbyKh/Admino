@@ -23,7 +23,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const FIXABLE = /^page-meta-|^page-draft-|^product-desc-|^blog-excerpt-/;
 
-export function AiSiteAuditor() {
+export function AiSiteAuditor({ siteId }: { siteId: number }) {
   const [report, setReport] = useState<AuditReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -32,7 +32,7 @@ export function AiSiteAuditor() {
   function runAudit() {
     setLoading(true);
     startTransition(async () => {
-      const result = await runAiAudit();
+      const result = await runAiAudit(siteId);
       setLoading(false);
       if (!result.success) {
         toast.error(result.error);
@@ -45,7 +45,7 @@ export function AiSiteAuditor() {
   function fix(issueId: string) {
     setFixingId(issueId);
     startTransition(async () => {
-      const result = await applyAuditFix(issueId);
+      const result = await applyAuditFix(siteId, issueId);
       setFixingId(null);
       if (result.success) {
         toast.success("Fix applied. Re-run the audit to see the updated score.");

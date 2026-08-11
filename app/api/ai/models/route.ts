@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireActionRole } from "@/lib/auth";
-import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { validateAiBaseUrl } from "@/lib/ai-provider";
 
 interface ModelInfo {
@@ -72,13 +71,14 @@ async function fetchGoogleModels(apiKey: string): Promise<ModelInfo[]> {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireActionRole("admin");
-    await getCurrentSiteRequiringFeature("settings");
-    const { provider, apiKey, baseUrl } = (await req.json()) as {
+    const { siteId, provider, apiKey, baseUrl } = (await req.json()) as {
+      siteId: number;
       provider: string;
       apiKey: string;
       baseUrl?: string;
     };
+    if (!Number.isInteger(siteId) || siteId < 1) return NextResponse.json({ error: "Valid site ID required" }, { status: 400 });
+    await requireSiteFeatureForRole(siteId, "settings", "admin");
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
     let safeBaseUrl = "";
     try {

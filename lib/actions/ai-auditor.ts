@@ -3,8 +3,7 @@
 import { eq, asc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pages, pageBlocks, products, blogPosts, navLinks } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, requireSiteAccess } from "@/lib/tenant-access";
-import { hasMinRole, type Role } from "@/lib/auth";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
 import { callAiProvider } from "@/lib/ai-provider";
 import { revalidatePath } from "next/cache";
@@ -203,13 +202,9 @@ function computeScore(issues: AuditIssue[], stats: AuditReport["stats"]): number
   return Math.round(score);
 }
 
-export async function runAiAudit(): Promise<AiAuditResult> {
+export async function runAiAudit(siteId: number): Promise<AiAuditResult> {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_site_auditor");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
-      return { success: false, error: "You need editor permissions to run an audit." };
-    }
+    const user = await requireSiteFeatureForRole(siteId, "ai_site_auditor", "editor");
 
     const [settings, pageRows, productRows, blogRows, navRows] = await Promise.all([
       getAllServerSettings(siteId),
@@ -270,14 +265,11 @@ export async function runAiAudit(): Promise<AiAuditResult> {
 }
 
 export async function applyAuditFix(
+  siteId: number,
   issueId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_site_auditor");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
-      return { success: false, error: "Permission denied." };
-    }
+    await requireSiteFeatureForRole(siteId, "ai_site_auditor", "editor");
     const settings = await getAllServerSettings(siteId);
 
     // page-meta-<id> → generate + save SEO metadata
@@ -318,7 +310,7 @@ export async function applyAuditFix(
           metaDescription: meta.description?.slice(0, 155) || page.description,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(pages.id, pageId));
+        .where(and(eq(pages.id, pageId), eq(pages.siteId, siteId)));
       revalidatePath("/");
       return { success: true };
     }
@@ -356,7 +348,7 @@ export async function applyAuditFix(
       await db
         .update(products)
         .set({ description: desc.trim().slice(0, 2000), updatedAt: new Date().toISOString() })
-        .where(eq(products.id, productId));
+        .where(and(eq(products.id, productId), eq(products.siteId, siteId)));
       revalidatePath("/");
       return { success: true };
     }
@@ -382,7 +374,7 @@ export async function applyAuditFix(
       await db
         .update(blogPosts)
         .set({ excerpt: excerpt.trim().slice(0, 300), updatedAt: new Date().toISOString() })
-        .where(eq(blogPosts.id, blogId));
+        .where(and(eq(blogPosts.id, blogId), eq(blogPosts.siteId, siteId)));
       revalidatePath("/");
       return { success: true };
     }

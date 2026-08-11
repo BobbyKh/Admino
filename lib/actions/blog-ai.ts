@@ -1,10 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { hasMinRole, type Role } from "@/lib/auth";
 import { getAllServerSettings } from "@/lib/data";
-import { getCurrentAdminSiteId, requireSiteAccess } from "@/lib/tenant-access";
-import { requireTenantFeature } from "@/lib/tenant-features";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { callAiProvider } from "@/lib/ai-provider";
 
 export type GeneratedBlogPost = {
@@ -20,20 +18,12 @@ export type GenerateBlogResult = { post: GeneratedBlogPost } | { error: string }
  * Drafts a complete blog post title, slug, excerpt, and rich HTML body with AI.
  */
 export async function generateBlogPostWithAi(
+  siteId: number,
   topic: string,
   tone: string = "informative"
 ): Promise<GenerateBlogResult> {
   try {
-    const siteId = await getCurrentAdminSiteId();
-    if (!siteId) throw new Error("Select a site first.");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
-      throw new Error("Forbidden");
-    }
-    await requireTenantFeature(siteId, "ai_block_assistant", {
-      role: user.role as Role,
-      userId: user.id,
-    });
+    await requireSiteFeatureForRole(siteId, "ai_block_assistant", "editor");
 
     const settings = await getAllServerSettings(siteId);
     if (!settings.aiApiKey) {

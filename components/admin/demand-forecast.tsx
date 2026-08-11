@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getDemandForecast, type DemandForecast } from "@/lib/actions/ai-forecast";
+import { useAdminSiteId } from "./admin-site-context";
 
 function formatMoney(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n / 100);
 }
 
 export function DemandForecastView() {
+  const siteId = useAdminSiteId();
   const [forecast, setForecast] = useState<DemandForecast | null>(null);
   const [loading, setLoading] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -20,7 +22,7 @@ export function DemandForecastView() {
   function run() {
     setLoading(true);
     startTransition(async () => {
-      const result = await getDemandForecast();
+      const result = await getDemandForecast(siteId);
       setLoading(false);
       if (!result.success) {
         toast.error(result.error);

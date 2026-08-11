@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { isTestPaymentProvider, type TestPaymentProvider } from "@/lib/commerce/providers";
 import { db } from "@/lib/db";
 import { orderItems, orders, paymentConfigurations, products, settings } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature } from "@/lib/tenant-access";
+import { getCurrentSiteRequiringFeature, requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/secrets";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
 
@@ -63,8 +63,8 @@ export async function listProducts() {
   return db.select().from(products).where(eq(products.siteId, siteId)).orderBy(desc(products.createdAt));
 }
 
-export async function createProduct(formData: FormData) {
-  const siteId = await getCommerceSiteId();
+export async function createProduct(siteId: number, formData: FormData) {
+  await requireSiteFeatureForRole(siteId, "commerce", "admin");
   const parsed = productInput(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
 
@@ -82,8 +82,8 @@ export async function createProduct(formData: FormData) {
   revalidateCommerce();
 }
 
-export async function updateProduct(productId: number, formData: FormData) {
-  const siteId = await getCommerceSiteId();
+export async function updateProduct(siteId: number, productId: number, formData: FormData) {
+  await requireSiteFeatureForRole(siteId, "commerce", "admin");
   const parsed = productInput(formData);
   if (!Number.isInteger(productId) || productId < 1) throw new Error("Invalid product.");
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
@@ -106,8 +106,8 @@ function toOptionJson(value: string) {
   return options.length ? JSON.stringify(options) : null;
 }
 
-export async function deleteProduct(productId: number) {
-  const siteId = await getCommerceSiteId();
+export async function deleteProduct(siteId: number, productId: number) {
+  await requireSiteFeatureForRole(siteId, "commerce", "admin");
   if (!Number.isInteger(productId) || productId < 1) throw new Error("Invalid product.");
   await db.delete(products).where(and(eq(products.id, productId), eq(products.siteId, siteId)));
   revalidateCommerce();

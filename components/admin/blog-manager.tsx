@@ -20,8 +20,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { MediaPicker } from "@/components/admin/media-picker";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useAdminSiteId } from "./admin-site-context";
 
 export function BlogManager({ posts }: { posts: BlogPost[] }) {
+  const siteId = useAdminSiteId();
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [query, setQuery] = React.useState("");
@@ -32,8 +34,8 @@ export function BlogManager({ posts }: { posts: BlogPost[] }) {
   function savePost(formData: FormData) {
     startTransition(async () => {
       try {
-        if (editingPost) await updateBlogPost(editingPost.id, formData);
-        else await createBlogPost(formData);
+        if (editingPost) await updateBlogPost(siteId, editingPost.id, formData);
+        else await createBlogPost(siteId, formData);
         toast.success(editingPost ? "Post updated." : "Post created.");
         setEditingPost(undefined);
         router.refresh();
@@ -48,7 +50,7 @@ export function BlogManager({ posts }: { posts: BlogPost[] }) {
   function removePost() {
     if (!deletingPost) return;
     startTransition(async () => {
-      try { await deleteBlogPost(deletingPost.id); toast.success("Post deleted."); setDeletingPost(null); router.refresh(); }
+      try { await deleteBlogPost(siteId, deletingPost.id); toast.success("Post deleted."); setDeletingPost(null); router.refresh(); }
       catch (error) { toast.error(error instanceof Error ? error.message : "Unable to delete post."); setDeletingPost(null); }
     });
   }
@@ -66,7 +68,7 @@ export function BlogManager({ posts }: { posts: BlogPost[] }) {
             <DialogDescription>Write your post content with the rich text editor below.</DialogDescription>
           </DialogHeader>
           <div className="py-5">
-            <BlogPostFields key={editingPost?.id ?? "new"} post={editingPost ?? undefined} />
+            <BlogPostFields key={editingPost?.id ?? "new"} siteId={siteId} post={editingPost ?? undefined} />
           </div>
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={pending}>Cancel</Button></DialogClose>
@@ -90,7 +92,7 @@ export function BlogManager({ posts }: { posts: BlogPost[] }) {
   </div>;
 }
 
-function BlogPostFields({ post }: { post?: BlogPost }) {
+function BlogPostFields({ siteId, post }: { siteId: number; post?: BlogPost }) {
   const [coverImage, setCoverImage] = React.useState(post?.coverImage ?? "");
   const [content, setContent] = React.useState(post?.content ?? "");
   const [aiLoading, setAiLoading] = React.useState(false);
@@ -102,7 +104,7 @@ function BlogPostFields({ post }: { post?: BlogPost }) {
     if (!topic) { toast.error("Enter a topic for the AI to write about."); return; }
     setAiLoading(true);
     try {
-      const result = await generateBlogPostWithAi(topic, aiTone);
+      const result = await generateBlogPostWithAi(siteId, topic, aiTone);
       if ("post" in result) {
         const form = document.querySelector("form");
         const titleInput = form?.querySelector<HTMLInputElement>("[name=title]");

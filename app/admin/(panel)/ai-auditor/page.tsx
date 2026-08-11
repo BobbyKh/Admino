@@ -15,5 +15,5 @@ export default async function AiAuditorPage() {
   });
   if (denied) redirect("/admin");
 
-  return <AiSiteAuditor />;
+  return <AiSiteAuditor siteId={siteId} />;
 }

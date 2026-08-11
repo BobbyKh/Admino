@@ -4,8 +4,7 @@ import { z } from "zod";
 import { eq, asc, desc, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pages, pageBlocks, products, blogPosts } from "@/lib/db/schema";
-import { getCurrentSiteRequiringFeature, requireSiteAccess } from "@/lib/tenant-access";
-import { hasMinRole, type Role } from "@/lib/auth";
+import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { getAllServerSettings } from "@/lib/data";
 import { callAiProvider } from "@/lib/ai-provider";
 import { BLOCK_TYPES } from "@/lib/blocks";
@@ -322,14 +321,11 @@ async function executeStep(
 }
 
 export async function runAiSiteBuilder(
+  siteId: number,
   messages: BuilderMessage[]
 ): Promise<AiSiteBuilderResult> {
   try {
-    const siteId = await getCurrentSiteRequiringFeature("ai_site_builder");
-    const user = await requireSiteAccess(siteId);
-    if (!hasMinRole((user.role as Role) ?? "viewer", "editor")) {
-      return { success: false, error: "You need editor permissions to use the AI site builder." };
-    }
+    const user = await requireSiteFeatureForRole(siteId, "ai_site_builder", "editor");
     const settings = await getAllServerSettings(siteId);
     if (!settings.aiApiKey) {
       return { success: false, error: "Configure an AI API key in Settings → AI first." };
