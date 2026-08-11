@@ -56,12 +56,35 @@ test("tenant email delivery carries an explicit site ID", () => {
   assert.match(email, /sendMail\(null, to, "Reset your Admino password"/);
 });
 
-test("production tenant resolution ignores preview overrides", () => {
+test("production tenant previews require authorized admin access", () => {
   const proxy = source("proxy.ts");
   const context = source("lib/site-context.ts");
+  const previewRoute = source("app/api/admin/site-preview/route.ts");
+  const nav = source("components/admin/admin-nav.tsx");
   assert.match(proxy, /requestHeaders\.delete\("x-site-slug"\)/);
   assert.match(proxy, /requestHeaders\.delete\("x-request-host"\)/);
-  assert.match(context, /process\.env\.NODE_ENV !== "production" && siteSlug/);
+  assert.match(proxy, /SITE_SLUG_PATTERN\.test\(requestedSiteSlug\)/);
+  assert.match(proxy, /requestHeaders\.set\("x-site-slug", siteSlug\)/);
+  assert.match(proxy, /siteSlug && process\.env\.NODE_ENV === "development"/);
+  assert.match(context, /await canCurrentAdminPreview\(previewSlug\)/);
+  assert.match(context, /user\.role === "super_admin" \|\| user\.siteId === site\.id/);
+  assert.match(context, /options\.allowProductionPreview/);
+  assert.match(previewRoute, /requireSiteAccess\(siteId\)/);
+  assert.match(previewRoute, /httpOnly: true/);
+  assert.match(previewRoute, /response\.cookies\.set\("site_preview", site\.slug/);
+  assert.match(nav, /\/api\/admin\/site-preview\?siteId=\$\{currentSite\.id\}/);
+});
+
+test("storefront APIs retain the authorized preview tenant", () => {
+  for (const path of [
+    "app/api/chat/route.ts",
+    "app/api/payments/stripe/checkout/route.ts",
+    "app/api/errors/log/route.ts",
+  ]) {
+    const route = source(path);
+    assert.match(route, /getResolvedSite\(\)/, path);
+    assert.doesNotMatch(route, /NODE_ENV === "development".*site/s, path);
+  }
 });
 
 test("AI admin actions bind to the site displayed in the current tab", () => {
@@ -114,4 +137,14 @@ test("AI settings requests and related mutations use explicit tenant IDs", () =>
   assert.match(source("components/admin/blog-manager.tsx"), /createBlogPost\(siteId, formData\)/);
   assert.match(source("lib/actions/commerce.ts"), /createProduct\(siteId: number, formData: FormData\)/);
   assert.match(source("lib/actions/blog.ts"), /createBlogPost\(siteId: number, formData: FormData\)/);
+});
+
+test("admin shell shows and themes the active site", () => {
+  const layout = source("app/admin/(panel)/layout.tsx");
+  const nav = source("components/admin/admin-nav.tsx");
+  assert.match(layout, /getSiteSettings\(currentSiteId\)/);
+  assert.match(layout, /buildThemeCss\(brandSettings\)/);
+  assert.match(layout, /currentSite\?\.name \?\? brandSettings\.siteName/);
+  assert.match(layout, /<SiteSelector sites=\{sites\} currentSiteId=\{currentSiteId\} compact/);
+  assert.match(nav, /currentSite\?\.name \?\? "Active site"/);
 });

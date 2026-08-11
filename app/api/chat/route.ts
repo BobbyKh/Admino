@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllServerSettings } from "@/lib/data";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getSiteForRequest } from "@/lib/site-context";
+import { getResolvedSite } from "@/lib/site-context";
 import { retrieveSiteContext, formatRetrievedContext } from "@/lib/ai-rag-retrieval";
 import { validateAiBaseUrl } from "@/lib/ai-provider";
 
@@ -107,11 +107,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages required" }, { status: 400 });
     }
 
-    const host = (req.headers.get("host") ?? "").split(":")[0];
-    const siteSlug = process.env.NODE_ENV === "development"
-      ? req.nextUrl.searchParams.get("site")
-      : null;
-    const site = await getSiteForRequest(host, siteSlug);
+    const site = await getResolvedSite();
     if (!site?.published) {
       return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }

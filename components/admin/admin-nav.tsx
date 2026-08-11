@@ -301,7 +301,7 @@ export function AdminNav({
   const isSuperAdmin = role === "super_admin";
   const userRoleRank = ROLE_RANK[role] ?? 0;
   const currentSite = sites.find((site) => site.id === currentSiteId);
-  const viewSiteHref = currentSite ? `/?site=${encodeURIComponent(currentSite.slug)}` : "/";
+  const viewSiteHref = currentSite ? `/api/admin/site-preview?siteId=${currentSite.id}` : "/";
 
   const visibleNavGroups = filterNavGroups(NAV_GROUPS, isSuperAdmin, userRoleRank, features);
 
@@ -329,6 +329,7 @@ export function AdminNav({
         </Sheet>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{brandName || "Admino"}</p>
+          <p className="truncate text-xs text-muted-foreground">{currentSite?.name ?? "Active site"}</p>
         </div>
         <SiteSelector sites={sites} currentSiteId={currentSiteId} />
       </div>

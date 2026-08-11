@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { carts, cartItems, orders, orderItems, paymentConfigurations, products, settings } from "@/lib/db/schema";
-import { getSiteForRequest } from "@/lib/site-context";
+import { getResolvedSite } from "@/lib/site-context";
 import { getStripeForSite } from "@/lib/commerce/stripe";
 
 export async function POST(request: NextRequest) {
@@ -13,9 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cart token is required." }, { status: 400 });
     }
 
-    const host = request.headers.get("x-request-host") ?? request.headers.get("host") ?? "localhost";
-    const siteSlug = process.env.NODE_ENV === "development" ? request.nextUrl.searchParams.get("site") : null;
-    const site = await getSiteForRequest(host, siteSlug);
+    const site = await getResolvedSite();
     if (!site) {
       return NextResponse.json({ error: "Site not found." }, { status: 404 });
     }

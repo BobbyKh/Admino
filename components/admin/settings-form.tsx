@@ -37,42 +37,13 @@ import {
 import { generateThemeFromPrompt, updateSettings, type AdminActionState, type AiGeneratedTheme } from "@/lib/actions/index";
 import type { SettingKey } from "@/lib/settings";
 import { useAdminSiteId } from "./admin-site-context";
+import { buildThemeCss } from "@/lib/theme-css";
 
 const initialState: AdminActionState = {};
 
-const THEME_SETTING_TO_CSS: Record<string, string> = {
-  themePrimary: "--primary",
-  themePrimaryForeground: "--primary-foreground",
-  themeSecondary: "--secondary",
-  themeSecondaryForeground: "--secondary-foreground",
-  themeAccent: "--accent",
-  themeAccentForeground: "--accent-foreground",
-  themeBackground: "--background",
-  themeForeground: "--foreground",
-  themeMuted: "--muted",
-  themeMutedForeground: "--muted-foreground",
-  themeBorder: "--border",
-  themeRing: "--ring",
-  themeDestructive: "--destructive",
-  themeCard: "--card",
-  themeCardForeground: "--card-foreground",
-};
-
-function buildThemeCss(colors: Record<string, string>): string {
-  const lines: string[] = [];
-  for (const [key, value] of Object.entries(colors)) {
-    const cssVar = THEME_SETTING_TO_CSS[key];
-    if (cssVar && value) {
-      lines.push(`  ${cssVar}: ${value} !important;`);
-    }
-  }
-  if (lines.length === 0) return "";
-  return `:root {\n${lines.join("\n")}\n}`;
-}
-
 function getInitialThemeColors(initial: Record<string, string>): Record<string, string> {
   const colors: Record<string, string> = {};
-  for (const key of Object.keys(THEME_SETTING_TO_CSS)) {
+  for (const key of Object.keys(initial).filter((key) => key.startsWith("theme"))) {
     if (initial[key]) {
       colors[key] = initial[key];
     }

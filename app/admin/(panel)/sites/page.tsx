@@ -117,7 +117,7 @@ export default function SitesPage() {
 
   function getSiteUrl(site: Site) {
     if (site.domain) return `https://${site.domain}`;
-    return `${window.location.origin}/?site=${encodeURIComponent(site.slug)}`;
+    return `${window.location.origin}/api/admin/site-preview?siteId=${site.id}`;
   }
 
   async function copySiteUrl(site: Site) {

@@ -5,6 +5,7 @@ const SESSION_COOKIE = "admino_session";
 const CSRF_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 100;
+const SITE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -153,14 +154,15 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const hostname = host.split(":")[0];
 
-  const siteSlug = process.env.NODE_ENV === "development"
-    ? request.nextUrl.searchParams.get("site")
+  const requestedSiteSlug = request.nextUrl.searchParams.get("site")?.trim().toLowerCase() ?? null;
+  const siteSlug = requestedSiteSlug && requestedSiteSlug.length <= 100 && SITE_SLUG_PATTERN.test(requestedSiteSlug)
+    ? requestedSiteSlug
     : null;
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.delete("x-site-slug");
   requestHeaders.delete("x-request-host");
-  if (siteSlug && process.env.NODE_ENV === "development") {
+  if (siteSlug) {
     requestHeaders.set("x-site-slug", siteSlug);
   }
   requestHeaders.set("x-request-host", hostname);
@@ -169,7 +171,7 @@ export async function proxy(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  if (siteSlug) {
+  if (siteSlug && process.env.NODE_ENV === "development") {
     response.cookies.set("site_preview", siteSlug, {
       path: "/",
       sameSite: "lax",
