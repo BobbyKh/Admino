@@ -3,6 +3,7 @@ import { getAllServerSettings } from "@/lib/data";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getSiteForRequest } from "@/lib/site-context";
 import { retrieveSiteContext, formatRetrievedContext } from "@/lib/ai-rag-retrieval";
+import { validateAiBaseUrl } from "@/lib/ai-provider";
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -122,6 +123,12 @@ export async function POST(req: NextRequest) {
     if (!settings.aiApiKey) {
       return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
     }
+    let safeBaseUrl: string;
+    try {
+      safeBaseUrl = validateAiBaseUrl(settings.aiBaseUrl);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid AI base URL" }, { status: 500 });
+    }
 
     const systemPrompt = buildSystemPrompt(settings, settings.aiSystemPrompt);
 
@@ -146,13 +153,13 @@ export async function POST(req: NextRequest) {
     let reply: string;
     switch (settings.aiProvider) {
       case "anthropic":
-        reply = await callAnthropic(settings.aiApiKey, settings.aiModel, settings.aiBaseUrl, fullMessages);
+         reply = await callAnthropic(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
       case "google":
-        reply = await callGoogle(settings.aiApiKey, settings.aiModel, settings.aiBaseUrl, fullMessages);
+         reply = await callGoogle(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
       default:
-        reply = await callOpenAI(settings.aiApiKey, settings.aiModel, settings.aiBaseUrl, fullMessages);
+         reply = await callOpenAI(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
     }
 

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, messages } from "@/lib/db/schema";
@@ -16,6 +17,13 @@ import type { Booking } from "@/lib/db/schema";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { requireTenantFeature } from "@/lib/tenant-features";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+async function getPublicRateLimitKey(prefix: string, email: string) {
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() || hdrs.get("x-real-ip") || "unknown";
+  return `${prefix}:${ip}:${email.toLowerCase()}`;
+}
 
 const bookingSchema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(100),
@@ -68,6 +76,10 @@ export async function createBooking(
   }
 
   const siteId = await getResolvedSiteId();
+  if (!siteId) return { message: "This site is not available." };
+  if (!(await checkRateLimit(await getPublicRateLimitKey("booking", data.email))).allowed) {
+    return { message: "Too many booking requests. Please try again later." };
+  }
 
   const [booking] = await db
     .insert(bookings)
@@ -131,6 +143,10 @@ export async function submitContact(
 
   const data = parsed.data;
   const siteId = await getResolvedSiteId();
+  if (!siteId) return { message: "This site is not available." };
+  if (!(await checkRateLimit(await getPublicRateLimitKey("contact", data.email))).allowed) {
+    return { message: "Too many messages. Please try again later." };
+  }
   const [msg] = await db
     .insert(messages)
     .values({
