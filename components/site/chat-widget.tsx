@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle, X, Send, Loader2, Bot, ExternalLink } from "lucide-react";
+import { X, Send, Loader2, Bot, ExternalLink } from "lucide-react";
 import { parseChatContent } from "@/lib/chat-content";
 
 interface ChatMessage {
@@ -107,7 +107,7 @@ export function ChatWidget({ siteName }: { siteName: string }) {
         className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-105 hover:shadow-xl"
         aria-label={open ? "Close chat" : "Open chat assistant"}
       >
-        {open ? <X className="size-6" /> : <MessageCircle className="size-6" />}
+        {open ? <X className="size-6" /> : <Bot className="size-6" />}
       </button>
 
       {/* Chat window */}

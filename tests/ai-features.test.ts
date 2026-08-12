@@ -32,6 +32,14 @@ test("product-ai.ts exports generateProductDescriptionWithAi action", () => {
   assert.match(file, /callAiProvider/);
 });
 
+test("AI auditor loads blocks for any tenant page and audits visible content", () => {
+  const file = source("lib/actions/ai-auditor.ts");
+  assert.match(file, /inArray\(pageBlocks\.pageId, pageIds\)/);
+  assert.match(file, /visibleBlocks\.length > 0/);
+  assert.doesNotMatch(file, /and\(\.\.\.pageIds\.map/);
+  assert.doesNotMatch(file, /and\(\.\.\.pageRows\.map/);
+});
+
 test("text AI features reject fal image model endpoints", async () => {
   await assert.rejects(
     callAiProvider({

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, asc, and } from "drizzle-orm";
+import { eq, asc, and, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pages, pageBlocks, products, blogPosts, navLinks } from "@/lib/db/schema";
 import { requireSiteFeatureForRole } from "@/lib/tenant-access";
@@ -51,7 +51,7 @@ async function collectIssues(siteId: number): Promise<AuditIssue[]> {
 
   const pageIds = pageRows.map((p) => p.id);
   const blocks = pageIds.length
-    ? await db.select().from(pageBlocks).where(and(...pageIds.map((id) => eq(pageBlocks.pageId, id))))
+    ? await db.select().from(pageBlocks).where(inArray(pageBlocks.pageId, pageIds))
     : [];
 
   const blocksByPage = new Map<number, typeof blocks>();
@@ -63,8 +63,10 @@ async function collectIssues(siteId: number): Promise<AuditIssue[]> {
 
   for (const page of pageRows) {
     const pageBlocksList = blocksByPage.get(page.id) ?? [];
-    const hasContent = pageBlocksList.some((b) => b.visible && (b.config ?? "").trim().length > 0);
+    const visibleBlocks = pageBlocksList.filter((b) => b.visible);
     const isHome = page.slug === "home";
+    // An unpublished homepage renders legacy sections or the default storefront layout.
+    const hasContent = visibleBlocks.length > 0 || (isHome && !page.published);
 
     if (!page.metaTitle || !page.metaDescription) {
       issues.push({
@@ -90,7 +92,7 @@ async function collectIssues(siteId: number): Promise<AuditIssue[]> {
       });
     }
 
-    if (isHome && pageBlocksList.length === 0) {
+    if (isHome && page.published && visibleBlocks.length === 0) {
       issues.push({
         id: `page-empty-${page.id}`,
         category: "content",
@@ -102,7 +104,7 @@ async function collectIssues(siteId: number): Promise<AuditIssue[]> {
       });
     }
 
-    if (page.published && pageBlocksList.length === 0 && !isHome) {
+    if (page.published && visibleBlocks.length === 0 && !isHome) {
       issues.push({
         id: `page-empty-${page.id}`,
         category: "content",
@@ -114,7 +116,7 @@ async function collectIssues(siteId: number): Promise<AuditIssue[]> {
       });
     }
 
-    if (!page.noindex && !hasContent) {
+    if (page.published && !page.noindex && !hasContent) {
       issues.push({
         id: `page-noindex-${page.id}`,
         category: "seo",
@@ -222,7 +224,7 @@ export async function runAiAudit(siteId: number): Promise<AiAuditResult> {
             await db
               .select()
               .from(pageBlocks)
-              .where(and(...pageRows.map((p) => eq(pageBlocks.pageId, p.id))))
+              .where(inArray(pageBlocks.pageId, pageRows.map((p) => p.id)))
           ).length
         : 0,
       products: productRows.length,
