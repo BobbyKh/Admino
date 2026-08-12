@@ -31,6 +31,7 @@ async function callOpenAI(apiKey: string, model: string, baseUrl: string, messag
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ model, messages, max_tokens: 1024, temperature: 0.7 }),
   });
+
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Chat API error: ${res.status} ${err}`);
@@ -151,13 +152,13 @@ export async function POST(req: NextRequest) {
     let reply: string;
     switch (settings.aiProvider) {
       case "anthropic":
-         reply = await callAnthropic(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
+        reply = await callAnthropic(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
       case "google":
-         reply = await callGoogle(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
+        reply = await callGoogle(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
       default:
-         reply = await callOpenAI(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
+        reply = await callOpenAI(settings.aiApiKey, settings.aiModel, safeBaseUrl, fullMessages);
         break;
     }
 
