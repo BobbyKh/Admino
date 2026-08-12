@@ -22,7 +22,7 @@ export function PaymentManager({ configurations, secretStatus }: { configuration
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-3xl font-semibold">Payment configurations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Configure tenant checkout methods. eSewa can run in test or live mode; QR remains manual verification.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Configure tenant checkout methods. eSewa can run in test or live mode; QR and cash on delivery use staff verification.</p>
       </div>
       <Card className="border-amber-200 bg-amber-50/40 dark:border-amber-900/60 dark:bg-amber-950/20">
         <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-200">
@@ -88,7 +88,7 @@ function ProviderForm({ provider, configuration, savedSecrets, secretsUnreadable
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Merchant reference" name="testReference" defaultValue={configuration?.accountId ?? ""} placeholder="Merchant account label" />
+        {provider !== "cod" && <Field label="Merchant reference" name="testReference" defaultValue={configuration?.accountId ?? ""} placeholder="Merchant account label" />}
         {provider === "esewa" && (
           <>
             <div className="space-y-2">
@@ -111,6 +111,12 @@ function ProviderForm({ provider, configuration, savedSecrets, secretsUnreadable
             <div className="md:col-span-2 rounded-lg border bg-muted/20 p-4"><MediaPicker name="qrImage" label="Payment QR image" value={qrImage} onChange={setQrImage} /></div>
             <div className="space-y-2 md:col-span-2"><Label htmlFor="qrInstructions">QR instructions</Label><Textarea id="qrInstructions" name="qrInstructions" defaultValue={settings.qrInstructions} rows={3} /></div>
           </>
+        )}
+        {provider === "cod" && (
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="codInstructions">Customer instructions</Label>
+            <Textarea id="codInstructions" name="codInstructions" defaultValue={settings.codInstructions} rows={3} placeholder="For example, please prepare the exact amount. Our driver will provide a receipt." />
+          </div>
         )}
       </div>
 
@@ -139,8 +145,9 @@ function parseSettings(raw: string | null | undefined) {
       publicKey: typeof value.publicKey === "string" ? value.publicKey : "",
       qrImage: typeof value.qrImage === "string" ? value.qrImage : "",
       qrInstructions: typeof value.qrInstructions === "string" ? value.qrInstructions : "",
+      codInstructions: typeof value.codInstructions === "string" ? value.codInstructions : "",
     };
   } catch {
-    return { mode: "test", merchantId: "", publicKey: "", qrImage: "", qrInstructions: "" };
+    return { mode: "test", merchantId: "", publicKey: "", qrImage: "", qrInstructions: "", codInstructions: "" };
   }
 }

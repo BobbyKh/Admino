@@ -85,7 +85,8 @@ export async function getStorePaymentMethods() {
     const provider: TestPaymentProvider = configuration.provider;
     const settings = parsePaymentSettings(configuration.settings);
     const modeLabel = provider === "esewa" ? ` (${settings.mode === "live" ? "Live" : "Test"})` : "";
-    return [{ id: provider, label: `${testPaymentProviderRegistry[provider].label}${modeLabel}`, qrImage: provider === "qr" ? settings.qrImage : null, instructions: provider === "qr" ? settings.qrInstructions : null }];
+    const instructions = provider === "qr" ? settings.qrInstructions : provider === "cod" ? settings.codInstructions : null;
+    return [{ id: provider, label: `${testPaymentProviderRegistry[provider].label}${modeLabel}`, qrImage: provider === "qr" ? settings.qrImage : null, instructions }];
   });
 }
 
@@ -180,9 +181,10 @@ function parsePaymentSettings(raw: string | null) {
     return {
       qrImage: typeof value.qrImage === "string" ? value.qrImage : null,
       qrInstructions: typeof value.qrInstructions === "string" ? value.qrInstructions : null,
+      codInstructions: typeof value.codInstructions === "string" ? value.codInstructions : null,
       mode: value.mode === "live" ? "live" : "test",
     };
-  } catch { return { qrImage: null, qrInstructions: null, mode: "test" }; }
+  } catch { return { qrImage: null, qrInstructions: null, codInstructions: null, mode: "test" }; }
 }
 
 function normalizeSelectedOptions(input: unknown) {

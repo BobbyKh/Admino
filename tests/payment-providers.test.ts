@@ -15,12 +15,24 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("supported payment providers registry includes esewa and stripe", () => {
+test("supported payment providers registry includes online and manual methods", () => {
   assert.ok(isTestPaymentProvider("esewa"));
   assert.ok(isTestPaymentProvider("stripe"));
   assert.ok(isTestPaymentProvider("khalti"));
   assert.ok(isTestPaymentProvider("qr"));
-  assert.equal(TEST_PAYMENT_PROVIDERS.length, 4);
+  assert.ok(isTestPaymentProvider("cod"));
+  assert.equal(TEST_PAYMENT_PROVIDERS.length, 5);
+});
+
+test("cash on delivery is configurable and shown at checkout without credentials", () => {
+  const actions = source("lib/actions/commerce.ts");
+  const storefront = source("lib/actions/storefront-commerce.ts");
+  const checkout = source("components/site/checkout-page-client.tsx");
+  assert.match(actions, /cod: \[\]/);
+  assert.match(actions, /codInstructions/);
+  assert.match(storefront, /provider === "cod" \? settings\.codInstructions/);
+  assert.match(checkout, /Place cash on delivery order/);
+  assert.match(checkout, /Payment will be collected when your order is delivered/);
 });
 
 test("generates and verifies valid eSewa HMAC SHA-256 signature", () => {

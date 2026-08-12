@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 /**
  * Payment provider metadata shared by tenant configuration and checkout.
  */
-export const TEST_PAYMENT_PROVIDERS = ["stripe", "khalti", "esewa", "qr"] as const;
+export const TEST_PAYMENT_PROVIDERS = ["stripe", "khalti", "esewa", "qr", "cod"] as const;
 
 export type TestPaymentProvider = (typeof TEST_PAYMENT_PROVIDERS)[number];
 
@@ -26,6 +26,10 @@ export const testPaymentProviderRegistry: Record<
   qr: {
     label: "QR payment",
     description: "Shows the tenant's QR code and records the customer reference for review.",
+  },
+  cod: {
+    label: "Cash on delivery",
+    description: "Accept payment when the order is delivered. No payment credentials are required.",
   },
 };
 

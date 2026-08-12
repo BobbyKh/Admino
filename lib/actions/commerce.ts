@@ -158,6 +158,7 @@ function paymentConfigurationInput(formData: FormData) {
   const publicKey = String(formData.get("publicKey") ?? "").trim().slice(0, 240);
   const qrImage = String(formData.get("qrImage") ?? "").trim();
   const qrInstructions = String(formData.get("qrInstructions") ?? "").trim().slice(0, 500);
+  const codInstructions = String(formData.get("codInstructions") ?? "").trim().slice(0, 500);
   if (qrImage && !z.string().url().safeParse(qrImage).success) throw new Error("QR image must be a valid URL.");
   return {
     provider,
@@ -170,6 +171,7 @@ function paymentConfigurationInput(formData: FormData) {
       publicKey: publicKey || null,
       qrImage: qrImage || null,
       qrInstructions: qrInstructions || null,
+      codInstructions: codInstructions || null,
     }),
   };
 }
@@ -180,6 +182,7 @@ function paymentSecretInput(provider: TestPaymentProvider, formData: FormData) {
     khalti: ["secretKey"],
     stripe: ["secretKey", "webhookSecret"],
     qr: [],
+    cod: [],
   };
   return Object.fromEntries(fields[provider].map((field) => [field, String(formData.get(field) ?? "").trim()]).filter(([, value]) => value));
 }
@@ -234,7 +237,7 @@ export async function updatePaymentConfiguration(provider: TestPaymentProvider, 
 
 export async function getPaymentSecretStatus() {
   const siteId = await getCommerceSiteId();
-  const providers: TestPaymentProvider[] = ["stripe", "khalti", "esewa", "qr"];
+  const providers: TestPaymentProvider[] = ["stripe", "khalti", "esewa", "qr", "cod"];
   const result: Partial<Record<TestPaymentProvider, { fields: string[]; unreadable: boolean }>> = {};
   for (const provider of providers) {
     const [row] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, `commerce_payment_${provider}_secrets`)));
