@@ -56,6 +56,11 @@ export async function callAiProvider(config: AiProviderConfig): Promise<string> 
 
   if (!apiKey) throw new Error("AI API key not configured.");
   const safeBaseUrl = validateAiBaseUrl(baseUrl);
+  if (safeBaseUrl && new URL(safeBaseUrl).hostname.toLowerCase() === "fal.run") {
+    throw new Error(
+      "The configured fal.run URL is an image-generation endpoint, not a text AI base URL. Blocks and AI layouts use the shared text AI configuration in Settings → Integrations. Configure an OpenAI-compatible, Anthropic, or Google text endpoint there."
+    );
+  }
 
   switch (provider) {
     case "anthropic":

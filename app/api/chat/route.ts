@@ -11,15 +11,17 @@ interface ChatMessage {
 }
 
 function buildSystemPrompt(settings: Record<string, string>, customPrompt: string): string {
-  if (customPrompt) return customPrompt;
   const siteName = settings.siteName || "our business";
   const address = settings.address || "";
   const hours = settings.hours || "";
   const phone = settings.phone || "";
   const email = settings.email || "";
-  return `You are a friendly, helpful AI assistant for ${siteName}.${address ? ` Located at ${address}.` : ""}${hours ? ` Open hours: ${hours}.` : ""}${phone ? ` Phone: ${phone}.` : ""}${email ? ` Email: ${email}.` : ""}
+  const basePrompt = customPrompt || `You are a friendly, helpful AI assistant for ${siteName}.${address ? ` Located at ${address}.` : ""}${hours ? ` Open hours: ${hours}.` : ""}${phone ? ` Phone: ${phone}.` : ""}${email ? ` Email: ${email}.` : ""}
 
 Be concise, conversational, and helpful. Answer questions about the menu, hours, location, reservations, and services. If asked about something you don't know, politely suggest contacting the business directly.`;
+  return `${basePrompt}
+
+When useful, make destinations clickable with [label](URL) and show known images with ![description](image URL). Only use URLs found in the site content or provided by the user; never invent a URL. Do not output HTML.`;
 }
 
 async function callOpenAI(apiKey: string, model: string, baseUrl: string, messages: ChatMessage[]): Promise<string> {

@@ -1,11 +1,57 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle, X, Send, Loader2, Bot } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, ExternalLink } from "lucide-react";
+import { parseChatContent } from "@/lib/chat-content";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+function ChatMessageContent({ content }: { content: string }) {
+  return (
+    <div className="whitespace-pre-wrap break-words">
+      {parseChatContent(content).map((part, index) => {
+        if (part.type === "image") {
+          return (
+            <a
+              key={`${part.src}-${index}`}
+              href={part.src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="my-2 block overflow-hidden rounded-xl border bg-background first:mt-0 last:mb-0"
+            >
+              {/* Chat images can come from tenant content or user-supplied external URLs. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={part.src}
+                alt={part.alt}
+                loading="lazy"
+                className="max-h-56 w-full object-contain"
+              />
+            </a>
+          );
+        }
+        if (part.type === "link") {
+          const external = /^https?:\/\//i.test(part.href);
+          return (
+            <a
+              key={`${part.href}-${index}`}
+              href={part.href}
+              target={external ? "_blank" : undefined}
+              rel={external ? "noopener noreferrer" : undefined}
+              className="inline-flex max-w-full items-baseline gap-1 font-medium underline underline-offset-2 hover:opacity-80"
+            >
+              <span className="break-all">{part.label}</span>
+              {external && <ExternalLink className="size-3 shrink-0" aria-hidden="true" />}
+            </a>
+          );
+        }
+        return <React.Fragment key={index}>{part.value}</React.Fragment>;
+      })}
+    </div>
+  );
 }
 
 export function ChatWidget({ siteName }: { siteName: string }) {
@@ -99,7 +145,7 @@ export function ChatWidget({ siteName }: { siteName: string }) {
                       : "bg-muted text-foreground rounded-bl-md"
                   }`}
                 >
-                  {msg.content}
+                  <ChatMessageContent content={msg.content} />
                 </div>
               </div>
             ))}

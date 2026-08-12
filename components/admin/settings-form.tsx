@@ -257,9 +257,9 @@ export function SettingsForm({
           </Section>
 
           <Section
-            title="AI Chatbot Assistant"
+            title="Shared AI Configuration"
             icon={<Bot className="size-4" />}
-            hint="Configure the AI-powered chat widget shown on the public site. Supports OpenAI, Anthropic, and Google Gemini."
+            hint="Used by Blocks, AI layouts, content tools, and the public chatbot. Configure a text-generation API here; image-model endpoints such as fal.run/flux are not compatible."
           >
             <AiConfigSection initial={initial} siteId={siteId} />
           </Section>
@@ -1013,7 +1013,7 @@ function AiConfigSection({ initial, siteId }: { initial: Record<SettingKey, stri
     openai: "Works with OpenAI, OpenRouter, Together, Groq, DeepSeek, Fireworks, Novita, and any OpenAI-compatible API.",
     anthropic: "Direct Anthropic API. For OpenRouter use OpenAI-compatible above.",
     google: "Google AI Studio / Vertex AI (Gemini models).",
-    custom: "Any custom API endpoint. Uses OpenAI-compatible /v1/chat/completions format. Paste your full base URL above and enter the model name exactly as your provider expects.",
+    custom: "Any OpenAI-compatible text API. Enter its base URL and the model name exactly as the provider expects.",
   };
 
   return (
@@ -1092,7 +1092,7 @@ function AiConfigSection({ initial, siteId }: { initial: Record<SettingKey, stri
           {provider === "openai" && "Default: OpenAI. Paste any OpenAI-compatible endpoint (OpenRouter, Together, Groq, DeepSeek, etc.)"}
           {provider === "anthropic" && "Default: https://api.anthropic.com"}
           {provider === "google" && "Default: Google AI Studio. Use Vertex AI endpoint for enterprise."}
-          {provider === "custom" && "Must accept POST /chat/completions in OpenAI format. Include the full path if needed."}
+          {provider === "custom" && "Must accept POST /chat/completions in OpenAI format. Enter the base URL without /chat/completions."}
         </p>
       </div>
 
