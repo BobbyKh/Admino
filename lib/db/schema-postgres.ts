@@ -839,6 +839,9 @@ export type NewUserFeature = typeof userFeatures.$inferInsert;
 export type Customer = typeof customers.$inferSelect;
 export type CustomerAddress = typeof customerAddresses.$inferSelect;
 export type Wishlist = typeof wishlists.$inferSelect;
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type EmailCampaign = typeof emailCampaigns.$inferSelect;
+export type EmailJob = typeof emailJobs.$inferSelect;
 
 export type NewBooking = typeof bookings.$inferInsert;
 export type NewSite = typeof sites.$inferInsert;

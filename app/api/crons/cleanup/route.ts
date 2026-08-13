@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteExpiredRateLimitBuckets } from "@/lib/rate-limit";
 import { releaseExpiredInventoryReservations } from "@/lib/commerce/inventory";
+import { enqueueDueCampaigns, processEmailQueue } from "@/lib/email-queue";
 
 export const runtime = "nodejs";
 
@@ -13,9 +14,11 @@ function authorized(request: NextRequest) {
 export async function GET(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [, releasedReservations] = await Promise.all([
+  const [, releasedReservations, queuedCampaignRecipients] = await Promise.all([
     deleteExpiredRateLimitBuckets(),
     releaseExpiredInventoryReservations(),
+    enqueueDueCampaigns(),
   ]);
-  return NextResponse.json({ ok: true, releasedReservations });
+  const emailQueue = await processEmailQueue();
+  return NextResponse.json({ ok: true, releasedReservations, queuedCampaignRecipients, emailQueue });
 }

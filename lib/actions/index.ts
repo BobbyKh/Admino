@@ -13,6 +13,7 @@ export { uploadImage } from "./uploads";
 export { updateLayoutSettings } from "./layout";
 export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentConfigurations, createPaymentConfiguration, updatePaymentConfiguration, deletePaymentConfiguration, listOrders, updateOrderStatus, approveOrderPayment, rejectOrderPayment, fulfillOrder, getCommerceSettings, updateCommerceSettings, getPaymentSecretStatus } from "./commerce";
 export { listPromotions, createPromotion, updatePromotion, deletePromotion } from "./promotions";
+export { subscribeNewsletter, confirmNewsletterToken, unsubscribeNewsletterToken } from "./newsletter";
 export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
 export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
 export { addStoreCartItem, applyStorePromotion, completeStoreCheckout, getStoreCart, getStorePaymentMethods, removeStorePromotion, updateStoreCartItem } from "./storefront-commerce";

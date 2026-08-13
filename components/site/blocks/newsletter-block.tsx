@@ -4,6 +4,8 @@ import * as React from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { subscribeNewsletter } from "@/lib/actions/index";
+import { useSearchParams } from "next/navigation";
 
 function parseConfig(raw: string | null): Record<string, string> {
   if (!raw) return {};
@@ -12,7 +14,8 @@ function parseConfig(raw: string | null): Record<string, string> {
 
 export function NewsletterBlock({ config }: { config: string | null }) {
   const c = parseConfig(config);
-  const [submitted, setSubmitted] = React.useState(false);
+  const locale = useSearchParams().get("locale") ?? "en";
+  const [state, action, pending] = React.useActionState(subscribeNewsletter, { success: false, message: "" });
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
@@ -23,25 +26,29 @@ export function NewsletterBlock({ config }: { config: string | null }) {
         <p className="mx-auto mt-3 max-w-md text-muted-foreground">
           {c.subtitle || "Stay updated with our latest news and offers."}
         </p>
-        {submitted ? (
+        {state.success ? (
           <p className="mt-6 font-medium text-primary">
-            {c.successMessage || "Thank you for subscribing!"}
+            {state.message || c.successMessage || "Check your email to confirm your subscription."}
           </p>
         ) : (
-          <form
-            className="mx-auto mt-6 flex max-w-md gap-2"
-            onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}
-          >
+          <form action={action} className="mx-auto mt-6 max-w-md space-y-3">
+            <div className="flex gap-2">
             <Input
+              name="email"
               type="email"
               placeholder={c.placeholder || "Enter your email"}
               required
               className="flex-1"
             />
-            <Button type="submit" className="gap-2">
+            <Button type="submit" className="gap-2" disabled={pending}>
               {c.buttonText || "Subscribe"}
               <Send className="size-4" />
             </Button>
+            </div>
+            <input type="hidden" name="source" value="page-builder-newsletter" />
+            <input type="hidden" name="locale" value={locale} />
+            <label className="flex items-start gap-2 text-left text-xs text-muted-foreground"><input type="checkbox" name="consent" required className="mt-0.5" /><span>I agree to receive product news and marketing emails. I can unsubscribe at any time.</span></label>
+            {!state.success && state.message && <p role="alert" className="text-sm text-destructive">{state.message}</p>}
           </form>
         )}
       </div>

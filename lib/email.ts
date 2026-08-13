@@ -39,7 +39,7 @@ async function getSmtpConfig(siteId: number | null) {
   };
 }
 
-async function sendMail(siteId: number | null, to: string, subject: string, html: string) {
+export async function sendMail(siteId: number | null, to: string, subject: string, html: string) {
   const config = await getSmtpConfig(siteId);
   if (!config.host || !config.user || !config.pass) {
     console.log(`[email:not-configured] To: ${to} | Subject: ${subject}`);
