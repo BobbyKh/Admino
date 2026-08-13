@@ -15,6 +15,7 @@ export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentC
 export { listPromotions, createPromotion, updatePromotion, deletePromotion } from "./promotions";
 export { subscribeNewsletter, confirmNewsletterToken, unsubscribeNewsletterToken } from "./newsletter";
 export { getMarketingDashboard, createEmailCampaign, queueEmailCampaign, deleteEmailCampaign, sendCampaignTest, createNewProductCampaign } from "./marketing";
+export { submitSellerApplication, getMarketplaceDashboard, reviewSellerApplication, isMarketplaceEnabled, type SellerApplicationState } from "./marketplace";
 export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
 export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
 export { addStoreCartItem, applyStorePromotion, completeStoreCheckout, getStoreCart, getStorePaymentMethods, removeStorePromotion, setStoreCartEmail, updateStoreCartItem } from "./storefront-commerce";

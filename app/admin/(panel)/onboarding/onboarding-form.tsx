@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type State = { success?: boolean; message?: string; data?: { siteId?: number } };
 const initialState: State = {};
-const defaultFeatures = Object.keys(TENANT_FEATURE_METADATA).filter((key) => !key.startsWith("ai_")) as TenantFeature[];
+const defaultFeatures = Object.keys(TENANT_FEATURE_METADATA).filter((key) => !key.startsWith("ai_") && key !== "marketplace") as TenantFeature[];
 
 export function OnboardingForm() {
   const router = useRouter();

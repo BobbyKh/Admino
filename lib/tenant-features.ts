@@ -4,11 +4,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings, userFeatures } from "@/lib/db/schema";
 import type { Role } from "@/lib/auth";
-import { TENANT_FEATURES, TENANT_FEATURE_METADATA, type TenantFeature } from "@/lib/tenant-features-constants";
+import { DEFAULT_TENANT_FEATURES, TENANT_FEATURES, TENANT_FEATURE_METADATA, type TenantFeature } from "@/lib/tenant-features-constants";
 
 export {
   TENANT_FEATURES,
   TENANT_FEATURE_METADATA,
+  DEFAULT_TENANT_FEATURES,
   FEATURE_CATEGORIES,
   type TenantFeature,
   type FeatureCategory,
@@ -26,14 +27,14 @@ export async function getTenantFeatureAccess(siteId: number): Promise<TenantFeat
     .select({ value: settings.value })
     .from(settings)
     .where(and(eq(settings.siteId, siteId), eq(settings.key, FEATURE_SETTING_KEY)));
-  if (!row?.value) return [...TENANT_FEATURES];
+  if (!row?.value) return [...DEFAULT_TENANT_FEATURES];
 
   try {
     const value = JSON.parse(row.value);
-    if (!Array.isArray(value)) return [...TENANT_FEATURES];
+    if (!Array.isArray(value)) return [...DEFAULT_TENANT_FEATURES];
     return value.filter((feature): feature is TenantFeature => isTenantFeature(feature));
   } catch {
-    return [...TENANT_FEATURES];
+    return [...DEFAULT_TENANT_FEATURES];
   }
 }
 
@@ -113,8 +114,8 @@ export async function hasTenantFeatureAccess(
   feature: TenantFeature,
   ctx: TenantAccessContext
 ): Promise<boolean> {
-  if (ctx.role === "super_admin") return true;
   const features = await getTenantFeatureAccess(siteId);
+  if (ctx.role === "super_admin") return feature === "marketplace" ? features.includes(feature) : true;
   if (!features.includes(feature)) return false;
   if (ctx.userId == null) return true;
   const userAccess = await getUserFeatureAccess(ctx.userId);
@@ -143,11 +144,13 @@ export async function getEffectiveTenantFeatureAccess(
   siteId: number,
   ctx: TenantAccessContext
 ): Promise<TenantFeature[]> {
-  if (ctx.role === "super_admin") return [...TENANT_FEATURES];
+  if (ctx.role === "super_admin") {
+    const siteFeatures = await getTenantFeatureAccess(siteId);
+    return TENANT_FEATURES.filter((feature) => feature !== "marketplace" || siteFeatures.includes(feature));
+  }
   const siteFeatures = await getTenantFeatureAccess(siteId);
   if (ctx.userId == null) return siteFeatures;
   const userAccess = await getUserFeatureAccess(ctx.userId);
   if (userAccess.length === 0) return siteFeatures;
   return siteFeatures.filter((feature) => userAccess.includes(feature));
 }
-

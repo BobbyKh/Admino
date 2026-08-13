@@ -454,7 +454,7 @@ export default function SitesPage() {
               <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
                 <div>
                   <Label>Tenant features</Label>
-                  <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific platform features. Leave a feature unchecked to disable it. Super admins always retain access, regardless of these toggles.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Grant this tenant access to specific platform features. Marketplace access is always explicit; super admins retain access to other modules.</p>
                 </div>
                 {FEATURE_CATEGORIES.map((category) => {
                   const features = Object.values(TENANT_FEATURE_METADATA).filter(

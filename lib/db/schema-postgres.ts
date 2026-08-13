@@ -356,6 +356,75 @@ export const products = pgTable("products", {
   statusIdx: index("products_status_idx").on(t.status),
 }));
 
+export const sellerApplications = pgTable("seller_applications", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  businessName: text("business_name").notNull(),
+  legalName: text("legal_name"),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  country: text("country").notNull(),
+  website: text("website"),
+  taxId: text("tax_id"),
+  description: text("description").notNull(),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  reviewNotes: text("review_notes"),
+  reviewedBy: integer("reviewed_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  reviewedAt: text("reviewed_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteEmailUnique: uniqueIndex("seller_applications_site_email_idx").on(t.siteId, t.email),
+  siteStatusIdx: index("seller_applications_site_status_idx").on(t.siteId, t.status, t.createdAt),
+}));
+
+export const sellerOrganizations = pgTable("seller_organizations", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  applicationId: integer("application_id").notNull().references(() => sellerApplications.id, { onDelete: "restrict" }).unique(),
+  name: text("name").notNull(),
+  legalName: text("legal_name"),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+  country: text("country").notNull(),
+  taxId: text("tax_id"),
+  status: text("status").notNull().default("active"), // active | suspended | closed
+  verifiedAt: text("verified_at").notNull(),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteIdIdx: index("seller_organizations_site_id_idx").on(t.siteId),
+  siteEmailUnique: uniqueIndex("seller_organizations_site_email_idx").on(t.siteId, t.contactEmail),
+}));
+
+export const sellerStores = pgTable("seller_stores", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  sellerId: integer("seller_id").notNull().references(() => sellerOrganizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"), // active | suspended | closed
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteSlugUnique: uniqueIndex("seller_stores_site_slug_idx").on(t.siteId, t.slug),
+  sellerIdIdx: index("seller_stores_seller_id_idx").on(t.sellerId),
+}));
+
+export const sellerMembers = pgTable("seller_members", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  sellerId: integer("seller_id").notNull().references(() => sellerOrganizations.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("owner"), // owner | manager | staff
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  sellerUserUnique: uniqueIndex("seller_members_seller_user_idx").on(t.sellerId, t.userId),
+  siteUserIdx: index("seller_members_site_user_idx").on(t.siteId, t.userId),
+}));
+
 export const recentlyViewedProducts = pgTable("recently_viewed_products", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
@@ -935,6 +1004,10 @@ export type PageBlock = typeof pageBlocks.$inferSelect;
 export type PageRevision = typeof pageRevisions.$inferSelect;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type SellerApplication = typeof sellerApplications.$inferSelect;
+export type SellerOrganization = typeof sellerOrganizations.$inferSelect;
+export type SellerStore = typeof sellerStores.$inferSelect;
+export type SellerMember = typeof sellerMembers.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Cart = typeof carts.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;

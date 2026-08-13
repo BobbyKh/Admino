@@ -153,7 +153,7 @@ export async function onboardSite(
   }
 
   const enabledFeatures = TENANT_FEATURES.filter((feature) => formData.get(`feature_${feature}`) === "on");
-  await setTenantFeatureAccess(site.id, enabledFeatures.length ? enabledFeatures : TENANT_FEATURES.filter((feature) => !feature.startsWith("ai_")));
+  await setTenantFeatureAccess(site.id, enabledFeatures.length ? enabledFeatures : TENANT_FEATURES.filter((feature) => !feature.startsWith("ai_") && feature !== "marketplace"));
   revalidatePath("/admin/sites");
   revalidatePath("/admin/onboarding");
   return { success: true, message: "Site onboarded.", data: { siteId: site.id } };

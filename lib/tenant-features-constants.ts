@@ -16,6 +16,7 @@ export const TENANT_FEATURES = [
   "services",
   "blog",
   "commerce",
+  "marketplace",
   "ai_theme_generator",
   "ai_block_assistant",
   "ai_site_builder",
@@ -25,6 +26,8 @@ export const TENANT_FEATURES = [
 ] as const;
 
 export type TenantFeature = (typeof TENANT_FEATURES)[number];
+
+export const DEFAULT_TENANT_FEATURES = TENANT_FEATURES.filter((feature) => feature !== "marketplace");
 
 export type FeatureCategory = "Site Management" | "Content" | "Commerce" | "AI Tools";
 
@@ -106,6 +109,12 @@ export const TENANT_FEATURE_METADATA: Record<TenantFeature, TenantFeatureMeta> =
     key: "commerce",
     label: "E-Commerce",
     description: "Manage products, orders, and payment setup",
+    category: "Commerce",
+  },
+  marketplace: {
+    key: "marketplace",
+    label: "Multi-Seller Marketplace",
+    description: "Enable seller applications, stores, and marketplace operations",
     category: "Commerce",
   },
   ai_theme_generator: {

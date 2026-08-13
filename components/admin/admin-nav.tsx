@@ -37,6 +37,7 @@ import {
   BookOpen,
   Tags,
   Megaphone,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -101,6 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/commerce", label: "Overview", icon: ShoppingBag, feature: "commerce" },
       { href: "/admin/commerce/products", label: "Products", icon: Package, feature: "commerce" },
+      { href: "/admin/commerce/sellers", label: "Marketplace Sellers", icon: Store, feature: "marketplace", minRole: "admin" },
       { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag, feature: "commerce" },
       { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard, feature: "commerce" },
       { href: "/admin/commerce/promotions", label: "Promotions", icon: Tags, feature: "commerce" },
