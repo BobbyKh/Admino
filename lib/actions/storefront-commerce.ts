@@ -65,6 +65,15 @@ export async function removeStorePromotion(token: string) {
   await db.update(carts).set({ promotionCode: null, updatedAt: new Date().toISOString() }).where(eq(carts.id, cart.id));
 }
 
+export async function setStoreCartEmail(token: string, email: string) {
+  const siteId = await getStoreSiteId();
+  const cart = await getCartForSite(token, siteId);
+  if (!cart) return;
+  const parsed = z.string().trim().email().safeParse(email);
+  if (!parsed.success) return;
+  await db.update(carts).set({ email: parsed.data.toLowerCase(), updatedAt: new Date().toISOString() }).where(eq(carts.id, cart.id));
+}
+
 export async function addStoreCartItem(token: string | null, productId: number, selectedOptions?: unknown, addQuantity = 1) {
   const siteId = await getStoreSiteId();
   if (!Number.isInteger(productId) || productId < 1) throw new Error("Invalid product.");

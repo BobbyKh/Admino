@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { CheckCircle2, Loader2, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
-import { completeStoreCheckout, getStoreCart, getStorePaymentMethods } from "@/lib/actions/index";
+import { completeStoreCheckout, getStoreCart, getStorePaymentMethods, setStoreCartEmail } from "@/lib/actions/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +96,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
           <h2 className="font-heading text-lg font-semibold">Contact</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field id="customerName" label="Full name" autoComplete="name" required />
-            <Field id="email" label="Email address" type="email" autoComplete="email" required />
+            <Field id="email" label="Email address" type="email" autoComplete="email" required onBlur={(email) => { const token = window.localStorage.getItem("store-cart-token"); if (token) void setStoreCartEmail(token, email); }} />
             <Field id="phone" label="Phone" type="tel" autoComplete="tel" required />
           </div>
         </section>
@@ -134,8 +134,8 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
   );
 }
 
-function Field({ id, label, type = "text", required = false, autoComplete, defaultValue }: { id: string; label: string; type?: string; required?: boolean; autoComplete?: string; defaultValue?: string }) {
-  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} name={id} type={type} required={required} autoComplete={autoComplete} defaultValue={defaultValue} /></div>;
+function Field({ id, label, type = "text", required = false, autoComplete, defaultValue, onBlur }: { id: string; label: string; type?: string; required?: boolean; autoComplete?: string; defaultValue?: string; onBlur?: (value: string) => void }) {
+  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} name={id} type={type} required={required} autoComplete={autoComplete} defaultValue={defaultValue} onBlur={(event) => onBlur?.(event.currentTarget.value)} /></div>;
 }
 
 function SelectedOptions({ value }: { value: string }) {

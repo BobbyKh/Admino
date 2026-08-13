@@ -11,6 +11,7 @@ import { getCurrentSiteRequiringFeature, requireSiteFeatureForRole } from "@/lib
 import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/secrets";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
 import { commitInventoryReservation, releaseInventoryReservation } from "@/lib/commerce/inventory";
+import { enqueueProductLifecycleEmails } from "@/lib/marketing-lifecycle";
 
 const productSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -92,9 +93,12 @@ export async function updateProduct(siteId: number, productId: number, formData:
   const parsed = productInput(formData);
   if (!Number.isInteger(productId) || productId < 1) throw new Error("Invalid product.");
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
+  const [previous] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.siteId, siteId)));
+  if (!previous) throw new Error("Product not found.");
 
   const product = parsed.data;
   const wholesaleTiers = parseWholesaleTiers(product.wholesaleTiers, product.price);
+  const updatedAt = new Date().toISOString();
   await db.update(products).set({
     ...product,
     wholesaleTiers,
@@ -103,8 +107,9 @@ export async function updateProduct(siteId: number, productId: number, formData:
     category: product.category || null,
     sizes: toOptionJson(product.sizes),
     colors: toOptionJson(product.colors),
-    updatedAt: new Date().toISOString(),
+    updatedAt,
   }).where(and(eq(products.id, productId), eq(products.siteId, siteId)));
+  void enqueueProductLifecycleEmails({ siteId, previous, next: { ...previous, ...product, wholesaleTiers, updatedAt } }).catch((error) => console.error("Failed to enqueue product lifecycle emails:", error));
   revalidateCommerce();
 }
 

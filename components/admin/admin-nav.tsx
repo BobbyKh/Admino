@@ -36,6 +36,7 @@ import {
   MessagesSquare,
   BookOpen,
   Tags,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/lib/actions";
@@ -103,6 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/commerce/orders", label: "Orders", icon: ShoppingBag, feature: "commerce" },
       { href: "/admin/commerce/payments", label: "Payments", icon: CreditCard, feature: "commerce" },
       { href: "/admin/commerce/promotions", label: "Promotions", icon: Tags, feature: "commerce" },
+      { href: "/admin/commerce/marketing", label: "Email Marketing", icon: Megaphone, feature: "commerce" },
       { href: "/admin/customers", label: "Customers", icon: Users, feature: "commerce" },
     ],
   },

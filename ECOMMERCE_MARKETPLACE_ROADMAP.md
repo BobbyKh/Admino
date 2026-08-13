@@ -33,11 +33,16 @@ Status: Complete for single-code promotions. Promotion stacking/combinability re
 
 ## Phase 3: Customer Growth
 
-- Real newsletter subscriptions with consent evidence, double opt-in, unsubscribe, and suppression handling.
-- Segments for new-product alerts, back-in-stock alerts, price drops, abandoned carts, and order lifecycle messages.
-- Durable email queue with retries, idempotency, delivery status, bounce handling, and provider webhooks.
-- Campaign builder with audience preview, scheduling, templates, test sends, and conversion attribution.
-- Customer accounts, addresses, order history, wishlist, recently viewed products, reviews, and loyalty.
+Status: Core email growth platform complete. Provider-specific bounce webhooks, recently viewed products, reviews, and loyalty remain planned extensions.
+
+- [x] Real newsletter subscriptions with consent evidence, double opt-in, confirmation expiry, unsubscribe, and suppression states.
+- [x] Segments for new-product alerts, wishlist-based back-in-stock alerts, price drops, and consent-safe abandoned carts.
+- [x] Existing transactional order lifecycle messages remain active.
+- [x] Durable PostgreSQL email queue with idempotency, locking, retries, delivery status, and dead-letter state.
+- [x] Campaign administration with scheduling, test sends, new-product templates, audience snapshots, queue health, and UTM attribution.
+- [x] Customer accounts, addresses, order history, and wishlist.
+- [ ] Add provider-specific bounce/complaint webhooks that move subscribers to suppressed status.
+- [ ] Add recently viewed products, product reviews, and loyalty rewards.
 
 ## Phase 4: Marketplace Operations
 

@@ -356,6 +356,73 @@ export const products = pgTable("products", {
   statusIdx: index("products_status_idx").on(t.status),
 }));
 
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  status: text("status").notNull().default("pending"), // pending | active | unsubscribed | suppressed
+  source: text("source").notNull().default("newsletter"),
+  locale: text("locale").notNull().default("en"),
+  consentText: text("consent_text").notNull(),
+  consentIp: text("consent_ip"),
+  consentUserAgent: text("consent_user_agent"),
+  confirmationTokenHash: text("confirmation_token_hash").unique(),
+  unsubscribeTokenHash: text("unsubscribe_token_hash").notNull().unique(),
+  confirmationExpiresAt: text("confirmation_expires_at"),
+  confirmedAt: text("confirmed_at"),
+  unsubscribedAt: text("unsubscribed_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteEmailUnique: uniqueIndex("newsletter_subscribers_site_email_idx").on(t.siteId, t.email),
+  siteStatusIdx: index("newsletter_subscribers_site_status_idx").on(t.siteId, t.status),
+}));
+
+export const emailCampaigns = pgTable("email_campaigns", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type").notNull().default("newsletter"),
+  subject: text("subject").notNull(),
+  previewText: text("preview_text"),
+  content: text("content").notNull(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  audience: text("audience").notNull().default("all_subscribers"),
+  status: text("status").notNull().default("draft"), // draft | scheduled | queued | sending | sent | failed | cancelled
+  scheduledAt: text("scheduled_at"),
+  queuedAt: text("queued_at"),
+  sentAt: text("sent_at"),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteStatusIdx: index("email_campaigns_site_status_idx").on(t.siteId, t.status, t.scheduledAt),
+}));
+
+export const emailJobs = pgTable("email_jobs", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  campaignId: integer("campaign_id").references(() => emailCampaigns.id, { onDelete: "cascade" }),
+  subscriberId: integer("subscriber_id").references(() => newsletterSubscribers.id, { onDelete: "set null" }),
+  kind: text("kind").notNull(),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  toEmail: text("to_email").notNull(),
+  subject: text("subject").notNull(),
+  html: text("html").notNull(),
+  status: text("status").notNull().default("pending"), // pending | processing | sent | failed | dead
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(5),
+  nextAttemptAt: text("next_attempt_at").notNull().$defaultFn(() => new Date().toISOString()),
+  lockedAt: text("locked_at"),
+  lastError: text("last_error"),
+  sentAt: text("sent_at"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  queueIdx: index("email_jobs_queue_idx").on(t.status, t.nextAttemptAt),
+  campaignIdx: index("email_jobs_campaign_idx").on(t.campaignId, t.status),
+}));
+
 // ─── Blog (tenant-scoped) ───────────────────────────────────────────────────
 
 export const blogPosts = pgTable("blog_posts", {

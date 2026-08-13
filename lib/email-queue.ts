@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { emailCampaigns, emailJobs, newsletterSubscribers } from "@/lib/db/schema";
+import { cartItems, carts, emailCampaigns, emailJobs, newsletterSubscribers, products, settings } from "@/lib/db/schema";
 import { sendMail } from "@/lib/email";
 import { createMarketingToken } from "@/lib/marketing-tokens";
 
@@ -57,7 +57,8 @@ export async function processEmailQueue(limit = 25) {
 async function finalizeCampaigns(campaignIds: number[]) {
   for (const campaignId of [...new Set(campaignIds)]) {
     const remaining = await db.select({ id: emailJobs.id }).from(emailJobs).where(and(eq(emailJobs.campaignId, campaignId), inArray(emailJobs.status, ["pending", "processing", "failed"]))).limit(1);
-    if (!remaining.length) await db.update(emailCampaigns).set({ status: "sent", sentAt: new Date().toISOString(), updatedAt: new Date().toISOString() }).where(eq(emailCampaigns.id, campaignId));
+    const dead = await db.select({ id: emailJobs.id }).from(emailJobs).where(and(eq(emailJobs.campaignId, campaignId), eq(emailJobs.status, "dead"))).limit(1);
+    if (!remaining.length) await db.update(emailCampaigns).set({ status: dead.length ? "failed" : "sent", sentAt: new Date().toISOString(), updatedAt: new Date().toISOString() }).where(eq(emailCampaigns.id, campaignId));
     else await db.update(emailCampaigns).set({ status: "sending", updatedAt: new Date().toISOString() }).where(eq(emailCampaigns.id, campaignId));
   }
 }
@@ -70,6 +71,27 @@ export async function enqueueDueCampaigns() {
   return queued;
 }
 
+export async function enqueueAbandonedCartEmails(now = new Date()) {
+  const cutoff = new Date(now.getTime() - 2 * 60 * 60_000).toISOString();
+  const candidates = await db.select({ cartId: carts.id, siteId: carts.siteId, token: carts.token, email: carts.email, updatedAt: carts.updatedAt }).from(carts).where(and(lte(carts.updatedAt, cutoff), sql`${carts.email} is not null`));
+  let queued = 0;
+  for (const cart of candidates) {
+    if (!cart.email) continue;
+    const [subscriber] = await db.select().from(newsletterSubscribers).where(and(eq(newsletterSubscribers.siteId, cart.siteId), eq(newsletterSubscribers.email, cart.email), eq(newsletterSubscribers.status, "active")));
+    if (!subscriber) continue;
+    const items = await db.select({ title: products.title }).from(cartItems).innerJoin(products, eq(cartItems.productId, products.id)).where(eq(cartItems.cartId, cart.cartId));
+    if (!items.length) continue;
+    const [siteName] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, cart.siteId), eq(settings.key, "siteName")));
+    const base = process.env.SITE_URL ?? "http://localhost:3000";
+    const cartUrl = `${base}/cart?utm_source=email&utm_medium=lifecycle&utm_campaign=abandoned_cart`;
+    const token = createMarketingToken(subscriber.id, "unsubscribe", subscriber.unsubscribeTokenHash);
+    const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto"><h2>You left something in your cart</h2><p>Your ${items.length === 1 ? items[0].title : `${items.length} items`} at ${siteName?.value || "our store"} are still waiting.</p><p><a href="${cartUrl}" style="display:inline-block;background:#166534;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Return to cart</a></p><p style="margin-top:24px;color:#666;font-size:12px"><a href="${base}/newsletter/unsubscribe?token=${encodeURIComponent(token)}">Unsubscribe</a></p></div>`;
+    await enqueueEmail({ siteId: cart.siteId, subscriberId: subscriber.id, kind: "abandoned_cart", idempotencyKey: `abandoned-cart:${cart.cartId}:${cart.updatedAt}`, to: subscriber.email, subject: `Your cart at ${siteName?.value || "our store"}`, html });
+    queued += 1;
+  }
+  return queued;
+}
+
 export async function queueCampaign(campaignId: number) {
   return db.transaction(async (tx) => {
     const locked = await tx.execute(sql<{ id: number }>`select id from ${emailCampaigns} where ${emailCampaigns.id} = ${campaignId} and ${emailCampaigns.status} in ('draft', 'scheduled') for update`);
@@ -78,11 +100,23 @@ export async function queueCampaign(campaignId: number) {
     const subscribers = await tx.select().from(newsletterSubscribers).where(and(eq(newsletterSubscribers.siteId, campaign.siteId), eq(newsletterSubscribers.status, "active")));
     const now = new Date().toISOString();
     for (const subscriber of subscribers) {
-      const html = appendUnsubscribe(campaign.content, subscriber.id, subscriber.unsubscribeTokenHash);
+      const html = appendUnsubscribe(injectCampaignAttribution(campaign.content, campaign.id), subscriber.id, subscriber.unsubscribeTokenHash);
       await tx.insert(emailJobs).values({ siteId: campaign.siteId, campaignId: campaign.id, subscriberId: subscriber.id, kind: campaign.type, idempotencyKey: `campaign:${campaign.id}:subscriber:${subscriber.id}`, toEmail: subscriber.email, subject: campaign.subject, html, nextAttemptAt: now }).onConflictDoNothing({ target: emailJobs.idempotencyKey });
     }
     await tx.update(emailCampaigns).set({ status: subscribers.length ? "queued" : "sent", queuedAt: now, sentAt: subscribers.length ? null : now, recipientCount: subscribers.length, updatedAt: now }).where(eq(emailCampaigns.id, campaign.id));
     return subscribers.length;
+  });
+}
+
+function injectCampaignAttribution(html: string, campaignId: number) {
+  return html.replace(/href=(['"])(https?:\/\/[^'"]+)\1/gi, (match, quote: string, href: string) => {
+    try {
+      const url = new URL(href);
+      if (!url.searchParams.has("utm_source")) url.searchParams.set("utm_source", "email");
+      if (!url.searchParams.has("utm_medium")) url.searchParams.set("utm_medium", "campaign");
+      if (!url.searchParams.has("utm_campaign")) url.searchParams.set("utm_campaign", String(campaignId));
+      return `href=${quote}${url.toString()}${quote}`;
+    } catch { return match; }
   });
 }
 
