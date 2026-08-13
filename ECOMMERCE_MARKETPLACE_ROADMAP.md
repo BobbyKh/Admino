@@ -2,7 +2,7 @@
 
 ## Product Direction
 
-Build Admino commerce into a professional B2C and B2B platform inspired by the capabilities of Daraz and Alibaba, while keeping tenant isolation and server-authoritative pricing. This is a phased marketplace program, not only a storefront redesign.
+Build Admino commerce into a professional B2C and B2B platform inspired by the capabilities of Daraz and Alibaba, while keeping tenant isolation and server-authoritative pricing. Admino remains a general web builder: marketplace operations are an optional, explicitly enabled capability for individual sites, not a platform-wide mode.
 
 ## Phase 1: Commerce Foundation
 
@@ -46,7 +46,11 @@ Status: Customer growth platform complete except for provider-specific bounce an
 
 ## Phase 4: Marketplace Operations
 
-- Seller onboarding, verification, roles, stores, commissions, contracts, and payout accounts.
+Status: Optional per-site marketplace foundation complete. Seller-scoped catalogs, fulfillment, commissions, contracts, payouts, and settlement operations remain planned.
+
+- [x] Explicit per-site marketplace capability that defaults off and leaves existing builder sites unchanged.
+- [x] Tenant-scoped seller applications, verification workflow, organizations, stores, and membership-role foundation.
+- [ ] Add seller administration accounts, contracts, commissions, and payout accounts.
 - Seller-scoped catalogs, inventory, order lines, fulfillment SLAs, returns, disputes, and settlements.
 - Product variants, SKUs, attributes, category taxonomy, bulk import/export, media galleries, and moderation.
 - RFQ and negotiated quotes for B2B buyers, minimum order quantities, samples, and buyer-specific price lists.

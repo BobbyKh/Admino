@@ -2,7 +2,7 @@ import "server-only";
 
 import { eq, desc, and, ilike, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { activityLogs, adminUsers } from "@/lib/db/schema";
+import { activityLogs } from "@/lib/db/schema";
 import { getSessionUser, type Role } from "@/lib/auth";
 
 export type ActivityAction = "create" | "update" | "delete" | "status_change" | "login" | "logout";
