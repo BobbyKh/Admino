@@ -54,7 +54,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
           const res = await fetch("/api/payments/stripe/checkout", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({ token, customer: Object.fromEntries(formData.entries()) }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error ?? "Failed to start checkout.");
@@ -127,7 +127,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
       <aside className="h-fit rounded-xl border bg-muted/20 p-5">
         <h2 className="font-heading text-lg font-semibold">Order summary</h2>
         <div className="mt-4 space-y-3 text-sm">{cart.items.map((item) => <div key={item.id} className="flex justify-between gap-3"><span>{item.title}<SelectedOptions value={item.selectedOptions} /><span className="block text-muted-foreground">Qty {item.quantity}</span></span><span>{formatPrice(item.price * item.quantity, cart.currency)}</span></div>)}</div>
-        <div className="mt-4 flex justify-between border-t pt-4 font-semibold"><span>Total</span><span>{formatPrice(cart.subtotal, cart.currency)}</span></div>
+        <div className="mt-4 space-y-2 border-t pt-4 text-sm"><div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(cart.subtotal, cart.currency)}</span></div>{cart.discountAmount > 0 && <div className="flex justify-between text-primary"><span>Discount ({cart.promotion?.code})</span><span>-{formatPrice(cart.discountAmount, cart.currency)}</span></div>}<div className="flex justify-between"><span className="text-muted-foreground">{cart.shippingName}</span><span>{cart.shippingAmount ? formatPrice(cart.shippingAmount, cart.currency) : "Free"}</span></div><div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatPrice(cart.taxAmount, cart.currency)}</span></div><div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{formatPrice(cart.total, cart.currency)}</span></div></div>
         <Button type="submit" className="mt-5 w-full" disabled={pending || !provider}>{pending && <Loader2 className="mr-2 size-4 animate-spin" />}{selectedMethod?.id === "qr" ? "Submit payment reference" : selectedMethod?.id === "cod" ? "Place cash on delivery order" : "Place order"}</Button>
       </aside>
     </form>

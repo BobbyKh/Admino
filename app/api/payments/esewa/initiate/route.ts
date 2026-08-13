@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
   }
   if (!config.merchantId || !secrets.secretKey) return new NextResponse("eSewa service code and signing key are required.", { status: 503 });
   if (config.mode === "live" && !secrets.clientSecret) return new NextResponse("Live eSewa client secret is required.", { status: 503 });
-  const amount = (order.subtotal / 100).toFixed(2);
   const totalAmount = (order.total / 100).toFixed(2);
   const hostHeaders = await headers();
   const protocol = hostHeaders.get("x-forwarded-proto") ?? "http";
@@ -36,7 +35,7 @@ export async function GET(request: NextRequest) {
   const signedFieldNames = "total_amount,transaction_uuid,product_code";
   const message = `total_amount=${totalAmount},transaction_uuid=${order.orderNumber},product_code=${config.merchantId}`;
   const signature = createHmac("sha256", secrets.secretKey).update(message).digest("base64");
-  const fields: Record<string, string> = { amount, tax_amount: "0", total_amount: totalAmount, transaction_uuid: order.orderNumber, product_code: config.merchantId, product_service_charge: "0", product_delivery_charge: "0", success_url: `${origin}/api/payments/esewa/callback`, failure_url: `${origin}/api/payments/esewa/failure?order=${encodeURIComponent(order.orderNumber)}`, signed_field_names: signedFieldNames, signature };
+  const fields: Record<string, string> = { amount: totalAmount, tax_amount: "0", total_amount: totalAmount, transaction_uuid: order.orderNumber, product_code: config.merchantId, product_service_charge: "0", product_delivery_charge: "0", success_url: `${origin}/api/payments/esewa/callback`, failure_url: `${origin}/api/payments/esewa/failure?order=${encodeURIComponent(order.orderNumber)}`, signed_field_names: signedFieldNames, signature };
   const inputs = Object.entries(fields).map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join("");
   const endpoint = config.mode === "live" ? "https://epay.esewa.com.np/api/epay/main/v2/form" : "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
   return new NextResponse(`<!doctype html><html><body><form id="payment" action="${endpoint}" method="POST">${inputs}</form><script>document.getElementById('payment').submit()</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });

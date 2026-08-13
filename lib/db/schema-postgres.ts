@@ -414,6 +414,7 @@ export const carts = pgTable("carts", {
   token: text("token").notNull().unique(),
   email: text("email"),
   currency: text("currency").notNull().default("usd"),
+  promotionCode: text("promotion_code"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
@@ -431,6 +432,29 @@ export const cartItems = pgTable("cart_items", {
 }, (t) => ({
   cartIdIdx: index("cart_items_cart_id_idx").on(t.cartId),
   cartProductOptionsUnique: uniqueIndex("cart_items_cart_product_options_idx").on(t.cartId, t.productId, t.selectedOptions),
+}));
+
+export const promotions = pgTable("promotions", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  status: text("status").notNull().default("draft"),
+  type: text("type").notNull(), // percentage | fixed | free_shipping
+  value: integer("value").notNull().default(0), // percentage basis points or minor currency units
+  minimumSubtotal: integer("minimum_subtotal").notNull().default(0),
+  productIds: text("product_ids"),
+  categories: text("categories"),
+  startsAt: text("starts_at"),
+  endsAt: text("ends_at"),
+  usageLimit: integer("usage_limit"),
+  perCustomerLimit: integer("per_customer_limit"),
+  firstOrderOnly: boolean("first_order_only").notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteCodeUnique: uniqueIndex("promotions_site_code_idx").on(t.siteId, t.code),
+  siteStatusIdx: index("promotions_site_status_idx").on(t.siteId, t.status),
 }));
 
 export const paymentConfigurations = pgTable("payment_configurations", {
@@ -463,17 +487,28 @@ export const orders = pgTable("orders", {
   deliveryNotes: text("delivery_notes"),
   currency: text("currency").notNull(),
   subtotal: integer("subtotal").notNull(),
+  discountAmount: integer("discount_amount").notNull().default(0),
+  shippingAmount: integer("shipping_amount").notNull().default(0),
+  taxAmount: integer("tax_amount").notNull().default(0),
   total: integer("total").notNull(),
+  promotionId: integer("promotion_id").references(() => promotions.id, { onDelete: "set null" }),
+  promotionCode: text("promotion_code"),
+  promotionSnapshot: text("promotion_snapshot"),
   status: text("status").notNull().default("pending"), // pending | paid | fulfilled | cancelled
   paymentStatus: text("payment_status").notNull().default("pending"),
   paymentProvider: text("payment_provider"),
   providerPaymentId: text("provider_payment_id"),
+  inventoryStatus: text("inventory_status").notNull().default("none"), // none | reserved | committed | released
+  inventoryReservedAt: text("inventory_reserved_at"),
+  inventoryExpiresAt: text("inventory_expires_at"),
+  inventoryFinalizedAt: text("inventory_finalized_at"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("orders_site_id_idx").on(t.siteId),
   customerIdIdx: index("orders_customer_id_idx").on(t.customerId),
   statusIdx: index("orders_status_idx").on(t.status),
+  inventoryExpiryIdx: index("orders_inventory_expiry_idx").on(t.inventoryStatus, t.inventoryExpiresAt),
   createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
 }));
 
@@ -487,6 +522,20 @@ export const orderItems = pgTable("order_items", {
   unitPrice: integer("unit_price").notNull(),
 }, (t) => ({
   orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+}));
+
+export const promotionRedemptions = pgTable("promotion_redemptions", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  promotionId: integer("promotion_id").notNull().references(() => promotions.id, { onDelete: "restrict" }),
+  orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  amount: integer("amount").notNull(),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  orderPromotionUnique: uniqueIndex("promotion_redemptions_order_idx").on(t.orderId, t.promotionId),
+  promotionIdx: index("promotion_redemptions_promotion_idx").on(t.promotionId),
+  customerIdx: index("promotion_redemptions_customer_idx").on(t.siteId, t.email, t.promotionId),
 }));
 
 // ─── Activity Logs (multi-tenant) ────────────────────────────────────────────
@@ -777,6 +826,8 @@ export type Product = typeof products.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Cart = typeof carts.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
+export type Promotion = typeof promotions.$inferSelect;
+export type PromotionRedemption = typeof promotionRedemptions.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type PaymentConfiguration = typeof paymentConfigurations.$inferSelect;

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
@@ -10,6 +10,7 @@ import { orderItems, orders, paymentConfigurations, products, settings } from "@
 import { getCurrentSiteRequiringFeature, requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/secrets";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
+import { commitInventoryReservation, releaseInventoryReservation } from "@/lib/commerce/inventory";
 
 const productSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -309,6 +310,7 @@ async function getTenantOrder(orderId: number) {
 export async function approveOrderPayment(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "pending" || !["awaiting_verification", "payment_pending"].includes(order.paymentStatus)) throw new Error("This order cannot be approved.");
+  if (!await commitInventoryReservation(order.id)) throw new Error("This order's inventory reservation has expired or was released.");
   await db.update(orders).set({ status: "paid", paymentStatus: "paid", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
   void sendOrderPaymentStatusEmail({ ...order, status: "paid", paymentStatus: "paid" }, items, "paid").catch((error) => console.error("Failed to send order paid email:", error));
@@ -318,13 +320,7 @@ export async function approveOrderPayment(orderId: number) {
 export async function rejectOrderPayment(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "pending") throw new Error("Only pending orders can be rejected.");
-  await db.transaction(async (tx) => {
-    const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-    for (const item of items) {
-      if (item.productId) await tx.update(products).set({ inventoryQuantity: sql`${products.inventoryQuantity} + ${item.quantity}`, updatedAt: new Date().toISOString() }).where(and(eq(products.id, item.productId), eq(products.siteId, order.siteId)));
-    }
-    await tx.update(orders).set({ status: "cancelled", paymentStatus: "failed", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
-  });
+  await releaseInventoryReservation(order.id);
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
   void sendOrderPaymentStatusEmail({ ...order, status: "cancelled", paymentStatus: "failed" }, items, "failed").catch((error) => console.error("Failed to send order failed email:", error));
   revalidateCommerce();

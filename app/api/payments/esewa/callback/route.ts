@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { decryptCommerceSecrets } from "@/lib/commerce/secrets";
 import { orderItems, orders, paymentConfigurations, settings, sites } from "@/lib/db/schema";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
+import { commitInventoryReservation } from "@/lib/commerce/inventory";
 
 export async function GET(request: NextRequest) {
   const encoded = request.nextUrl.searchParams.get("data");
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
   const isComplete = payload.status === "COMPLETE" && payload.product_code === config.merchantId && amountMatches && validSignature;
   if (isComplete) {
     const paidOrder = { ...order, status: "paid", paymentStatus: "paid", providerPaymentId: payload.transaction_code || `${config.mode}:${payload.transaction_uuid}` };
+    if (!await commitInventoryReservation(order.id)) return new NextResponse("The inventory reservation for this order has expired.", { status: 409 });
     await db.update(orders).set({ status: paidOrder.status, paymentStatus: paidOrder.paymentStatus, providerPaymentId: paidOrder.providerPaymentId, updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
     void sendOrderPaymentStatusEmail(paidOrder, items, "paid").catch((error) => console.error("Failed to send eSewa paid email:", error));

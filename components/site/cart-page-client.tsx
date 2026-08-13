@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { getStoreCart, updateStoreCartItem } from "@/lib/actions/index";
+import { applyStorePromotion, getStoreCart, removeStorePromotion, updateStoreCartItem } from "@/lib/actions/index";
 import { Button } from "@/components/ui/button";
 import { notifyCartChanged } from "@/components/site/cart-provider";
 
@@ -13,6 +13,8 @@ type Cart = Awaited<ReturnType<typeof getStoreCart>>;
 export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
   const [cart, setCart] = React.useState<Cart | null>(null);
   const [pendingId, setPendingId] = React.useState<number | null>(null);
+  const [promotionPending, startPromotionTransition] = React.useTransition();
+  const [promotionCode, setPromotionCode] = React.useState("");
   const checkoutHref = siteSlug ? `/checkout?site=${encodeURIComponent(siteSlug)}` : "/checkout";
   const shopHref = siteSlug ? `/?site=${encodeURIComponent(siteSlug)}` : "/";
   const productHref = (slug: string) => siteSlug ? `/products/${slug}?site=${encodeURIComponent(siteSlug)}` : `/products/${slug}`;
@@ -44,6 +46,9 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
     catch (error) { toast.error(error instanceof Error ? error.message : "Unable to update cart."); }
     finally { setPendingId(null); }
   }
+
+  function applyPromotion() { const token = window.localStorage.getItem("store-cart-token"); if (!token) return; startPromotionTransition(async () => { try { await applyStorePromotion(token, promotionCode); await loadCart(); toast.success("Discount code applied."); } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to apply discount code."); } }); }
+  function removePromotion() { const token = window.localStorage.getItem("store-cart-token"); if (!token) return; startPromotionTransition(async () => { try { await removeStorePromotion(token); setPromotionCode(""); await loadCart(); toast.success("Discount code removed."); } catch { toast.error("Unable to remove discount code."); } }); }
 
   if (!cart) return <div className="mx-auto max-w-6xl px-4 py-12"><div className="space-y-4"><div className="h-8 w-48 animate-pulse rounded bg-muted" /><div className="divide-y rounded-xl border">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="flex gap-4 p-4"><div className="size-20 animate-pulse rounded-lg bg-muted" /><div className="flex-1 space-y-2"><div className="h-5 w-3/4 animate-pulse rounded bg-muted" /><div className="h-4 w-1/2 animate-pulse rounded bg-muted" /></div></div>)}</div></div></div>;
   if (cart.items.length === 0) return <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center"><ShoppingBag className="size-10 text-muted-foreground" /><h1 className="font-heading text-3xl font-semibold">Your cart is empty</h1><p className="text-muted-foreground">Add products from the shop to continue.</p><Button asChild><Link href={shopHref}>Continue shopping</Link></Button></div>;
@@ -78,7 +83,11 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
       <aside className="h-fit rounded-xl border bg-muted/20 p-5">
         <h2 className="font-heading text-lg font-semibold">Order summary</h2>
         <div className="mt-4 flex justify-between text-sm"><span className="text-muted-foreground">Subtotal</span><span>{formatPrice(cart.subtotal, cart.currency)}</span></div>
-        <div className="mt-4 border-t pt-4"><div className="flex justify-between font-semibold"><span>Total</span><span>{formatPrice(cart.subtotal, cart.currency)}</span></div><Button asChild className="mt-5 w-full"><Link href={checkoutHref}>Checkout</Link></Button><Button asChild variant="ghost" className="mt-2 w-full"><Link href={shopHref}>Continue shopping</Link></Button></div>
+        {cart.discountAmount > 0 && <div className="mt-2 flex justify-between text-sm text-primary"><span>Discount ({cart.promotion?.code})</span><span>-{formatPrice(cart.discountAmount, cart.currency)}</span></div>}
+        <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">{cart.shippingName}</span><span>{cart.shippingAmount ? formatPrice(cart.shippingAmount, cart.currency) : "Free"}</span></div>
+        <div className="mt-2 flex justify-between text-sm"><span className="text-muted-foreground">Tax ({cart.taxRateBasisPoints / 100}%)</span><span>{formatPrice(cart.taxAmount, cart.currency)}</span></div>
+        <div className="mt-5 space-y-2 border-t pt-4"><label htmlFor="promotion-code" className="text-sm font-medium">Discount code</label>{cart.promotion ? <div className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm"><span className="font-medium text-primary">{cart.promotion.code} applied</span><Button variant="ghost" size="icon-xs" disabled={promotionPending} onClick={removePromotion} aria-label="Remove discount code"><X /></Button></div> : <div className="flex gap-2"><input id="promotion-code" value={promotionCode} onChange={(event) => setPromotionCode(event.target.value.toUpperCase())} className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm uppercase" placeholder="WELCOME10" /><Button variant="outline" disabled={promotionPending || !promotionCode.trim()} onClick={applyPromotion}>{promotionPending && <Loader2 className="mr-1 size-4 animate-spin" />}Apply</Button></div>}</div>
+        <div className="mt-4 border-t pt-4"><div className="flex justify-between font-semibold"><span>Total</span><span>{formatPrice(cart.total, cart.currency)}</span></div>{cart.discountAmount > 0 && <p aria-live="polite" className="mt-2 text-xs font-medium text-primary">You saved {formatPrice(cart.discountAmount, cart.currency)}.</p>}<Button asChild className="mt-5 w-full"><Link href={checkoutHref}>Checkout</Link></Button><Button asChild variant="ghost" className="mt-2 w-full"><Link href={shopHref}>Continue shopping</Link></Button></div>
       </aside>
     </div>
   );

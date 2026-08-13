@@ -12,9 +12,10 @@ export { getAdminUsers, getSitesForCurrentUser, getCurrentUserRole, createAdminU
 export { uploadImage } from "./uploads";
 export { updateLayoutSettings } from "./layout";
 export { listProducts, createProduct, updateProduct, deleteProduct, listPaymentConfigurations, createPaymentConfiguration, updatePaymentConfiguration, deletePaymentConfiguration, listOrders, updateOrderStatus, approveOrderPayment, rejectOrderPayment, fulfillOrder, getCommerceSettings, updateCommerceSettings, getPaymentSecretStatus } from "./commerce";
+export { listPromotions, createPromotion, updatePromotion, deletePromotion } from "./promotions";
 export { listServiceCatalog, createServiceCategory, deleteServiceCategory, createService, updateService, deleteService } from "./services";
 export { listBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from "./blog";
-export { addStoreCartItem, completeStoreCheckout, getStoreCart, getStorePaymentMethods, updateStoreCartItem } from "./storefront-commerce";
+export { addStoreCartItem, applyStorePromotion, completeStoreCheckout, getStoreCart, getStorePaymentMethods, removeStorePromotion, updateStoreCartItem } from "./storefront-commerce";
 export { registerCustomer, loginCustomer, logoutCustomer, getCustomerProfile, updateCustomerProfile, getCustomerOrders, getCustomerOrder, getCustomerAddresses, addCustomerAddress, deleteCustomerAddress, setDefaultAddress, getCustomerWishlist, addToWishlist, removeFromWishlist, isInWishlist } from "./customers";
 export { generateThemeFromPrompt, type AiGeneratedTheme, type GenerateThemeResult } from "./theme-ai";
 export { generateBlockConfig } from "./block-ai";

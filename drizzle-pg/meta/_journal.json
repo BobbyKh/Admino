@@ -64,6 +64,20 @@
       "when": 1786607774079,
       "tag": "0008_warm_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786615028098,
+      "tag": "0009_uneven_the_renegades",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786615698661,
+      "tag": "0010_flashy_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

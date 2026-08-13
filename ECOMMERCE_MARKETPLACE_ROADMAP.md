@@ -6,22 +6,30 @@ Build Admino commerce into a professional B2C and B2B platform inspired by the c
 
 ## Phase 1: Commerce Foundation
 
-- Real-time cart quantity in desktop and mobile navigation.
-- Product quantity selector and server-authoritative wholesale price tiers.
-- Wholesale savings displayed on product and cart pages.
-- Recalculate wholesale prices in cart, manual checkout, and Stripe checkout.
-- Add automated tests for tier boundaries, inventory limits, and cart synchronization.
-- Add stock reservations and transactional inventory checks before broader launch.
+Status: Complete.
+
+- [x] Real-time cart quantity in desktop and mobile navigation.
+- [x] Product quantity selector and server-authoritative wholesale price tiers.
+- [x] Wholesale savings displayed on product, featured product, and cart views.
+- [x] Recalculate wholesale prices in cart, manual checkout, and Stripe checkout.
+- [x] Add automated tests for tier boundaries and inventory lifecycle safeguards.
+- [x] Add atomic stock reservations that prevent negative inventory under concurrent checkout.
+- [x] Commit reservations on confirmed payments and cash-on-delivery orders.
+- [x] Release reservations exactly once after rejection, provider failure, session expiry, or timeout.
+- [x] Clean up expired reservations through the authenticated cleanup cron.
 
 ## Phase 2: Promotions And Totals
 
-- Tenant-scoped promotion and coupon models.
-- Percentage, fixed amount, free shipping, product/category, and minimum-spend rules.
-- Start/end times, usage caps, per-customer limits, first-order eligibility, and combinability.
-- Coupon administration with draft, scheduled, active, and expired states.
-- Server-side subtotal, discount, shipping, tax, and final-total calculation shared by every payment provider.
-- Coupon input, applied promotion details, removal, errors, savings, and free-shipping progress in cart and checkout.
-- Immutable promotion snapshots on orders and redemption audit records.
+Status: Complete for single-code promotions. Promotion stacking/combinability remains intentionally disabled.
+
+- [x] Tenant-scoped promotion, coupon, and redemption models.
+- [x] Percentage, fixed amount, free shipping, product/category, and minimum-spend rules.
+- [x] Start/end times, usage caps, per-customer limits, and first-order eligibility.
+- [x] Coupon administration with draft, active, archived, scheduled, and expired behavior.
+- [x] Server-side subtotal, discount, shipping, tax, and final-total calculation shared by manual, Stripe, and eSewa checkout.
+- [x] Coupon input, applied promotion details, removal, errors, and savings in cart and checkout.
+- [x] Immutable promotion snapshots on orders and serialized redemption audit records.
+- [x] Currency consistency validation across cart products and payment requests.
 
 ## Phase 3: Customer Growth
 

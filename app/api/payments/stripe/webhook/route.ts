@@ -2,9 +2,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, orderItems, products, subscriptions, plans } from "@/lib/db/schema";
+import { carts, orders, orderItems, subscriptions, plans } from "@/lib/db/schema";
 import { dispatchWebhook } from "@/lib/webhooks";
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
+import { commitInventoryReservation, releaseInventoryReservation } from "@/lib/commerce/inventory";
 
 /**
  * Stripe webhook handler for subscription lifecycle events.
@@ -63,6 +64,11 @@ export async function POST(request: NextRequest) {
 
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object);
+        break;
+      case "checkout.session.expired":
+      case "payment_intent.payment_failed":
+      case "payment_intent.canceled":
+        await handleStorePaymentFailed(event.data.object);
         break;
 
       default:
@@ -142,6 +148,7 @@ async function handleCheckoutCompleted(data: Record<string, unknown>) {
   const stripePaymentIntentId = data.payment_intent as string | null;
   const stripeCustomerId = data.customer as string | null;
 
+  if (!await commitInventoryReservation(order.id)) throw new Error("Inventory reservation is no longer active.");
   await db
     .update(orders)
     .set({
@@ -153,6 +160,7 @@ async function handleCheckoutCompleted(data: Record<string, unknown>) {
     .where(eq(orders.id, orderId));
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  if (metadata.cartToken) await db.delete(carts).where(and(eq(carts.token, metadata.cartToken), eq(carts.siteId, order.siteId)));
   void sendOrderPaymentStatusEmail({ ...order, status: "paid", paymentStatus: "paid" }, items, "paid").catch((error) =>
     console.error("Failed to send order paid email:", error)
   );
@@ -177,17 +185,13 @@ async function handleCheckoutCompleted(data: Record<string, unknown>) {
     },
   }).catch(() => {});
 
-  // Restore inventory for items in cancelled orders that are now paid
-  for (const item of items) {
-    if (item.productId) {
-      await db
-        .update(products)
-        .set({
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(products.id, item.productId));
-    }
-  }
+}
+
+async function handleStorePaymentFailed(data: Record<string, unknown>) {
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const orderId = metadata.orderId ? parseInt(metadata.orderId, 10) : null;
+  if (!orderId) return;
+  await releaseInventoryReservation(orderId);
 }
 
 async function handleSubscriptionUpdate(data: Record<string, unknown>) {
