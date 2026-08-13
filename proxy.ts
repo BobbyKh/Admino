@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "admino_session";
+const SELLER_SESSION_COOKIE = "admino_seller_session";
 const CSRF_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 100;
@@ -75,11 +76,11 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-async function verifySession(request: NextRequest): Promise<boolean> {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+async function verifySession(request: NextRequest, cookieName = SESSION_COOKIE, audience?: string): Promise<boolean> {
+  const token = request.cookies.get(cookieName)?.value;
   if (!token) return false;
   try {
-    await jwtVerify(token, getAuthSecret());
+    await jwtVerify(token, getAuthSecret(), audience ? { audience } : undefined);
     return true;
   } catch {
     return false;
@@ -147,6 +148,13 @@ export async function proxy(request: NextRequest) {
         loginUrl.searchParams.set("redirect", pathname);
         return addSecurityHeaders(NextResponse.redirect(loginUrl));
       }
+    }
+  }
+
+  if (pathname.startsWith("/seller")) {
+    const isPublicSeller = pathname.startsWith("/seller/login") || pathname.startsWith("/seller/accept-invitation");
+    if (!isPublicSeller && !(await verifySession(request, SELLER_SESSION_COOKIE, "admino-seller"))) {
+      return addSecurityHeaders(NextResponse.redirect(new URL("/seller/login", request.url)));
     }
   }
 

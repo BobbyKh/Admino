@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
         quantity: cartItems.quantity,
         selectedOptions: cartItems.selectedOptions,
         productId: products.id,
+        sellerId: products.sellerId,
+        storeId: products.storeId,
         slug: products.slug,
         title: products.title,
         image: products.image,
@@ -146,6 +148,8 @@ export async function POST(request: NextRequest) {
         updatedAt: reservedAt,
       }).returning();
       await tx.insert(orderItems).values(pricedItems.map((item) => ({
+        sellerId: item.sellerId,
+        storeId: item.storeId,
         orderId: order.id,
         productId: item.productId,
         title: item.title,

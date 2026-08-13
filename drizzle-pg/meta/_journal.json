@@ -99,6 +99,13 @@
       "when": 1786621119169,
       "tag": "0013_silly_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786627252797,
+      "tag": "0014_secret_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

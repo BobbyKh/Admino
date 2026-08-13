@@ -1,12 +1,14 @@
 "use server";
 
-import { and, desc, eq } from "drizzle-orm";
+import { createHash, randomBytes } from "node:crypto";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/lib/db";
-import { sellerApplications, sellerOrganizations, sellerStores } from "@/lib/db/schema";
+import { sellerApplications, sellerInvitations, sellerOrganizations, sellerStores, sites } from "@/lib/db/schema";
+import { enqueueEmail } from "@/lib/email-queue";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getResolvedSiteId } from "@/lib/site-context";
 import { getCurrentSiteRequiringFeatureForRole, requireSiteFeatureForRole } from "@/lib/tenant-access";
@@ -71,17 +73,55 @@ export async function reviewSellerApplication(siteId: number, applicationId: num
   if (input.decision === "rejected" && !input.notes) throw new Error("Add review notes before rejecting an application.");
   const now = new Date().toISOString();
   let sellerId: number | null = null;
-  await db.transaction(async (tx) => {
+  const invitation = await db.transaction(async (tx): Promise<{ id: number; token: string } | null> => {
     const updated = await tx.update(sellerApplications).set({ status: input.decision, reviewNotes: input.notes || null, reviewedBy: user.id, reviewedAt: now, updatedAt: now }).where(and(eq(sellerApplications.id, application.id), eq(sellerApplications.siteId, siteId), eq(sellerApplications.status, "pending"))).returning({ id: sellerApplications.id });
     if (!updated.length) throw new Error("This application has already been reviewed.");
     if (input.decision === "approved") {
       const [seller] = await tx.insert(sellerOrganizations).values({ siteId, applicationId: application.id, name: application.businessName, legalName: application.legalName, contactEmail: application.email, contactPhone: application.phone, country: application.country, taxId: application.taxId, verifiedAt: now, updatedAt: now }).returning({ id: sellerOrganizations.id });
       sellerId = seller.id;
       await tx.insert(sellerStores).values({ siteId, sellerId: seller.id, name: application.businessName, slug: `${slugify(application.businessName)}-${seller.id}`, description: application.description, updatedAt: now });
+      const token = randomBytes(32).toString("base64url");
+      const [createdInvitation] = await tx.insert(sellerInvitations).values({ siteId, sellerId: seller.id, email: application.email, name: application.contactName, role: "owner", tokenHash: hashInvitationToken(token), expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString(), createdBy: user.id }).returning({ id: sellerInvitations.id });
+      return { id: createdInvitation.id, token };
     }
+    return null;
   });
+  if (invitation) await queueSellerInvitation(siteId, application.email, application.businessName, invitation.id, invitation.token).catch((error) => console.error("Failed to queue seller invitation:", error));
   await logActivity({ siteId, action: "status_change", entity: "seller_application", entityId: application.id, entityName: application.businessName, details: { from: "pending", to: input.decision, sellerId, notes: input.notes || null } });
   revalidatePath("/admin/commerce/sellers");
+}
+
+export async function resendSellerInvitation(siteId: number, sellerId: number) {
+  const user = await requireSiteFeatureForRole(siteId, "marketplace", "admin");
+  if (!Number.isInteger(sellerId) || sellerId < 1) throw new Error("Invalid seller.");
+  const [seller] = await db.select({ id: sellerOrganizations.id, name: sellerOrganizations.name, email: sellerOrganizations.contactEmail }).from(sellerOrganizations).where(and(eq(sellerOrganizations.id, sellerId), eq(sellerOrganizations.siteId, siteId)));
+  if (!seller) throw new Error("Seller not found.");
+  const token = randomBytes(32).toString("base64url");
+  const now = new Date();
+  let invitationId = 0;
+  await db.transaction(async (tx) => {
+    await tx.update(sellerInvitations).set({ acceptedAt: now.toISOString() }).where(and(eq(sellerInvitations.sellerId, seller.id), eq(sellerInvitations.email, seller.email), isNull(sellerInvitations.acceptedAt)));
+    const [invitation] = await tx.insert(sellerInvitations).values({ siteId, sellerId: seller.id, email: seller.email, name: seller.name, role: "owner", tokenHash: hashInvitationToken(token), expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60_000).toISOString(), createdBy: user.id }).returning({ id: sellerInvitations.id });
+    invitationId = invitation.id;
+  });
+  await queueSellerInvitation(siteId, seller.email, seller.name, invitationId, token).catch((error) => console.error("Failed to queue seller invitation:", error));
+  revalidatePath("/admin/commerce/sellers");
+}
+
+async function queueSellerInvitation(siteId: number, email: string, sellerName: string, invitationId: number, token: string) {
+  const requestHeaders = await headers();
+  const [site] = await db.select({ domain: sites.domain }).from(sites).where(eq(sites.id, siteId));
+  const origin = site?.domain ? `https://${site.domain}` : process.env.SITE_URL || requestHeaders.get("origin") || `https://${requestHeaders.get("host") || "localhost:3000"}`;
+  const invitationUrl = `${origin}/seller/accept-invitation?token=${encodeURIComponent(token)}`;
+  await enqueueEmail({ siteId, kind: "seller_invitation", idempotencyKey: `seller-invitation:${invitationId}`, to: email, subject: `Join ${sellerName} seller portal`, html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto"><h2>Your seller portal is ready</h2><p>You have been invited to manage ${escapeHtml(sellerName)}.</p><p><a href="${escapeHtml(invitationUrl)}" style="display:inline-block;background:#111827;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">Accept invitation</a></p><p style="color:#666;font-size:12px">This one-time link expires in 7 days.</p></div>` });
+}
+
+function hashInvitationToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
 
 function slugify(value: string) {

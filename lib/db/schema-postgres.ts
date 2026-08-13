@@ -335,6 +335,8 @@ export const wishlists = pgTable("wishlists", {
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  sellerId: integer("seller_id").references(() => sellerOrganizations.id, { onDelete: "set null" }),
+  storeId: integer("store_id").references(() => sellerStores.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   slug: text("slug").notNull(),
   description: text("description"),
@@ -352,6 +354,8 @@ export const products = pgTable("products", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
   siteIdIdx: index("products_site_id_idx").on(t.siteId),
+  sellerIdIdx: index("products_seller_id_idx").on(t.sellerId),
+  storeIdIdx: index("products_store_id_idx").on(t.storeId),
   siteSlugUnique: uniqueIndex("products_site_slug_idx").on(t.siteId, t.slug),
   statusIdx: index("products_status_idx").on(t.status),
 }));
@@ -413,16 +417,46 @@ export const sellerStores = pgTable("seller_stores", {
   sellerIdIdx: index("seller_stores_seller_id_idx").on(t.sellerId),
 }));
 
+export const sellerAccounts = pgTable("seller_accounts", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  siteEmailUnique: uniqueIndex("seller_accounts_site_email_idx").on(t.siteId, t.email),
+  siteIdIdx: index("seller_accounts_site_id_idx").on(t.siteId),
+}));
+
 export const sellerMembers = pgTable("seller_members", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
   sellerId: integer("seller_id").notNull().references(() => sellerOrganizations.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }),
+  accountId: integer("user_id").notNull().references(() => sellerAccounts.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("owner"), // owner | manager | staff
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 }, (t) => ({
-  sellerUserUnique: uniqueIndex("seller_members_seller_user_idx").on(t.sellerId, t.userId),
-  siteUserIdx: index("seller_members_site_user_idx").on(t.siteId, t.userId),
+  sellerAccountUnique: uniqueIndex("seller_members_seller_account_idx").on(t.sellerId, t.accountId),
+  siteAccountIdx: index("seller_members_site_account_idx").on(t.siteId, t.accountId),
+}));
+
+export const sellerInvitations = pgTable("seller_invitations", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  sellerId: integer("seller_id").notNull().references(() => sellerOrganizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull().default("owner"),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  acceptedAt: text("accepted_at"),
+  createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  sellerEmailIdx: index("seller_invitations_seller_email_idx").on(t.sellerId, t.email),
+  tokenHashIdx: index("seller_invitations_token_hash_idx").on(t.tokenHash),
 }));
 
 export const recentlyViewedProducts = pgTable("recently_viewed_products", {
@@ -664,12 +698,15 @@ export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
   productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+  sellerId: integer("seller_id").references(() => sellerOrganizations.id, { onDelete: "set null" }),
+  storeId: integer("store_id").references(() => sellerStores.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   selectedOptions: text("selected_options").notNull().default("{}"),
   quantity: integer("quantity").notNull(),
   unitPrice: integer("unit_price").notNull(),
 }, (t) => ({
   orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+  sellerIdIdx: index("order_items_seller_id_idx").on(t.sellerId),
 }));
 
 export const productReviews = pgTable("product_reviews", {
@@ -1007,7 +1044,9 @@ export type Product = typeof products.$inferSelect;
 export type SellerApplication = typeof sellerApplications.$inferSelect;
 export type SellerOrganization = typeof sellerOrganizations.$inferSelect;
 export type SellerStore = typeof sellerStores.$inferSelect;
+export type SellerAccount = typeof sellerAccounts.$inferSelect;
 export type SellerMember = typeof sellerMembers.$inferSelect;
+export type SellerInvitation = typeof sellerInvitations.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type Cart = typeof carts.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
