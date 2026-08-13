@@ -13,6 +13,7 @@ import { GalleryImageForm } from "@/components/admin/gallery-image-form";
 import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -65,10 +66,12 @@ export default async function AdminGalleryPage({
           </CardContent>
         </Card>
       ) : (
-        <>
+        <BulkSelectionScope siteId={siteId} entity="gallery" ids={rows.map((item) => item.id)} options={[{ value: "feature", label: "Feature" }, { value: "unfeature", label: "Remove featured" }, { value: "delete", label: "Delete", destructive: true }]}>
+          <div className="mb-4 flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all visible images</span></div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((img) => (
               <Card key={img.id} className="overflow-hidden">
+                <div className="p-3 pb-0"><BulkRowCheckbox id={img.id} label={`Select ${img.title}`} /></div>
                 <div className="relative h-48">
                   <Image
                     src={img.src}
@@ -113,7 +116,7 @@ export default async function AdminGalleryPage({
             ))}
           </div>
           <Pagination {...meta} pageSize={pageSize} />
-        </>
+        </BulkSelectionScope>
       )}
     </div>
   );

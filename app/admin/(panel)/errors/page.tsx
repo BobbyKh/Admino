@@ -6,11 +6,14 @@ import { toast } from "sonner";
 import { listErrorLogs, resolveError, unresolveError, removeError, fetchErrorStats } from "@/lib/actions/error-logs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 type ErrorEntry = Awaited<ReturnType<typeof listErrorLogs>>["errors"][number];
 type Stats = Awaited<ReturnType<typeof fetchErrorStats>>;
 
 export default function ErrorLogsPage() {
+  const siteId = useAdminSiteId();
   const [errors, setErrors] = React.useState<ErrorEntry[]>([]);
   const [stats, setStats] = React.useState<Stats | null>(null);
   const [total, setTotal] = React.useState(0);
@@ -128,9 +131,11 @@ export default function ErrorLogsPage() {
           <p className="text-sm text-muted-foreground">Everything looks clean.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <BulkSelectionScope siteId={siteId} entity="errors" ids={errors.map((item) => item.id)} options={[{ value: "resolve", label: "Mark resolved" }, { value: "reopen", label: "Reopen" }, { value: "delete", label: "Delete", destructive: true }]}><div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all visible logs</span></div>
           {errors.map((error) => (
             <div key={error.id} className="rounded-lg border">
+              <div className="px-4 pt-3"><BulkRowCheckbox id={error.id} label={`Select error ${error.id}`} /></div>
               <button
                 onClick={() => setExpandedId(expandedId === error.id ? null : error.id)}
                 className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted/30"
@@ -174,7 +179,7 @@ export default function ErrorLogsPage() {
               )}
             </div>
           ))}
-        </div>
+        </div></BulkSelectionScope>
       )}
 
       {totalPages > 1 && (

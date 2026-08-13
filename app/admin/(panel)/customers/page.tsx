@@ -29,6 +29,7 @@ import {
   deleteAdminCustomer,
 } from "@/lib/actions/admin-customers";
 import { toast } from "sonner";
+import { BulkExportScope, ExportRowCheckbox, ExportSelectAll } from "@/components/admin/bulk-export-scope";
 
 interface Customer {
   id: number;
@@ -156,7 +157,8 @@ export default function CustomersPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <BulkExportScope rows={customers} filename="customers.csv"><Card>
+          {customers.length > 0 && <div className="flex items-center gap-2 border-b p-4"><ExportSelectAll /><span className="text-sm text-muted-foreground">Select all customers</span></div>}
           <CardHeader className="pb-2">
             <CardDescription>Total Customers</CardDescription>
             <CardTitle className="text-2xl">{stats.total}</CardTitle>
@@ -228,6 +230,7 @@ export default function CustomersPage() {
                     key={customer.id}
                     className="flex items-center justify-between p-4 hover:bg-muted/50"
                   >
+                    <ExportRowCheckbox id={customer.id} label={`Select ${customer.name}`} />
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                         <Users className="h-5 w-5 text-muted-foreground" />
@@ -263,7 +266,7 @@ export default function CustomersPage() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card></BulkExportScope>
       )}
     </div>
   );

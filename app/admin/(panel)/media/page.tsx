@@ -51,6 +51,7 @@ import {
 } from "@/lib/actions/index";
 import type { Media } from "@/lib/db/schema";
 import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkExportScope, ExportRowCheckbox, ExportSelectAll } from "@/components/admin/bulk-export-scope";
 
 export default function MediaPage() {
   const siteId = useAdminSiteId();
@@ -320,6 +321,8 @@ export default function MediaPage() {
 
         {/* Main content */}
         <div className="min-w-0 flex-1">
+          <BulkExportScope rows={items} filename="media-library.csv">
+          {items.length > 0 && <div className="mb-3 flex items-center gap-2 rounded-lg border p-3"><ExportSelectAll /><span className="text-sm text-muted-foreground">Select all visible media</span></div>}
           {/* Toolbar */}
           <div className="mb-4 flex items-center gap-2">
             {/* Mobile folder dropdown */}
@@ -447,8 +450,8 @@ export default function MediaPage() {
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-3 gap-2 p-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                 {items.map((item) => (
-                  <button
-                    key={item.id}
+                  <div key={item.id} className="relative">
+                  <div className="absolute left-1 top-1 z-10 rounded bg-background/90 p-1"><ExportRowCheckbox id={item.id} label={`Select ${item.originalName}`} /></div><button
                     onClick={() => {
                       setSelected(item);
                       setEditAlt(item.alt || "");
@@ -482,14 +485,13 @@ export default function MediaPage() {
                         </span>
                       </div>
                     )}
-                  </button>
+                  </button></div>
                 ))}
               </div>
             ) : (
               <div className="divide-y">
                 {items.map((item) => (
-                  <button
-                    key={item.id}
+                  <div key={item.id} className="flex items-center"><div className="pl-4"><ExportRowCheckbox id={item.id} label={`Select ${item.originalName}`} /></div><button
                     onClick={() => {
                       setSelected(item);
                       setEditAlt(item.alt || "");
@@ -524,10 +526,11 @@ export default function MediaPage() {
                     <Badge variant="outline" className="shrink-0 text-[10px]">
                       {item.mimeType.startsWith("image/") ? "Image" : "Video"}
                     </Badge>
-                  </button>
+                  </button></div>
                 ))}
               </div>
             )}
+          </BulkExportScope>
           </div>
         </div>
 

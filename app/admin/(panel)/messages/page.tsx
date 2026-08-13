@@ -11,6 +11,7 @@ import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { assertTenantFeaturePage } from "@/lib/tenant-access";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +53,11 @@ export default async function AdminMessagesPage({
         </p>
       </div>
 
-      <Card>
+      <BulkSelectionScope siteId={siteId} entity="messages" ids={rows.map((item) => item.id)} options={[{ value: "read", label: "Mark read" }, { value: "unread", label: "Mark unread" }, { value: "delete", label: "Delete", destructive: true }]}><Card>
         <CardHeader className="flex-row items-center gap-3">
           <Mail className="size-4 text-primary" />
           <CardTitle className="font-heading">Inbox ({total})</CardTitle>
+          {rows.length > 0 && <BulkSelectAll />}
         </CardHeader>
         <CardContent className="space-y-4">
           {rows.length === 0 ? (
@@ -72,6 +74,7 @@ export default async function AdminMessagesPage({
                       m.read ? "bg-background" : "border-primary/30 bg-primary/5"
                     }`}
                   >
+                    <div className="mb-3"><BulkRowCheckbox id={m.id} label={`Select message from ${m.name}`} /></div>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -105,7 +108,7 @@ export default async function AdminMessagesPage({
             </>
           )}
         </CardContent>
-      </Card>
+      </Card></BulkSelectionScope>
     </div>
   );
 }

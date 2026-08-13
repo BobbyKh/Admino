@@ -31,6 +31,8 @@ import {
   deleteExperiment,
   getExperimentResults,
 } from "@/lib/actions/index";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 interface Experiment {
   id: number;
@@ -60,6 +62,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function ExperimentsPage() {
+  const siteId = useAdminSiteId();
   const [experimentsList, setExperimentsList] = useState<Experiment[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
@@ -227,7 +230,8 @@ export default function ExperimentsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_350px]">
-        <div className="space-y-3">
+        <BulkSelectionScope siteId={siteId} entity="experiments" ids={experimentsList.map((item) => item.id)} options={[{ value: "pause", label: "Pause running" }, { value: "resume", label: "Resume paused" }, { value: "complete", label: "Complete" }, { value: "delete_drafts", label: "Delete drafts", destructive: true }]}><div className="space-y-3">
+          {experimentsList.length > 0 && <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all experiments</span></div>}
           {experimentsList.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center py-12">
@@ -241,6 +245,7 @@ export default function ExperimentsPage() {
             experimentsList.map((exp) => (
               <Card key={exp.id}>
                 <CardContent className="flex items-center gap-4 p-4">
+                  <BulkRowCheckbox id={exp.id} label={`Select ${exp.name}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{exp.name}</p>
@@ -325,7 +330,7 @@ export default function ExperimentsPage() {
               </Card>
             ))
           )}
-        </div>
+        </div></BulkSelectionScope>
 
         <div>
           {selectedExperiment && results ? (

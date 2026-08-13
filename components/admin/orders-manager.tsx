@@ -9,8 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export function OrdersManager({ orders }: { orders: Order[] }) {
+  const siteId = useAdminSiteId();
   const [pending, startTransition] = React.useTransition();
   const paidOrders = orders.filter((order) => order.paymentStatus === "paid");
   const paidSales = paidOrders.reduce((total, order) => total + order.total, 0);
@@ -69,14 +72,16 @@ export function OrdersManager({ orders }: { orders: Order[] }) {
         <SummaryCard label="Awaiting action" value={String(pendingOrders)} description="Payment review required" />
         <SummaryCard label="Delivered" value={String(deliveredOrders)} description="Orders fulfilled" />
       </div>
-      <Card>
+      <BulkSelectionScope siteId={siteId} entity="orders" ids={orders.map((item) => item.id)} options={[{ value: "fulfill", label: "Mark paid orders delivered" }]}><Card>
         <CardHeader className="flex-row items-center gap-3"><ShoppingBag className="size-4 text-primary" /><div><CardTitle className="font-heading">Order operations</CardTitle><CardDescription>{orders.length} order{orders.length === 1 ? "" : "s"} for this tenant.</CardDescription></div></CardHeader>
         <CardContent className="px-0 pb-0">
           {orders.length === 0 ? <p className="m-6 rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">No orders yet.</p> : (
             <>
+              <div className="flex items-center gap-2 border-b px-4 py-3 md:hidden"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all visible orders</span></div>
               <div className="divide-y md:hidden">
                 {orders.map((order) => (
                   <article key={order.id} className="space-y-4 p-4">
+                    <BulkRowCheckbox id={order.id} label={`Select ${order.orderNumber}`} />
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{order.orderNumber}</p>
@@ -99,14 +104,14 @@ export function OrdersManager({ orders }: { orders: Order[] }) {
               </div>
               <div className="hidden md:block">
                 <Table className="min-w-[1120px] table-fixed">
-                  <TableHeader><TableRow><TableHead className="w-32">Order</TableHead><TableHead className="w-56">Customer</TableHead><TableHead className="w-72">Delivery</TableHead><TableHead className="w-32">Payment via</TableHead><TableHead className="w-40">Payment</TableHead><TableHead className="w-32">Fulfillment</TableHead><TableHead className="w-44">Reference</TableHead><TableHead className="w-32 text-right">Operations</TableHead></TableRow></TableHeader>
-                  <TableBody>{orders.map((order) => <TableRow key={order.id}><TableCell className="font-medium">{order.orderNumber}<p className="mt-1 text-xs font-normal text-muted-foreground">{formatTotal(order.total, order.currency)}</p></TableCell><TableCell><div className="min-w-0"><p className="truncate">{order.customerName || order.email}</p><p className="truncate text-xs text-muted-foreground">{order.email}</p>{order.phone && <p className="truncate text-xs text-muted-foreground">{order.phone}</p>}</div></TableCell><TableCell className="whitespace-normal"><p className="break-words text-sm">{addressLine(order) || "-"}</p>{order.deliveryNotes && <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{order.deliveryNotes}</p>}</TableCell><TableCell>{paymentProviderLabel(order.paymentProvider)}</TableCell><TableCell><Badge variant={order.paymentStatus === "paid" ? "default" : order.paymentStatus === "failed" ? "destructive" : "secondary"}>{paymentLabel(order.paymentStatus, order.paymentProvider)}</Badge></TableCell><TableCell><Badge variant={order.status === "fulfilled" ? "default" : "secondary"}>{statusLabel(order.status)}</Badge></TableCell><TableCell><span className="block truncate text-xs text-muted-foreground" title={order.providerPaymentId ?? undefined}>{order.providerPaymentId ?? "-"}</span></TableCell><TableCell><OrderActions order={order} pending={pending} onAction={run} /></TableCell></TableRow>)}</TableBody>
+                  <TableHeader><TableRow><TableHead className="w-10"><BulkSelectAll /></TableHead><TableHead className="w-32">Order</TableHead><TableHead className="w-56">Customer</TableHead><TableHead className="w-72">Delivery</TableHead><TableHead className="w-32">Payment via</TableHead><TableHead className="w-40">Payment</TableHead><TableHead className="w-32">Fulfillment</TableHead><TableHead className="w-44">Reference</TableHead><TableHead className="w-32 text-right">Operations</TableHead></TableRow></TableHeader>
+                  <TableBody>{orders.map((order) => <TableRow key={order.id}><TableCell><BulkRowCheckbox id={order.id} label={`Select ${order.orderNumber}`} /></TableCell><TableCell className="font-medium">{order.orderNumber}<p className="mt-1 text-xs font-normal text-muted-foreground">{formatTotal(order.total, order.currency)}</p></TableCell><TableCell><div className="min-w-0"><p className="truncate">{order.customerName || order.email}</p><p className="truncate text-xs text-muted-foreground">{order.email}</p>{order.phone && <p className="truncate text-xs text-muted-foreground">{order.phone}</p>}</div></TableCell><TableCell className="whitespace-normal"><p className="break-words text-sm">{addressLine(order) || "-"}</p>{order.deliveryNotes && <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{order.deliveryNotes}</p>}</TableCell><TableCell>{paymentProviderLabel(order.paymentProvider)}</TableCell><TableCell><Badge variant={order.paymentStatus === "paid" ? "default" : order.paymentStatus === "failed" ? "destructive" : "secondary"}>{paymentLabel(order.paymentStatus, order.paymentProvider)}</Badge></TableCell><TableCell><Badge variant={order.status === "fulfilled" ? "default" : "secondary"}>{statusLabel(order.status)}</Badge></TableCell><TableCell><span className="block truncate text-xs text-muted-foreground" title={order.providerPaymentId ?? undefined}>{order.providerPaymentId ?? "-"}</span></TableCell><TableCell><OrderActions order={order} pending={pending} onAction={run} /></TableCell></TableRow>)}</TableBody>
                 </Table>
               </div>
             </>
           )}
         </CardContent>
-      </Card>
+      </Card></BulkSelectionScope>
     </div>
   );
 }

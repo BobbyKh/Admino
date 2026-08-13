@@ -1,5 +1,7 @@
 // Re-export all domain modules for backward compatibility
 export type { AdminActionState, UploadState, MediaUploadState } from "./types";
+export type { BulkActionResult, BulkItemResult } from "./types";
+export { runBulkAction } from "./bulk";
 export { updateSettings } from "./settings";
 export { addGalleryImage, updateGalleryImage, deleteGalleryImage, toggleFeatured } from "./gallery";
 export { addMenuCategory, deleteMenuCategory, addMenuItem, updateMenuItem, deleteMenuItem } from "./menu";

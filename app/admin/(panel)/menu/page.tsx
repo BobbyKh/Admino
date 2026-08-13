@@ -11,6 +11,7 @@ import { deleteMenuCategory, deleteMenuItem } from "@/lib/actions/index";
 import { AddMenuItemForm } from "@/components/admin/menu-item-form";
 import { AddCategoryForm } from "@/components/admin/add-category-form";
 import { getAdminSiteId } from "@/lib/admin-site";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,8 @@ export default async function AdminMenuPage() {
         </CardContent>
       </Card>
 
+      <BulkSelectionScope siteId={siteId} entity="menu" ids={items.map((item) => item.id)} options={[{ value: "available", label: "Mark available" }, { value: "unavailable", label: "Mark unavailable" }, { value: "feature", label: "Feature" }, { value: "unfeature", label: "Remove featured" }, { value: "delete", label: "Delete", destructive: true }]}>
+      {items.length > 0 && <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all menu items</span></div>}
       {menu.map((category) => (
         <Card key={category.id}>
           <CardHeader className="flex-row items-center justify-between">
@@ -84,6 +87,7 @@ export default async function AdminMenuPage() {
                     key={item.id}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
                   >
+                    <BulkRowCheckbox id={item.id} label={`Select ${item.name}`} />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{item.name}</p>
@@ -120,6 +124,7 @@ export default async function AdminMenuPage() {
           </CardContent>
         </Card>
       ))}
+      </BulkSelectionScope>
 
       <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">

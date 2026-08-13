@@ -20,7 +20,8 @@ export type ActivityEntity =
   | "media"
   | "navigation"
   | "home_section"
-  | "seller_application";
+  | "seller_application"
+  | "bulk_operation";
 
 export interface LogActivityOptions {
   siteId?: number | null;

@@ -25,6 +25,8 @@ import {
   retryWebhookDelivery,
   getWebhookEvents,
 } from "@/lib/actions/webhooks";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 interface Webhook {
   id: number;
@@ -51,6 +53,7 @@ interface WebhookEventOption {
 }
 
 export default function WebhooksPage() {
+  const siteId = useAdminSiteId();
   const [webhooksList, setWebhooksList] = useState<Webhook[]>([]);
   const [events, setEvents] = useState<WebhookEventOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,7 +225,8 @@ export default function WebhooksPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_400px]">
-        <div className="space-y-3">
+        <BulkSelectionScope siteId={siteId} entity="webhooks" ids={webhooksList.map((item) => item.id)} options={[{ value: "enable", label: "Enable" }, { value: "disable", label: "Disable" }]}><div className="space-y-3">
+          {webhooksList.length > 0 && <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all webhooks</span></div>}
           {webhooksList.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center py-12">
@@ -234,6 +238,7 @@ export default function WebhooksPage() {
             webhooksList.map((hook) => (
               <Card key={hook.id}>
                 <CardContent className="flex items-center gap-4 p-4">
+                  <BulkRowCheckbox id={hook.id} label={`Select ${hook.name}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{hook.name}</p>
@@ -281,7 +286,7 @@ export default function WebhooksPage() {
               </Card>
             ))
           )}
-        </div>
+        </div></BulkSelectionScope>
 
         <div>
           {selectedHook ? (

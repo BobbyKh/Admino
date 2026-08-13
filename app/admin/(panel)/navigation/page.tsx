@@ -16,8 +16,11 @@ import {
   updateNavLink,
 } from "@/lib/actions/index";
 import type { NavLink } from "@/lib/db/schema";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export default function NavigationPage() {
+  const siteId = useAdminSiteId();
   const [links, setLinks] = React.useState<NavLink[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [pending, startTransition] = React.useTransition();
@@ -161,9 +164,10 @@ export default function NavigationPage() {
         </Card>
       )}
 
-      <Card>
+      <BulkSelectionScope siteId={siteId} entity="navigation" ids={links.map((item) => item.id)} options={[{ value: "show", label: "Show" }, { value: "hide", label: "Hide" }, { value: "delete", label: "Delete", destructive: true }]}><Card>
         <CardHeader>
           <CardTitle className="text-sm">Menu Links ({links.length})</CardTitle>
+          {links.length > 0 && <BulkSelectAll />}
         </CardHeader>
         <CardContent className="space-y-1">
           {links.length === 0 && (
@@ -203,6 +207,7 @@ export default function NavigationPage() {
                     : "hover:bg-muted/50"
               }`}
             >
+              <BulkRowCheckbox id={link.id} label={`Select ${link.label}`} />
               <span
                 className="cursor-grab text-muted-foreground/50 active:cursor-grabbing hover:text-muted-foreground"
                 title="Drag to reorder"
@@ -283,7 +288,7 @@ export default function NavigationPage() {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </Card></BulkSelectionScope>
     </div>
   );
 }

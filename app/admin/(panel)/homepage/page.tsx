@@ -46,6 +46,8 @@ import {
   updateHomeSection,
 } from "@/lib/actions/index";
 import type { HomeSection } from "@/lib/db/schema";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 const SECTION_GROUPS = [
   {
@@ -133,6 +135,7 @@ function SortableSectionItem({
       }`}
     >
       <div className="flex items-center gap-2">
+        <BulkRowCheckbox id={section.id} label={`Select ${getTypeLabel(section.type)}`} />
         <button
           type="button"
           className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground"
@@ -236,6 +239,7 @@ function DragOverlaySectionContent({ section }: { section: HomeSection }) {
 }
 
 export default function HomepageSectionsPage() {
+  const siteId = useAdminSiteId();
   const [sections, setSections] = React.useState<HomeSection[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [pending, startTransition] = React.useTransition();
@@ -412,11 +416,12 @@ export default function HomepageSectionsPage() {
         </Card>
       )}
 
-      <Card>
+      <BulkSelectionScope siteId={siteId} entity="homepage" ids={sections.map((item) => item.id)} options={[{ value: "show", label: "Show" }, { value: "hide", label: "Hide" }, { value: "delete", label: "Delete", destructive: true }]}><Card>
         <CardHeader>
           <CardTitle className="text-sm">
             Sections ({sections.length})
           </CardTitle>
+          {sections.length > 0 && <BulkSelectAll />}
         </CardHeader>
         <CardContent className="space-y-1">
           {sections.length === 0 && (
@@ -453,7 +458,7 @@ export default function HomepageSectionsPage() {
             </DragOverlay>
           </DndContext>
         </CardContent>
-      </Card>
+      </Card></BulkSelectionScope>
     </div>
   );
 }

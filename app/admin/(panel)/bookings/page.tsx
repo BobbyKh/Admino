@@ -20,6 +20,7 @@ import { Pagination } from "@/components/admin/pagination";
 import { getPaginationParams, paginationMeta } from "@/lib/pagination";
 import { getAdminSiteId } from "@/lib/admin-site";
 import { assertTenantFeaturePage } from "@/lib/tenant-access";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ export default async function AdminBookingsPage({
         </p>
       </div>
 
-      <Card>
+      <BulkSelectionScope siteId={siteId} entity="bookings" ids={rows.map((item) => item.id)} options={[{ value: "confirmed", label: "Confirm" }, { value: "completed", label: "Complete" }, { value: "cancelled", label: "Cancel", destructive: true }]}><Card>
         <CardHeader className="flex-row items-center gap-3">
           <CalendarDays className="size-4 text-primary" />
           <CardTitle className="font-heading">
@@ -80,7 +81,7 @@ export default async function AdminBookingsPage({
                 <Table className="min-w-[900px] table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-64">Guest</TableHead>
+                      <TableHead className="w-10"><BulkSelectAll /></TableHead><TableHead className="w-64">Guest</TableHead>
                       <TableHead>Date &amp; time</TableHead>
                       <TableHead>Guests</TableHead>
                       <TableHead className="w-40">Occasion</TableHead>
@@ -91,6 +92,7 @@ export default async function AdminBookingsPage({
                   <TableBody>
                     {rows.map((b) => (
                       <TableRow key={b.id}>
+                        <TableCell><BulkRowCheckbox id={b.id} label={`Select booking for ${b.name}`} /></TableCell>
                         <TableCell className="align-top whitespace-normal">
                           <p className="font-medium">{b.name}</p>
                           <p className="truncate text-xs text-muted-foreground">{b.email}</p>
@@ -145,7 +147,7 @@ export default async function AdminBookingsPage({
             </>
           )}
         </CardContent>
-      </Card>
+      </Card></BulkSelectionScope>
     </div>
   );
 }

@@ -33,6 +33,8 @@ import {
   getFunnelResults,
 } from "@/lib/actions/funnels";
 import { toast } from "sonner";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 interface FunnelData {
   id: number;
@@ -54,6 +56,7 @@ interface FunnelResult {
 }
 
 export default function FunnelsPage() {
+  const siteId = useAdminSiteId();
   const [funnels, setFunnels] = useState<FunnelData[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -201,8 +204,9 @@ export default function FunnelsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1 space-y-4">
+        <BulkSelectionScope siteId={siteId} entity="funnels" ids={funnels.map((item) => item.id)} options={[{ value: "delete", label: "Delete", destructive: true }]}><div className="lg:col-span-1 space-y-4">
           <h2 className="font-semibold">Funnels</h2>
+          {funnels.length > 0 && <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all funnels</span></div>}
           {loading ? (
             <Card>
               <CardContent className="p-4 text-center text-muted-foreground">
@@ -230,6 +234,7 @@ export default function FunnelsPage() {
                   }
                 >
                   <CardContent className="p-4">
+                    <div className="mb-2"><BulkRowCheckbox id={funnel.id} label={`Select ${funnel.name}`} /></div>
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium">{funnel.name}</h3>
                       <div className="flex gap-1">
@@ -264,7 +269,7 @@ export default function FunnelsPage() {
               );
             })
           )}
-        </div>
+        </div></BulkSelectionScope>
 
         <div className="lg:col-span-2">
           {resultsLoading ? (

@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { MediaPicker } from "@/components/admin/media-picker";
+import { useAdminSiteId } from "@/components/admin/admin-site-context";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 export function ServiceManager({
   categories,
@@ -59,6 +61,7 @@ export function ServiceManager({
   categories: ServiceCategory[];
   services: Service[];
 }) {
+  const siteId = useAdminSiteId();
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
   const [query, setQuery] = React.useState("");
@@ -213,12 +216,12 @@ export function ServiceManager({
             />
           </div>
         </CardHeader>
-        <CardContent className="px-0 pb-0">
+        <BulkSelectionScope siteId={siteId} entity="services" ids={visibleServices.map((item) => item.id)} options={[{ value: "active", label: "Set active" }, { value: "inactive", label: "Hide" }, { value: "feature", label: "Feature" }, { value: "unfeature", label: "Remove featured" }]}><CardContent className="px-0 pb-0">
           {visibleServices.length ? (
             <Table className="min-w-[600px] table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-72">Service</TableHead>
+                  <TableHead className="w-10"><BulkSelectAll /></TableHead><TableHead className="w-72">Service</TableHead>
                   <TableHead className="w-44">Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-28 text-right">Actions</TableHead>
@@ -227,6 +230,7 @@ export function ServiceManager({
               <TableBody>
                 {visibleServices.map((service) => (
                   <TableRow key={service.id}>
+                    <TableCell><BulkRowCheckbox id={service.id} label={`Select ${service.title}`} /></TableCell>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3">
                         {service.image ? (
@@ -305,7 +309,7 @@ export function ServiceManager({
               )}
             </div>
           )}
-        </CardContent>
+        </CardContent></BulkSelectionScope>
       </Card>
       <Dialog open={categoryOpen} onOpenChange={setCategoryOpen}>
         <DialogContent>

@@ -47,6 +47,7 @@ import {
 } from "@/lib/actions/index";
 import { generateSeoMetadataWithAi } from "@/lib/actions/seo-ai";
 import { useActionState } from "react";
+import { BulkRowCheckbox, BulkSelectAll, BulkSelectionScope } from "@/components/admin/bulk-selection-scope";
 
 type AdminActionState = { success?: boolean; message?: string; data?: { pageId?: number } };
 
@@ -277,9 +278,11 @@ export default function PagesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <BulkSelectionScope siteId={selectedSiteId} entity="pages" ids={pages.map((item) => item.id)} options={[{ value: "publish", label: "Publish" }, { value: "unpublish", label: "Move to draft" }, { value: "index", label: "Allow indexing" }, { value: "noindex", label: "Hide from search engines" }]}><div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border p-3"><BulkSelectAll /><span className="text-sm text-muted-foreground">Select all pages</span></div>
           {pages.map((page) => (
             <Card key={page.id} className="flex items-center gap-4 px-4 py-3">
+              <BulkRowCheckbox id={page.id} label={`Select ${page.title}`} />
               <div className="flex size-8 items-center justify-center rounded bg-muted">
                 <FileText className="size-4 text-muted-foreground" />
               </div>
@@ -354,7 +357,7 @@ export default function PagesPage() {
               </div>
             </Card>
           ))}
-        </div>
+        </div></BulkSelectionScope>
       )}
 
       {/* Edit Dialog */}
