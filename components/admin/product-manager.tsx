@@ -82,30 +82,39 @@ function ProductFields({ siteId, product }: { siteId: number; product?: Product 
   const [aiLoading, setAiLoading] = React.useState(false);
 
   async function handleGenerateDescription() {
-    const titleInput = document.querySelector("[name=title]") as HTMLInputElement | null;
-    const title = titleInput?.value;
+    const title = (document.querySelector("[name=title]") as HTMLInputElement | null)?.value;
     if (!title) { toast.error("Enter a product title first."); return; }
     setAiLoading(true);
     try {
       const result = await generateProductDescriptionWithAi(siteId, title);
       if ("copy" in result) {
-        const descInput = document.querySelector("[name=description]") as HTMLTextAreaElement | null;
-        if (descInput) descInput.value = result.copy.description;
+        const input = document.querySelector("[name=description]") as HTMLTextAreaElement | null;
+        if (input) input.value = result.copy.description;
         toast.success(`AI generated description and badge: "${result.copy.badge}"`);
-      } else {
-        toast.error(result.error);
-      }
-    } catch {
-      toast.error("Failed to generate product copy.");
-    } finally {
-      setAiLoading(false);
-    }
+      } else toast.error(result.error);
+    } catch { toast.error("Failed to generate product copy."); }
+    finally { setAiLoading(false); }
   }
 
-  return <><Field label="Title" name="title" required defaultValue={product?.title} /><Field label="Slug" name="slug" required defaultValue={product?.slug} /><Field label="Category" name="category" defaultValue={product?.category ?? ""} placeholder="For example, Clothing" /><Field label="Price (minor unit)" name="price" type="number" min="0" required defaultValue={product?.price} /><Field label="Currency (for example, USD)" name="currency" required minLength={3} maxLength={3} defaultValue={product?.currency ?? "usd"} /><Field label="Inventory" name="inventoryQuantity" type="number" min="0" required defaultValue={product?.inventoryQuantity ?? 0} /><div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" defaultValue={product?.status ?? "draft"} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div><Field label="Sizes (optional, comma-separated)" name="sizes" defaultValue={optionList(product?.sizes)} placeholder="S, M, L" /><Field label="Colors (optional, comma-separated)" name="colors" defaultValue={optionList(product?.colors)} placeholder="Black, Blue" /><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between"><Label htmlFor="description">Description</Label><Button type="button" variant="outline" size="sm" disabled={aiLoading} onClick={handleGenerateDescription}><Sparkles className="mr-1 size-3.5 text-primary" />{aiLoading ? "Generating..." : "AI Generate"}</Button></div><Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} /></div><div className="md:col-span-2 rounded-lg border bg-muted/20 p-4"><MediaPicker name="image" label="Product image" value={image} onChange={setImage} /></div><label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured product</label></>;
+  return <>
+    <Field label="Title" name="title" required defaultValue={product?.title} />
+    <Field label="Slug" name="slug" required defaultValue={product?.slug} />
+    <Field label="Category" name="category" defaultValue={product?.category ?? ""} placeholder="For example, Clothing" />
+    <Field label="Price (minor unit)" name="price" type="number" min="0" required defaultValue={product?.price} />
+    <Field label="Currency (for example, USD)" name="currency" required minLength={3} maxLength={3} defaultValue={product?.currency ?? "usd"} />
+    <Field label="Inventory" name="inventoryQuantity" type="number" min="0" required defaultValue={product?.inventoryQuantity ?? 0} />
+    <div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" defaultValue={product?.status ?? "draft"} className="w-full rounded-md border bg-background px-3 py-2 text-sm">{productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+    <Field label="Sizes (optional, comma-separated)" name="sizes" defaultValue={optionList(product?.sizes)} placeholder="S, M, L" />
+    <Field label="Colors (optional, comma-separated)" name="colors" defaultValue={optionList(product?.colors)} placeholder="Black, Blue" />
+    <div className="space-y-2 md:col-span-2"><Label htmlFor="wholesaleTiers">Wholesale tiers (quantity:price)</Label><Input id="wholesaleTiers" name="wholesaleTiers" defaultValue={tierList(product?.wholesaleTiers)} placeholder="10:2200, 50:1900, 100:1700" /><p className="text-xs text-muted-foreground">Use minor currency units. Larger quantities must have progressively lower prices.</p></div>
+    <div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between"><Label htmlFor="description">Description</Label><Button type="button" variant="outline" size="sm" disabled={aiLoading} onClick={handleGenerateDescription}><Sparkles className="mr-1 size-3.5 text-primary" />{aiLoading ? "Generating..." : "AI Generate"}</Button></div><Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} /></div>
+    <div className="rounded-lg border bg-muted/20 p-4 md:col-span-2"><MediaPicker name="image" label="Product image" value={image} onChange={setImage} /></div>
+    <label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured product</label>
+  </>;
 }
 
 function Field({ label, name, ...props }: React.ComponentProps<typeof Input> & { label: string; name: string }) { return <div className="space-y-2"><Label htmlFor={name}>{label}</Label><Input id={name} name={name} {...props} /></div>; }
 
 function formatPrice(price: number, currency: string) { return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(price / 100); }
 function optionList(raw: string | null | undefined) { try { const parsed = JSON.parse(raw ?? "[]"); return Array.isArray(parsed) ? parsed.join(", ") : ""; } catch { return ""; } }
+function tierList(raw: string | null | undefined) { try { const parsed = JSON.parse(raw ?? "[]") as Array<{ minQuantity: number; unitPrice: number }>; return Array.isArray(parsed) ? parsed.map((tier) => `${tier.minQuantity}:${tier.unitPrice}`).join(", ") : ""; } catch { return ""; } }

@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import { ExperimentProvider } from "./experiment-provider";
 import { useAnalyticsTracking } from "./use-analytics-tracking";
+import { CartProvider } from "./cart-provider";
 
 export function StorefrontProviders({
   children,
@@ -13,5 +14,5 @@ export function StorefrontProviders({
 }) {
   useAnalyticsTracking(siteId);
 
-  return <ExperimentProvider>{children}</ExperimentProvider>;
+  return <ExperimentProvider><CartProvider>{children}</CartProvider></ExperimentProvider>;
 }

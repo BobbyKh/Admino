@@ -10,12 +10,18 @@ import { cn } from "@/lib/utils";
 import { LocaleSwitcher } from "@/components/site/locale-switcher";
 import type { SiteSettings } from "@/lib/settings";
 import type { NavLink } from "@/lib/db/schema";
+import { useCart } from "@/components/site/cart-provider";
 
 function withPreviewSite(href: string, siteSlug: string | null) {
   if (!siteSlug || !href.startsWith("/") || href.startsWith("//")) return href;
   const url = new URL(href, "http://preview.local");
   url.searchParams.set("site", siteSlug);
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function CartCount({ count }: { count: number }) {
+  if (count < 1) return null;
+  return <span aria-live="polite" className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">{count > 99 ? "99+" : count}</span>;
 }
 
 export function Navbar({
@@ -40,6 +46,7 @@ export function Navbar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = React.useState(false);
+  const { itemCount } = useCart();
   const siteSlug = searchParams.get("site");
 
   const visibleLinks = navLinks.filter((l) => l.visible);
@@ -95,8 +102,8 @@ export function Navbar({
               currentLocale={currentLocale}
             />
           )}
-          {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label="View cart">
-            <Button variant="ghost" size="icon"><ShoppingCart className="size-4" /></Button>
+          {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label={`Shopping cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}>
+            <Button variant="ghost" size="icon" className="relative"><ShoppingCart className="size-4" /><CartCount count={itemCount} /></Button>
           </Link>}
           {settings.navbarShowPhone === "true" && settings.phone && (
             <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
@@ -113,6 +120,10 @@ export function Navbar({
           )}
         </div>
 
+        <div className="flex items-center gap-1 md:hidden">
+        {showCart && <Link href={withPreviewSite("/cart", siteSlug)} aria-label={`Shopping cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}>
+          <Button variant="ghost" size="icon" className="relative"><ShoppingCart className="size-5" /><CartCount count={itemCount} /></Button>
+        </Link>}
         <Button
           variant="ghost"
           size="icon"
@@ -122,6 +133,7 @@ export function Navbar({
         >
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </Button>
+        </div>
       </div>
 
       {open && (
@@ -151,7 +163,6 @@ export function Navbar({
                   currentLocale={currentLocale}
                 />
               )}
-              {showCart && <Link href={withPreviewSite("/cart", siteSlug)} onClick={() => setOpen(false)}><Button variant="outline" className="w-full gap-2"><ShoppingCart className="size-4" />Cart</Button></Link>}
               {settings.navbarShowPhone === "true" && settings.phone && (
                 <a href={`tel:${settings.phone.replace(/\s/g, "")}`}>
                   <Button variant="outline" className="w-full gap-2">

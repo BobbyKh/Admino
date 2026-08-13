@@ -57,6 +57,13 @@
       "when": 1786214517495,
       "tag": "0007_true_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786607774079,
+      "tag": "0008_warm_whiplash",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ const productSchema = z.object({
   sizes: z.string().trim().max(500).optional().default(""),
   colors: z.string().trim().max(500).optional().default(""),
   price: z.coerce.number().int().min(0),
+  wholesaleTiers: z.string().trim().max(1000).optional().default(""),
   currency: z.string().trim().toLowerCase().length(3, "Currency must be a three-letter code, such as USD."),
   inventoryQuantity: z.coerce.number().int().min(0),
   status: z.enum(["draft", "active", "archived"]),
@@ -43,6 +44,7 @@ function productInput(formData: FormData) {
     sizes: formData.get("sizes") ?? "",
     colors: formData.get("colors") ?? "",
     price: formData.get("price"),
+    wholesaleTiers: formData.get("wholesaleTiers") ?? "",
     currency: formData.get("currency") ?? "usd",
     inventoryQuantity: formData.get("inventoryQuantity") ?? 0,
     status: formData.get("status") ?? "draft",
@@ -69,9 +71,11 @@ export async function createProduct(siteId: number, formData: FormData) {
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
 
   const product = parsed.data;
+  const wholesaleTiers = parseWholesaleTiers(product.wholesaleTiers, product.price);
   await db.insert(products).values({
     siteId,
     ...product,
+    wholesaleTiers,
     description: product.description || null,
     image: product.image || null,
     category: product.category || null,
@@ -89,8 +93,10 @@ export async function updateProduct(siteId: number, productId: number, formData:
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
 
   const product = parsed.data;
+  const wholesaleTiers = parseWholesaleTiers(product.wholesaleTiers, product.price);
   await db.update(products).set({
     ...product,
+    wholesaleTiers,
     description: product.description || null,
     image: product.image || null,
     category: product.category || null,
@@ -104,6 +110,22 @@ export async function updateProduct(siteId: number, productId: number, formData:
 function toOptionJson(value: string) {
   const options = [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
   return options.length ? JSON.stringify(options) : null;
+}
+
+function parseWholesaleTiers(value: string, retailPrice: number) {
+  if (!value) return null;
+  const tiers = value.split(",").map((entry) => {
+    const [quantity, price] = entry.split(":").map((part) => Number(part.trim()));
+    if (!Number.isInteger(quantity) || quantity < 2 || !Number.isInteger(price) || price < 0 || price >= retailPrice) {
+      throw new Error("Wholesale tiers must use quantity:price pairs, with quantity at least 2 and price below retail.");
+    }
+    return { minQuantity: quantity, unitPrice: price };
+  }).sort((a, b) => a.minQuantity - b.minQuantity);
+  if (new Set(tiers.map((tier) => tier.minQuantity)).size !== tiers.length) throw new Error("Wholesale tier quantities must be unique.");
+  for (let index = 1; index < tiers.length; index += 1) {
+    if (tiers[index].unitPrice >= tiers[index - 1].unitPrice) throw new Error("Each larger wholesale tier must have a lower unit price.");
+  }
+  return JSON.stringify(tiers);
 }
 
 export async function deleteProduct(siteId: number, productId: number) {

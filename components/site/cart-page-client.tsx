@@ -6,6 +6,7 @@ import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getStoreCart, updateStoreCartItem } from "@/lib/actions/index";
 import { Button } from "@/components/ui/button";
+import { notifyCartChanged } from "@/components/site/cart-provider";
 
 type Cart = Awaited<ReturnType<typeof getStoreCart>>;
 
@@ -39,7 +40,7 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
     const cartToken = window.localStorage.getItem("store-cart-token");
     if (!cartToken) return;
     setPendingId(cartItemId);
-    try { await updateStoreCartItem(cartToken, cartItemId, quantity); await loadCart(); }
+    try { await updateStoreCartItem(cartToken, cartItemId, quantity); await loadCart(); notifyCartChanged(); }
     catch (error) { toast.error(error instanceof Error ? error.message : "Unable to update cart."); }
     finally { setPendingId(null); }
   }
@@ -61,6 +62,7 @@ export function CartPageClient({ siteSlug }: { siteSlug?: string | null }) {
                 <Link href={productHref(item.slug)} className="font-medium hover:text-primary">{item.title}</Link>
                 <SelectedOptions value={item.selectedOptions} />
                 <p className="mt-1 text-sm text-muted-foreground">{formatPrice(item.price, cart.currency)}</p>
+                {item.price < item.retailPrice && <p className="text-xs font-medium text-primary">Wholesale price applied <span className="font-normal text-muted-foreground line-through">{formatPrice(item.retailPrice, cart.currency)}</span></p>}
                 <div className="mt-3 flex items-center gap-2">
                   <Button size="icon-xs" variant="outline" disabled={pendingId === item.id || item.quantity === 1} onClick={() => update(item.id, item.quantity - 1)} aria-label={`Decrease ${item.title} quantity`}><Minus /></Button>
                   <span className="w-6 text-center text-sm">{item.quantity}</span>

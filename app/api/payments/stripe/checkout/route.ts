@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { carts, cartItems, orders, orderItems, paymentConfigurations, products, settings } from "@/lib/db/schema";
 import { getResolvedSite } from "@/lib/site-context";
 import { getStripeForSite } from "@/lib/commerce/stripe";
+import { getQuantityUnitPrice } from "@/lib/commerce/pricing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,18 +55,24 @@ export async function POST(request: NextRequest) {
         slug: products.slug,
         title: products.title,
         image: products.image,
-        price: cartItems.unitPrice,
+        retailPrice: products.price,
+        wholesaleTiers: products.wholesaleTiers,
         inventoryQuantity: products.inventoryQuantity,
       })
       .from(cartItems)
       .innerJoin(products, eq(cartItems.productId, products.id))
       .where(and(eq(cartItems.cartId, cart.id), eq(products.siteId, siteId), eq(products.status, "active")));
 
-    if (items.length === 0) {
+    const pricedItems = items.map((item) => ({
+      ...item,
+      price: getQuantityUnitPrice(item.retailPrice, item.wholesaleTiers, item.quantity),
+    }));
+
+    if (pricedItems.length === 0) {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
     }
 
-    for (const item of items) {
+    for (const item of pricedItems) {
       if (item.inventoryQuantity < item.quantity) {
         return NextResponse.json({
           error: `${item.title} is no longer available in that quantity.`,
@@ -77,7 +84,7 @@ export async function POST(request: NextRequest) {
     const successUrl = `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/cart`;
 
-    const stripeItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
+    const stripeItems: Stripe.Checkout.SessionCreateParams.LineItem[] = pricedItems.map((item) => ({
       price_data: {
         currency: cart.currency.toLowerCase(),
         product_data: {
@@ -97,7 +104,7 @@ export async function POST(request: NextRequest) {
     const prefix = prefixSetting?.value?.replace(/[^A-Z0-9-]/gi, "").slice(0, 12).toUpperCase() || "ORD";
     const orderNumber = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = pricedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     const [pendingOrder] = await db
       .insert(orders)
@@ -122,7 +129,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     await db.insert(orderItems).values(
-      items.map((item) => ({
+      pricedItems.map((item) => ({
         orderId: pendingOrder.id,
         productId: item.productId,
         title: item.title,

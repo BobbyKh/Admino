@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyCartChanged } from "@/components/site/cart-provider";
 
 type Cart = Awaited<ReturnType<typeof getStoreCart>>;
 type PaymentMethod = Awaited<ReturnType<typeof getStorePaymentMethods>>[number];
@@ -58,6 +59,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error ?? "Failed to start checkout.");
           window.localStorage.removeItem("store-cart-token");
+          notifyCartChanged();
           window.location.href = data.url;
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
@@ -70,6 +72,7 @@ export function CheckoutPageClient({ siteSlug }: { siteSlug?: string | null }) {
       try {
         const result = await completeStoreCheckout(token, formData);
         window.localStorage.removeItem("store-cart-token");
+        notifyCartChanged();
         if (result.provider === "esewa") {
           window.location.assign(`/api/payments/esewa/initiate?order=${encodeURIComponent(result.orderNumber)}`);
           return;

@@ -9,6 +9,7 @@ import { getResolvedSiteId } from "@/lib/site-context";
 import { isTestPaymentProvider, testPaymentProviderRegistry, type TestPaymentProvider } from "@/lib/commerce/providers";
 import { sendOrderAdminAlert, sendOrderConfirmationEmail } from "@/lib/email";
 import { dispatchWebhook } from "@/lib/webhooks";
+import { getQuantityUnitPrice } from "@/lib/commerce/pricing";
 
 const tokenSchema = z.string().uuid();
 const selectedOptionsSchema = z.object({
@@ -31,19 +32,21 @@ async function getCartForSite(token: string, siteId: number) {
 
 export async function getStoreCart(token: string | null) {
   const siteId = await getStoreSiteId();
-  if (!token) return { items: [], subtotal: 0, currency: "usd" };
+  if (!token) return { items: [], itemCount: 0, subtotal: 0, currency: "usd" };
   const cart = await getCartForSite(token, siteId);
-  if (!cart) return { items: [], subtotal: 0, currency: "usd" };
-  const items = await db.select({ id: cartItems.id, quantity: cartItems.quantity, selectedOptions: cartItems.selectedOptions, productId: products.id, slug: products.slug, title: products.title, image: products.image, price: cartItems.unitPrice, inventoryQuantity: products.inventoryQuantity }).from(cartItems).innerJoin(products, eq(cartItems.productId, products.id)).where(and(eq(cartItems.cartId, cart.id), eq(products.siteId, siteId)));
-  return { items, subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0), currency: cart.currency };
+  if (!cart) return { items: [], itemCount: 0, subtotal: 0, currency: "usd" };
+  const rows = await db.select({ id: cartItems.id, quantity: cartItems.quantity, selectedOptions: cartItems.selectedOptions, productId: products.id, slug: products.slug, title: products.title, image: products.image, retailPrice: products.price, wholesaleTiers: products.wholesaleTiers, inventoryQuantity: products.inventoryQuantity }).from(cartItems).innerJoin(products, eq(cartItems.productId, products.id)).where(and(eq(cartItems.cartId, cart.id), eq(products.siteId, siteId)));
+  const items = rows.map((item) => ({ ...item, price: getQuantityUnitPrice(item.retailPrice, item.wholesaleTiers, item.quantity) }));
+  return { items, itemCount: items.reduce((sum, item) => sum + item.quantity, 0), subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0), currency: cart.currency };
 }
 
-export async function addStoreCartItem(token: string | null, productId: number, selectedOptions?: unknown) {
+export async function addStoreCartItem(token: string | null, productId: number, selectedOptions?: unknown, addQuantity = 1) {
   const siteId = await getStoreSiteId();
   if (!Number.isInteger(productId) || productId < 1) throw new Error("Invalid product.");
   const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.siteId, siteId), eq(products.status, "active")));
   if (!product) throw new Error("This product is no longer available.");
   if (product.inventoryQuantity < 1) throw new Error("This product is out of stock.");
+  if (!Number.isInteger(addQuantity) || addQuantity < 1) throw new Error("Enter a valid quantity.");
   const options = normalizeSelectedOptions(selectedOptions);
   const optionsKey = JSON.stringify(options);
 
@@ -53,10 +56,11 @@ export async function addStoreCartItem(token: string | null, productId: number, 
     cart = created;
   }
   const [existing] = await db.select().from(cartItems).where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, product.id), eq(cartItems.selectedOptions, optionsKey)));
-  const quantity = (existing?.quantity ?? 0) + 1;
+  const quantity = (existing?.quantity ?? 0) + addQuantity;
   if (quantity > product.inventoryQuantity) throw new Error("Only the available quantity can be added.");
-  if (existing) await db.update(cartItems).set({ quantity, unitPrice: product.price }).where(eq(cartItems.id, existing.id));
-  else await db.insert(cartItems).values({ cartId: cart.id, productId: product.id, selectedOptions: optionsKey, quantity: 1, unitPrice: product.price });
+  const unitPrice = getQuantityUnitPrice(product.price, product.wholesaleTiers, quantity);
+  if (existing) await db.update(cartItems).set({ quantity, unitPrice }).where(eq(cartItems.id, existing.id));
+  else await db.insert(cartItems).values({ cartId: cart.id, productId: product.id, selectedOptions: optionsKey, quantity: addQuantity, unitPrice });
   await db.update(carts).set({ updatedAt: new Date().toISOString() }).where(eq(carts.id, cart.id));
   return { token: cart.token };
 }
@@ -72,7 +76,7 @@ export async function updateStoreCartItem(token: string, cartItemId: number, qua
   else {
     const [product] = await db.select().from(products).where(and(eq(products.id, item.productId), eq(products.siteId, siteId), eq(products.status, "active")));
     if (!product || quantity > product.inventoryQuantity) throw new Error("Requested quantity is unavailable.");
-    await db.update(cartItems).set({ quantity, unitPrice: product.price }).where(eq(cartItems.id, item.id));
+    await db.update(cartItems).set({ quantity, unitPrice: getQuantityUnitPrice(product.price, product.wholesaleTiers, quantity) }).where(eq(cartItems.id, item.id));
   }
   await db.update(carts).set({ updatedAt: new Date().toISOString() }).where(eq(carts.id, cart.id));
 }

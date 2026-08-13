@@ -343,6 +343,7 @@ export const products = pgTable("products", {
   sizes: text("sizes"), // JSON string array, e.g. ["S","M","L"]
   colors: text("colors"), // JSON string array, e.g. ["Black","Blue"]
   price: integer("price").notNull(), // Minor currency unit, e.g. cents
+  wholesaleTiers: text("wholesale_tiers"), // JSON array: [{ minQuantity, unitPrice }]
   currency: text("currency").notNull().default("usd"),
   inventoryQuantity: integer("inventory_quantity").notNull().default(0),
   status: text("status").notNull().default("draft"), // draft | active | archived

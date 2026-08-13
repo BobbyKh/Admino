@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getActiveProductBySlug, getActiveProducts, getResolvedSiteSettings } from "@/lib/data";
 import { getResolvedSite, getResolvedSiteId } from "@/lib/site-context";
+import { parseWholesaleTiers } from "@/lib/commerce/pricing";
 
 export const revalidate = 300;
 
@@ -62,6 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const sizes = parseOptions(product.sizes);
   const colors = parseOptions(product.colors);
+  const wholesaleTiers = parseWholesaleTiers(product.wholesaleTiers);
   const related = allProducts.filter((item) => item.id !== product.id && item.category && item.category === product.category).slice(0, 3);
   const previewSlug = site?.domain ? undefined : site?.slug;
   const shopHref = withPreviewSite("/#shop", previewSlug);
@@ -108,7 +110,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
           {product.description && <p className="text-base leading-7 text-muted-foreground">{product.description}</p>}
 
-          <ProductPurchaseOptions productId={product.id} available={product.inventoryQuantity > 0} sizes={sizes} colors={colors} />
+          <ProductPurchaseOptions productId={product.id} available={product.inventoryQuantity > 0} inventoryQuantity={product.inventoryQuantity} sizes={sizes} colors={colors} wholesaleTiers={wholesaleTiers} currency={product.currency} />
 
           <div className="grid gap-3 sm:grid-cols-2">
             <TrustCard icon={<Truck className="size-5" />} title="Order support" text="The store will confirm availability and fulfillment details." />
