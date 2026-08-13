@@ -115,7 +115,7 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Customer reviews and ratings",
     icon: MessageSquare,
     group: "content",
-    defaultConfig: { title: "What People Say", badge: "", items: [{ name: "John D.", role: "CEO", text: "Amazing service!", rating: 5 }] },
+    defaultConfig: { title: "What People Say", badge: "", items: [{ name: "John D.", role: "CEO", image: "", text: "Amazing service!", rating: 5 }] },
   },
   {
     type: "faq",
@@ -179,7 +179,7 @@ export const BLOCK_TYPES: BlockType[] = [
     description: "Team member cards with photos",
     icon: Users,
     group: "content",
-    defaultConfig: { title: "Meet the Team", badge: "", items: [{ name: "Jane Smith", role: "CEO", bio: "Visionary leader" }, { name: "Bob Jones", role: "CTO", bio: "Tech expert" }] },
+    defaultConfig: { title: "Meet the Team", badge: "", items: [{ name: "Jane Smith", role: "CEO", image: "", bio: "Visionary leader" }, { name: "Bob Jones", role: "CTO", image: "", bio: "Tech expert" }] },
   },
   {
     type: "pricing",

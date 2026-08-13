@@ -410,13 +410,14 @@ function DragOverlayContent({ block }: { block: PageBlock }) {
 
 function RepeaterConfigEditor({
   items,
+  template,
   onChange,
 }: {
   items: Record<string, unknown>[];
+  template: Record<string, unknown>;
   onChange: (items: Record<string, unknown>[]) => void;
 }) {
-  const fields = [...new Set(items.flatMap((item) => Object.keys(item)))];
-  const template = items[0] ?? { title: "New item" };
+  const fields = [...new Set([...Object.keys(template), ...items.flatMap((item) => Object.keys(item))])];
 
   function updateItem(index: number, key: string, value: unknown) {
     const nextItems = [...items];
@@ -448,6 +449,9 @@ function RepeaterConfigEditor({
               }
               if (Array.isArray(value)) {
                 return <div key={field} className="space-y-1 md:col-span-2"><Label>{label}</Label><Input value={value.join(", ")} onChange={(event) => updateItem(index, field, event.target.value.split(",").map((entry) => entry.trim()).filter(Boolean))} placeholder="Separate values with commas" /></div>;
+              }
+              if (["image", "src", "photo", "avatar", "backgroundImage", "poster"].includes(field)) {
+                return <div key={field} className="md:col-span-2"><ImageUploadField name={`repeater-${field}-${index}`} label={label} value={String(value)} onChange={(url) => updateItem(index, field, url)} /></div>;
               }
               const isLongText = ["text", "description", "content", "answer", "bio"].includes(field);
               return <div key={field} className={`space-y-1 ${isLongText ? "md:col-span-2" : ""}`}><Label>{label}</Label>{isLongText ? <Textarea value={String(value)} onChange={(event) => updateItem(index, field, event.target.value)} rows={3} /> : <Input value={String(value)} onChange={(event) => updateItem(index, field, event.target.value)} />}</div>;
@@ -936,7 +940,9 @@ function BlockConfigEditor({
     default:
       if (Array.isArray(config.items)) {
         const items = config.items.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null);
-        return <RepeaterConfigEditor items={items} onChange={(nextItems) => updateConfig("items", nextItems)} />;
+        const defaultItems = blockType.defaultConfig.items;
+        const template = Array.isArray(defaultItems) && typeof defaultItems[0] === "object" && defaultItems[0] !== null ? defaultItems[0] as Record<string, unknown> : items[0] ?? { title: "New item" };
+        return <RepeaterConfigEditor items={items} template={template} onChange={(nextItems) => updateConfig("items", nextItems)} />;
       }
       return (
         <div className="space-y-1">

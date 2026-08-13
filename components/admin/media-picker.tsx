@@ -75,7 +75,7 @@ export function MediaPicker({
       {/* Preview */}
       {showPreview && value && (
         <div className="relative size-24 overflow-hidden rounded-md border bg-muted">
-          {value.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)/i) ? (
+          {isPreviewableImageSource(value) ? (
             <Image
               src={value}
               alt="Preview"
@@ -153,4 +153,8 @@ export function MediaPicker({
       />
     </div>
   );
+}
+
+function isPreviewableImageSource(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
 }

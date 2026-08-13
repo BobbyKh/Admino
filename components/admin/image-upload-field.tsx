@@ -71,7 +71,7 @@ export function ImageUploadField({
 
       {value && (
         <div className="relative size-24 overflow-hidden rounded-md border bg-muted">
-          {value.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)/i) ? (
+          {isPreviewableImageSource(value) ? (
             <Image
               src={value}
               alt="Preview"
@@ -142,4 +142,8 @@ export function ImageUploadField({
       />
     </div>
   );
+}
+
+function isPreviewableImageSource(value: string) {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
 }

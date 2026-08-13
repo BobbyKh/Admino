@@ -3,7 +3,7 @@ import { Mail, Link, Globe } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -18,8 +18,10 @@ interface TeamMember {
   twitter?: string;
 }
 
-function parseMembers(raw: string | null): TeamMember[] {
+function parseMembers(raw: unknown): TeamMember[] {
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((item): item is TeamMember => typeof item === "object" && item !== null && typeof (item as TeamMember).name === "string");
+  if (typeof raw !== "string") return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -36,11 +38,11 @@ export function TeamBlock({ config }: { config: string | null }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
-        {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
+        {typeof c.badge === "string" && c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-          {c.title || "Meet the Team"}
+          {typeof c.title === "string" && c.title || "Meet the Team"}
         </h2>
-        {c.subtitle && (
+        {typeof c.subtitle === "string" && c.subtitle && (
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">{c.subtitle}</p>
         )}
       </div>

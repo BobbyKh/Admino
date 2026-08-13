@@ -134,7 +134,7 @@ export function SectionRenderer({
       return <GallerySection images={galleryImages} />;
     case "cta":
       if (isHomepageSection && settings.showCta !== "true") return null;
-      return <CtaSection settings={settings} />;
+      return <CtaSection settings={{ ...settings, heroImage: getString(config, "backgroundImage") ?? settings.heroImage }} />;
     case "menuPreview":
       return <MenuPreviewSection items={featuredItems} />;
     case "banner":

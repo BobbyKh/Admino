@@ -3,9 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -16,8 +15,10 @@ interface GalleryItem {
   caption?: string;
 }
 
-function parseItems(raw: string | null): GalleryItem[] {
+function parseItems(raw: unknown): GalleryItem[] {
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((item): item is GalleryItem => typeof item === "object" && item !== null && typeof (item as GalleryItem).src === "string" && Boolean((item as GalleryItem).src));
+  if (typeof raw !== "string") return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -59,9 +60,9 @@ export function GalleryLightboxBlock({ config }: { config: string | null }) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="mb-10 text-center">
-        {c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
+        {typeof c.badge === "string" && c.badge && <p className="mb-2 text-sm font-medium tracking-widest text-primary uppercase">{c.badge}</p>}
         <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-          {c.title || "Gallery"}
+          {typeof c.title === "string" && c.title || "Gallery"}
         </h2>
       </div>
       {items.length > 0 ? (

@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-function parseConfig(raw: string | null): Record<string, string> {
+function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -12,8 +12,10 @@ interface Slide {
   link?: string;
 }
 
-function parseSlides(raw: string | null): Slide[] {
+function parseSlides(raw: unknown): Slide[] {
   if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((item): item is Slide => typeof item === "object" && item !== null && typeof (item as Slide).image === "string" && Boolean((item as Slide).image));
+  if (typeof raw !== "string") return [];
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed;
@@ -26,7 +28,7 @@ function parseSlides(raw: string | null): Slide[] {
 export function SliderBlock({ config }: { config: string | null }) {
   const c = parseConfig(config);
   const slides = parseSlides(c.items);
-  const height = c.height || "500px";
+  const height = typeof c.height === "string" ? c.height : "500px";
 
   if (slides.length === 0) {
     return (
