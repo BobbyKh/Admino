@@ -10,6 +10,7 @@ import { inventoryExpiry, ONLINE_RESERVATION_MINUTES, releaseInventoryReservatio
 import { calculateCommerceTotals } from "@/lib/commerce/totals";
 import { z } from "zod";
 import { recordPromotionRedemption } from "@/lib/commerce/redemptions";
+import { getSessionCustomer } from "@/lib/customer-auth";
 
 export async function POST(request: NextRequest) {
   let pendingOrderId: number | null = null;
@@ -106,12 +107,15 @@ export async function POST(request: NextRequest) {
       .where(and(eq(settings.siteId, siteId), eq(settings.key, "commerce_order_prefix")));
     const prefix = prefixSetting?.value?.replace(/[^A-Z0-9-]/gi, "").slice(0, 12).toUpperCase() || "ORD";
     const orderNumber = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+    const sessionCustomer = await getSessionCustomer();
+    const customerId = sessionCustomer?.siteId === siteId && sessionCustomer.email.toLowerCase() === customerInput.data.email.toLowerCase() ? sessionCustomer.id : null;
 
     const pendingOrder = await db.transaction(async (tx) => {
       await reserveInventory(tx, siteId, pricedItems);
       const reservedAt = new Date().toISOString();
       const [order] = await tx.insert(orders).values({
         siteId,
+        customerId,
         orderNumber,
         email: customerInput.data.email.toLowerCase(),
         customerName: customerInput.data.customerName,

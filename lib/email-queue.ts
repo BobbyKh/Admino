@@ -22,7 +22,7 @@ export async function processEmailQueue(limit = 25) {
       for update skip locked
       limit ${limit}
     `);
-    const ids = claimed.rows.map((row) => row.id);
+    const ids = (claimed.rows as Array<{ id: number }>).map((row) => row.id);
     if (!ids.length) return [];
     return tx.update(emailJobs).set({ status: "processing", lockedAt: now.toISOString(), updatedAt: now.toISOString() }).where(inArray(emailJobs.id, ids)).returning();
   });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Package, MapPin, Heart, LogOut } from "lucide-react";
+import { User, Package, MapPin, Heart, LogOut, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "./account-sidebar-actions";
 
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/account/orders", label: "Orders", icon: Package },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/wishlist", label: "Wishlist", icon: Heart },
+  { href: "/account/rewards", label: "Rewards", icon: Gift },
 ];
 
 export function AccountSidebar({ isLoggedIn }: { isLoggedIn: boolean }) {

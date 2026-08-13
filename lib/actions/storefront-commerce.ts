@@ -13,6 +13,7 @@ import { getQuantityUnitPrice } from "@/lib/commerce/pricing";
 import { inventoryExpiry, MANUAL_RESERVATION_MINUTES, ONLINE_RESERVATION_MINUTES, reserveInventory } from "@/lib/commerce/inventory";
 import { calculateCommerceTotals, normalizePromotionCode } from "@/lib/commerce/totals";
 import { recordPromotionRedemption } from "@/lib/commerce/redemptions";
+import { getSessionCustomer } from "@/lib/customer-auth";
 
 const tokenSchema = z.string().uuid();
 const selectedOptionsSchema = z.object({
@@ -174,6 +175,8 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
   const [prefixSetting] = await db.select({ value: settings.value }).from(settings).where(and(eq(settings.siteId, siteId), eq(settings.key, "commerce_order_prefix")));
   const prefix = prefixSetting?.value?.replace(/[^A-Z0-9-]/gi, "").slice(0, 12).toUpperCase() || "ORD";
   const orderNumber = `${prefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
+  const sessionCustomer = await getSessionCustomer();
+  const customerId = sessionCustomer?.siteId === siteId && sessionCustomer.email.toLowerCase() === input.data.email.toLowerCase() ? sessionCustomer.id : null;
   let createdOrderId = 0;
   await db.transaction(async (tx) => {
     await reserveInventory(tx, siteId, items.items);
@@ -181,7 +184,7 @@ export async function completeStoreCheckout(token: string, formData: FormData) {
     const reservedAt = new Date().toISOString();
     const reservationMinutes = input.data.provider === "esewa" ? ONLINE_RESERVATION_MINUTES : MANUAL_RESERVATION_MINUTES;
     const isCashOnDelivery = input.data.provider === "cod";
-    const [order] = await tx.insert(orders).values({ siteId, orderNumber, email: input.data.email.toLowerCase(), customerName: input.data.customerName, phone: input.data.phone, addressLine1: input.data.addressLine1, addressLine2: input.data.addressLine2 || null, city: input.data.city, state: input.data.state || null, postalCode: input.data.postalCode || null, country: input.data.country, deliveryNotes: input.data.deliveryNotes || null, currency: cart.currency, subtotal: verifiedTotals.subtotal, discountAmount: verifiedTotals.discountAmount, shippingAmount: verifiedTotals.shippingAmount, taxAmount: verifiedTotals.taxAmount, total: verifiedTotals.total, promotionId: verifiedTotals.promotion?.id ?? null, promotionCode: verifiedTotals.promotion?.code ?? null, promotionSnapshot: verifiedTotals.promotion ? JSON.stringify(verifiedTotals.promotion) : null, status: "pending", paymentStatus, paymentProvider: input.data.provider, providerPaymentId: input.data.paymentReference || null, inventoryStatus: isCashOnDelivery ? "committed" : "reserved", inventoryReservedAt: reservedAt, inventoryExpiresAt: isCashOnDelivery ? null : inventoryExpiry(reservationMinutes), inventoryFinalizedAt: isCashOnDelivery ? reservedAt : null, updatedAt: reservedAt }).returning();
+    const [order] = await tx.insert(orders).values({ siteId, customerId, orderNumber, email: input.data.email.toLowerCase(), customerName: input.data.customerName, phone: input.data.phone, addressLine1: input.data.addressLine1, addressLine2: input.data.addressLine2 || null, city: input.data.city, state: input.data.state || null, postalCode: input.data.postalCode || null, country: input.data.country, deliveryNotes: input.data.deliveryNotes || null, currency: cart.currency, subtotal: verifiedTotals.subtotal, discountAmount: verifiedTotals.discountAmount, shippingAmount: verifiedTotals.shippingAmount, taxAmount: verifiedTotals.taxAmount, total: verifiedTotals.total, promotionId: verifiedTotals.promotion?.id ?? null, promotionCode: verifiedTotals.promotion?.code ?? null, promotionSnapshot: verifiedTotals.promotion ? JSON.stringify(verifiedTotals.promotion) : null, status: "pending", paymentStatus, paymentProvider: input.data.provider, providerPaymentId: input.data.paymentReference || null, inventoryStatus: isCashOnDelivery ? "committed" : "reserved", inventoryReservedAt: reservedAt, inventoryExpiresAt: isCashOnDelivery ? null : inventoryExpiry(reservationMinutes), inventoryFinalizedAt: isCashOnDelivery ? reservedAt : null, updatedAt: reservedAt }).returning();
     createdOrderId = order.id;
     await tx.insert(orderItems).values(items.items.map((item) => ({ orderId: order.id, productId: item.productId, title: item.title, selectedOptions: item.selectedOptions, quantity: item.quantity, unitPrice: item.price })));
     if (verifiedTotals.promotion) await recordPromotionRedemption(tx, { siteId, promotionId: verifiedTotals.promotion.id, orderId: order.id, email: input.data.email.toLowerCase(), amount: verifiedTotals.discountAmount });

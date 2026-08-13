@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customers } from "@/lib/db/schema";
 import { verifyPassword } from "@/lib/password";
+import { getResolvedSiteId } from "@/lib/site-context";
 
 const SESSION_COOKIE = "admino_customer_session";
 
@@ -49,7 +50,9 @@ export async function getSessionCustomer() {
     if (payload.type !== "customer") return null;
     const customerId = Number(payload.sub);
     if (!customerId) return null;
-    const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
+    const siteId = await getResolvedSiteId();
+    if (!siteId) return null;
+    const [customer] = await db.select().from(customers).where(and(eq(customers.id, customerId), eq(customers.siteId, siteId)));
     return customer ?? null;
   } catch {
     return null;

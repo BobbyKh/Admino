@@ -1,18 +1,15 @@
 import { redirect } from "next/navigation";
 import { getSessionCustomer } from "@/lib/customer-auth";
-import { getCustomerOrders } from "@/lib/actions/customers";
-import { Package, Heart, MapPin } from "lucide-react";
+import { getCustomerLoyalty, getCustomerOrders } from "@/lib/actions/customers";
+import { Package, Gift, MapPin } from "lucide-react";
 import Link from "next/link";
 
 export default async function AccountPage() {
   const customer = await getSessionCustomer();
   if (!customer) redirect("/account/login");
 
-  const orders = await getCustomerOrders();
+  const [orders, rewards] = await Promise.all([getCustomerOrders(), getCustomerLoyalty()]);
   const totalOrders = orders.length;
-  const totalSpent = orders.reduce((sum, o) => sum + o.total, 0);
-  const currency = orders[0]?.currency ?? "usd";
-
   return (
     <div className="space-y-8">
       <div>
@@ -31,15 +28,11 @@ export default async function AccountPage() {
           <p className="text-2xl font-bold">{totalOrders}</p>
           <p className="text-sm text-muted-foreground">Total Orders</p>
         </Link>
-        <div className="rounded-lg border p-4">
-          <p className="mb-2 text-sm font-medium text-muted-foreground">Total Spent</p>
-          <p className="text-2xl font-bold">
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: currency.toUpperCase(),
-            }).format(totalSpent / 100)}
-          </p>
-        </div>
+        <Link href="/account/rewards" className="rounded-lg border p-4 transition-colors hover:bg-muted">
+          <Gift className="mb-2 size-5 text-primary" />
+          <p className="text-2xl font-bold">{rewards.balance.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">Reward Points</p>
+        </Link>
         <Link
           href="/account/addresses"
           className="rounded-lg border p-4 transition-colors hover:bg-muted"

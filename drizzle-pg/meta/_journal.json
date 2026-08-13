@@ -85,6 +85,13 @@
       "when": 1786618768029,
       "tag": "0011_same_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786619506068,
+      "tag": "0012_tricky_zeigeist",
+      "breakpoints": true
     }
   ]
 }

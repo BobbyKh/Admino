@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -11,6 +11,9 @@ import {
   orders,
   orderItems,
   products,
+  loyaltyLedger,
+  productReviews,
+  recentlyViewedProducts,
 } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/password";
 import { getResolvedSiteId } from "@/lib/site-context";
@@ -192,10 +195,13 @@ export async function getCustomerOrder(orderNumber: string) {
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       selectedOptions: orderItems.selectedOptions,
+      productId: orderItems.productId,
       productImage: products.image,
+      reviewId: productReviews.id,
     })
     .from(orderItems)
     .leftJoin(products, eq(orderItems.productId, products.id))
+    .leftJoin(productReviews, eq(productReviews.orderItemId, orderItems.id))
     .where(eq(orderItems.orderId, order.id));
 
   return { ...order, items };
@@ -311,7 +317,7 @@ export async function getCustomerWishlist() {
     })
     .from(wishlists)
     .innerJoin(products, eq(wishlists.productId, products.id))
-    .where(eq(wishlists.customerId, customer.id))
+    .where(and(eq(wishlists.customerId, customer.id), eq(products.siteId, customer.siteId)))
     .orderBy(desc(wishlists.createdAt));
 }
 
@@ -319,10 +325,14 @@ export async function addToWishlist(productId: number) {
   const customer = await getSessionCustomer();
   if (!customer) return { success: false, message: "Not authenticated." };
 
+  const [product] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, productId), eq(products.siteId, customer.siteId), eq(products.status, "active")));
+  if (!product) return { success: false, message: "Product not found." };
+
   const existing = await db
     .select({ id: wishlists.id })
     .from(wishlists)
-    .where(and(eq(wishlists.customerId, customer.id), eq(wishlists.productId, productId)))
+    .innerJoin(products, eq(wishlists.productId, products.id))
+    .where(and(eq(wishlists.customerId, customer.id), eq(wishlists.productId, productId), eq(products.siteId, customer.siteId)))
     .limit(1);
 
   if (existing.length > 0) {
@@ -361,4 +371,74 @@ export async function isInWishlist(productId: number) {
     .limit(1);
 
   return existing.length > 0;
+}
+
+// ─── Customer Growth ─────────────────────────────────────────────────────────
+
+export async function recordRecentlyViewedProduct(productId: number) {
+  const customer = await getSessionCustomer();
+  if (!customer || !Number.isInteger(productId) || productId < 1) return;
+  const [product] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, productId), eq(products.siteId, customer.siteId), eq(products.status, "active")));
+  if (!product) return;
+  const now = new Date().toISOString();
+  await db.insert(recentlyViewedProducts).values({ siteId: customer.siteId, customerId: customer.id, productId, viewedAt: now }).onConflictDoUpdate({
+    target: [recentlyViewedProducts.customerId, recentlyViewedProducts.productId],
+    set: { viewedAt: now },
+  });
+  const stale = await db.select({ id: recentlyViewedProducts.id }).from(recentlyViewedProducts).where(eq(recentlyViewedProducts.customerId, customer.id)).orderBy(desc(recentlyViewedProducts.viewedAt)).offset(12);
+  if (stale.length) await db.delete(recentlyViewedProducts).where(inArray(recentlyViewedProducts.id, stale.map((row) => row.id)));
+}
+
+export async function getRecentlyViewedProducts(excludeProductId?: number) {
+  const customer = await getSessionCustomer();
+  if (!customer) return [];
+  const rows = await db.select({
+    viewedAt: recentlyViewedProducts.viewedAt,
+    product: { id: products.id, title: products.title, slug: products.slug, image: products.image, price: products.price, currency: products.currency },
+  }).from(recentlyViewedProducts).innerJoin(products, eq(recentlyViewedProducts.productId, products.id)).where(and(
+    eq(recentlyViewedProducts.customerId, customer.id), eq(recentlyViewedProducts.siteId, customer.siteId), eq(products.siteId, customer.siteId), eq(products.status, "active")
+  )).orderBy(desc(recentlyViewedProducts.viewedAt)).limit(12);
+  return rows.filter((row) => row.product.id !== excludeProductId);
+}
+
+export async function getProductReviews(productId: number) {
+  const siteId = await getResolvedSiteId();
+  if (!siteId || !Number.isInteger(productId) || productId < 1) return [];
+  return db.select({ id: productReviews.id, rating: productReviews.rating, title: productReviews.title, body: productReviews.body, createdAt: productReviews.createdAt, customerName: customers.name })
+    .from(productReviews).innerJoin(customers, eq(productReviews.customerId, customers.id)).where(and(eq(productReviews.siteId, siteId), eq(productReviews.productId, productId), eq(productReviews.status, "published"))).orderBy(desc(productReviews.createdAt));
+}
+
+const reviewSchema = z.object({
+  orderItemId: z.coerce.number().int().positive(),
+  rating: z.coerce.number().int().min(1).max(5),
+  title: z.string().trim().max(100).optional(),
+  body: z.string().trim().min(20, "Write at least 20 characters.").max(1000),
+});
+
+export type ReviewFormState = { success?: boolean; message?: string };
+
+export async function submitProductReview(_previous: ReviewFormState, formData: FormData): Promise<ReviewFormState> {
+  const customer = await getSessionCustomer();
+  if (!customer) return { success: false, message: "Sign in to review a purchase." };
+  const parsed = reviewSchema.safeParse({ orderItemId: formData.get("orderItemId"), rating: formData.get("rating"), title: formData.get("title") || undefined, body: formData.get("body") });
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid review." };
+  const [eligible] = await db.select({ productId: orderItems.productId }).from(orderItems).innerJoin(orders, eq(orderItems.orderId, orders.id)).where(and(
+    eq(orderItems.id, parsed.data.orderItemId), eq(orders.customerId, customer.id), eq(orders.siteId, customer.siteId), eq(orders.status, "fulfilled"), eq(orders.paymentStatus, "paid")
+  ));
+  if (!eligible?.productId) return { success: false, message: "Only delivered purchases can be reviewed." };
+  const inserted = await db.insert(productReviews).values({ siteId: customer.siteId, customerId: customer.id, productId: eligible.productId, orderItemId: parsed.data.orderItemId, rating: parsed.data.rating, title: parsed.data.title || null, body: parsed.data.body }).onConflictDoNothing({ target: productReviews.orderItemId }).returning({ id: productReviews.id });
+  if (!inserted.length) return { success: false, message: "You already reviewed this item." };
+  revalidatePath("/products", "layout");
+  revalidatePath("/account/orders", "layout");
+  return { success: true, message: "Your review is now published." };
+}
+
+export async function getCustomerLoyalty() {
+  const customer = await getSessionCustomer();
+  if (!customer) return { balance: 0, entries: [] };
+  const [summary, entries] = await Promise.all([
+    db.select({ balance: sql<number>`coalesce(sum(${loyaltyLedger.pointsDelta}), 0)::int` }).from(loyaltyLedger).where(and(eq(loyaltyLedger.customerId, customer.id), eq(loyaltyLedger.siteId, customer.siteId))),
+    db.select().from(loyaltyLedger).where(and(eq(loyaltyLedger.customerId, customer.id), eq(loyaltyLedger.siteId, customer.siteId))).orderBy(desc(loyaltyLedger.createdAt)).limit(50),
+  ]);
+  return { balance: summary[0]?.balance ?? 0, entries };
 }

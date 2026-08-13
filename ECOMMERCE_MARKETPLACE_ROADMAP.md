@@ -33,7 +33,7 @@ Status: Complete for single-code promotions. Promotion stacking/combinability re
 
 ## Phase 3: Customer Growth
 
-Status: Core email growth platform complete. Provider-specific bounce webhooks, recently viewed products, reviews, and loyalty remain planned extensions.
+Status: Customer growth platform complete except for provider-specific bounce and complaint webhooks.
 
 - [x] Real newsletter subscriptions with consent evidence, double opt-in, confirmation expiry, unsubscribe, and suppression states.
 - [x] Segments for new-product alerts, wishlist-based back-in-stock alerts, price drops, and consent-safe abandoned carts.
@@ -42,7 +42,7 @@ Status: Core email growth platform complete. Provider-specific bounce webhooks, 
 - [x] Campaign administration with scheduling, test sends, new-product templates, audience snapshots, queue health, and UTM attribution.
 - [x] Customer accounts, addresses, order history, and wishlist.
 - [ ] Add provider-specific bounce/complaint webhooks that move subscribers to suppressed status.
-- [ ] Add recently viewed products, product reviews, and loyalty rewards.
+- [x] Add tenant-scoped recently viewed products, verified-purchase reviews, and fulfillment-based loyalty rewards.
 
 ## Phase 4: Marketplace Operations
 

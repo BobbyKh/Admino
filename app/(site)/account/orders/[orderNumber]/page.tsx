@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getSessionCustomer } from "@/lib/customer-auth";
 import { getCustomerOrder } from "@/lib/actions/customers";
 import { Badge } from "@/components/ui/badge";
+import { ReviewForm } from "@/components/account/review-form";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
@@ -72,6 +73,9 @@ export default async function OrderDetailPage({
                     currency: order.currency.toUpperCase(),
                   }).format(item.unitPrice / 100)}
                 </p>
+                {order.status === "fulfilled" && order.paymentStatus === "paid" && item.productId && (
+                  item.reviewId ? <p className="mt-3 text-sm font-medium text-primary">Review published</p> : <ReviewForm orderItemId={item.id} />
+                )}
               </div>
               <p className="font-medium">
                 {new Intl.NumberFormat("en-US", {

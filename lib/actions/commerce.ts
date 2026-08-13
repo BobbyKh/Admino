@@ -12,6 +12,7 @@ import { decryptCommerceSecrets, encryptCommerceSecrets } from "@/lib/commerce/s
 import { sendOrderPaymentStatusEmail } from "@/lib/email";
 import { commitInventoryReservation, releaseInventoryReservation } from "@/lib/commerce/inventory";
 import { enqueueProductLifecycleEmails } from "@/lib/marketing-lifecycle";
+import { awardOrderLoyalty } from "@/lib/commerce/loyalty";
 
 const productSchema = z.object({
   title: z.string().trim().min(1).max(160),
@@ -334,7 +335,10 @@ export async function rejectOrderPayment(orderId: number) {
 export async function fulfillOrder(orderId: number) {
   const order = await getTenantOrder(orderId);
   if (order.status !== "paid" || order.paymentStatus !== "paid") throw new Error("Approve payment before marking an order delivered.");
-  await db.update(orders).set({ status: "fulfilled", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+  await db.transaction(async (tx) => {
+    await tx.update(orders).set({ status: "fulfilled", updatedAt: new Date().toISOString() }).where(and(eq(orders.id, order.id), eq(orders.siteId, order.siteId)));
+    await awardOrderLoyalty({ ...order, orderId: order.id }, tx);
+  });
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
   void sendOrderPaymentStatusEmail({ ...order, status: "fulfilled" }, items, "fulfilled").catch((error) => console.error("Failed to send order fulfilled email:", error));
   revalidateCommerce();

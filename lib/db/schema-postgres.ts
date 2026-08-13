@@ -356,6 +356,18 @@ export const products = pgTable("products", {
   statusIdx: index("products_status_idx").on(t.status),
 }));
 
+export const recentlyViewedProducts = pgTable("recently_viewed_products", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  viewedAt: text("viewed_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerProductUnique: uniqueIndex("recently_viewed_customer_product_idx").on(t.customerId, t.productId),
+  customerViewedIdx: index("recently_viewed_customer_viewed_idx").on(t.customerId, t.viewedAt),
+  siteIdIdx: index("recently_viewed_site_id_idx").on(t.siteId),
+}));
+
 export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   id: serial("id").primaryKey(),
   siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
@@ -589,6 +601,39 @@ export const orderItems = pgTable("order_items", {
   unitPrice: integer("unit_price").notNull(),
 }, (t) => ({
   orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+}));
+
+export const productReviews = pgTable("product_reviews", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  orderItemId: integer("order_item_id").notNull().references(() => orderItems.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  title: text("title"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("published"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  orderItemUnique: uniqueIndex("product_reviews_order_item_idx").on(t.orderItemId),
+  productStatusIdx: index("product_reviews_product_status_idx").on(t.siteId, t.productId, t.status, t.createdAt),
+  customerIdIdx: index("product_reviews_customer_id_idx").on(t.customerId),
+}));
+
+export const loyaltyLedger = pgTable("loyalty_ledger", {
+  id: serial("id").primaryKey(),
+  siteId: integer("site_id").notNull().references(() => sites.id, { onDelete: "cascade" }),
+  customerId: integer("customer_id").notNull().references(() => customers.id, { onDelete: "cascade" }),
+  orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+  pointsDelta: integer("points_delta").notNull(),
+  eventType: text("event_type").notNull(),
+  reason: text("reason").notNull(),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => ({
+  customerCreatedIdx: index("loyalty_ledger_customer_created_idx").on(t.customerId, t.createdAt),
+  siteIdIdx: index("loyalty_ledger_site_id_idx").on(t.siteId),
 }));
 
 export const promotionRedemptions = pgTable("promotion_redemptions", {
@@ -906,6 +951,9 @@ export type NewUserFeature = typeof userFeatures.$inferInsert;
 export type Customer = typeof customers.$inferSelect;
 export type CustomerAddress = typeof customerAddresses.$inferSelect;
 export type Wishlist = typeof wishlists.$inferSelect;
+export type RecentlyViewedProduct = typeof recentlyViewedProducts.$inferSelect;
+export type ProductReview = typeof productReviews.$inferSelect;
+export type LoyaltyLedgerEntry = typeof loyaltyLedger.$inferSelect;
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export type EmailCampaign = typeof emailCampaigns.$inferSelect;
 export type EmailJob = typeof emailJobs.$inferSelect;

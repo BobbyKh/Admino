@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Package, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, ShieldCheck, Star, Truck } from "lucide-react";
 import { ProductPurchaseOptions } from "@/components/site/product-purchase-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getActiveProductBySlug, getActiveProducts, getResolvedSiteSettings } from "@/lib/data";
 import { getResolvedSite, getResolvedSiteId } from "@/lib/site-context";
 import { parseWholesaleTiers } from "@/lib/commerce/pricing";
+import { getProductReviews, getRecentlyViewedProducts } from "@/lib/actions/customers";
+import { RecentlyViewedTracker } from "@/components/site/recently-viewed-tracker";
 
 export const revalidate = 300;
 
@@ -65,6 +67,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const colors = parseOptions(product.colors);
   const wholesaleTiers = parseWholesaleTiers(product.wholesaleTiers);
   const related = allProducts.filter((item) => item.id !== product.id && item.category && item.category === product.category).slice(0, 3);
+  const [reviews, recentlyViewed] = await Promise.all([getProductReviews(product.id), getRecentlyViewedProducts(product.id)]);
+  const averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0;
   const previewSlug = site?.domain ? undefined : site?.slug;
   const shopHref = withPreviewSite("/#shop", previewSlug);
   const jsonLd: Record<string, unknown> = {
@@ -80,11 +84,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       priceCurrency: product.currency.toUpperCase(),
       availability: product.inventoryQuantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     },
+    aggregateRating: reviews.length ? { "@type": "AggregateRating", ratingValue: averageRating.toFixed(1), reviewCount: reviews.length, bestRating: 5, worstRating: 1 } : undefined,
   };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <RecentlyViewedTracker productId={product.id} />
       <Button variant="ghost" size="sm" asChild className="mb-6 gap-2">
         <Link href={shopHref}><ArrowLeft className="size-4" />Back to shop</Link>
       </Button>
@@ -104,6 +110,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div className="space-y-3">
             {product.category && <Badge variant="secondary">{product.category}</Badge>}
             <h1 className="font-heading text-4xl font-semibold tracking-tight sm:text-5xl">{product.title}</h1>
+            {reviews.length > 0 && <a href="#reviews" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><Star className="size-4 fill-primary text-primary" />{averageRating.toFixed(1)} from {reviews.length} {reviews.length === 1 ? "review" : "reviews"}</a>}
             <p className="text-3xl font-semibold text-primary">{formatPrice(product.price, product.currency)}</p>
             <p className="text-sm font-medium text-muted-foreground">{product.inventoryQuantity > 0 ? `${product.inventoryQuantity} available` : "Out of stock"}</p>
           </div>
@@ -118,6 +125,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </div>
+
+      <section id="reviews" className="mt-16 scroll-mt-24 space-y-6">
+        <div><h2 className="font-heading text-2xl font-semibold">Customer reviews</h2><p className="text-sm text-muted-foreground">Feedback from verified, delivered purchases.</p></div>
+        {reviews.length === 0 ? <div className="rounded-xl border py-10 text-center text-sm text-muted-foreground">No reviews yet. Customers can review this product after delivery.</div> : (
+          <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
+            <div className="rounded-xl border p-5"><p className="text-4xl font-bold">{averageRating.toFixed(1)}</p><div className="mt-2 flex gap-1" aria-label={`${averageRating.toFixed(1)} out of 5 stars`}>{[1,2,3,4,5].map((star) => <Star key={star} className={`size-4 ${star <= Math.round(averageRating) ? "fill-primary text-primary" : "text-muted-foreground/40"}`} />)}</div><p className="mt-2 text-sm text-muted-foreground">Based on {reviews.length} verified {reviews.length === 1 ? "purchase" : "purchases"}</p></div>
+            <div className="space-y-3">{reviews.map((review) => <article key={review.id} className="rounded-xl border p-5"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex gap-1" aria-label={`${review.rating} out of 5 stars`}>{[1,2,3,4,5].map((star) => <Star key={star} className={`size-4 ${star <= review.rating ? "fill-primary text-primary" : "text-muted-foreground/40"}`} />)}</div><span className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</span></div>{review.title && <h3 className="mt-3 font-semibold">{review.title}</h3>}<p className="mt-2 text-sm leading-6 text-muted-foreground">{review.body}</p><p className="mt-3 flex items-center gap-1 text-xs font-medium"><CheckCircle2 className="size-3.5 text-primary" />{review.customerName} · Verified purchase</p></article>)}</div>
+          </div>
+        )}
+      </section>
 
       {related.length > 0 && (
         <section className="mt-16 space-y-5">
@@ -142,8 +159,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </section>
       )}
+      {recentlyViewed.length > 0 && <ProductCards title="Recently viewed" items={recentlyViewed.map((row) => row.product)} previewSlug={previewSlug} />}
     </div>
   );
+}
+
+function ProductCards({ title, items, previewSlug }: { title: string; items: Array<{ id: number; title: string; slug: string; image: string | null; price: number; currency: string }>; previewSlug?: string }) {
+  return <section className="mt-16 space-y-5"><h2 className="font-heading text-2xl font-semibold">{title}</h2><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{items.slice(0, 3).map((item) => <Card key={item.id} className="overflow-hidden">{item.image && (
+    // Product images may be tenant uploads or external URLs.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.image} alt={item.title} loading="lazy" className="aspect-square w-full object-cover" />
+  )}<CardContent className="space-y-3 p-5"><div className="flex items-start justify-between gap-3"><h3 className="font-heading font-semibold">{item.title}</h3><span className="font-semibold text-primary">{formatPrice(item.price, item.currency)}</span></div><Button variant="outline" size="sm" asChild><Link href={withPreviewSite(`/products/${item.slug}`, previewSlug)}>View details</Link></Button></CardContent></Card>)}</div></section>;
 }
 
 function TrustCard({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
