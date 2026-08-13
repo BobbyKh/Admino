@@ -10,6 +10,7 @@ import { ProductGridFilters } from "@/components/site/blocks/product-grid-filter
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { parseWholesaleTiers, type WholesaleTier } from "@/lib/commerce/pricing";
 
 function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
@@ -29,6 +30,7 @@ interface Product {
   category?: string;
   amount?: number;
   currency?: string;
+  wholesaleTiers?: WholesaleTier[];
 }
 
 function parseProducts(raw: unknown): Product[] {
@@ -70,6 +72,7 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
       category: product.category ?? undefined,
       amount: product.price,
       currency: product.currency,
+      wholesaleTiers: parseWholesaleTiers(product.wholesaleTiers),
     }))
     : configuredProducts;
   const columns = String(c.columns || "3");
@@ -141,6 +144,7 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
                 {product.description && (
                   <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
                 )}
+                <WholesalePrice tiers={product.wholesaleTiers} currency={product.currency} />
                 <div className="flex flex-wrap gap-2">
                   {product.id ? <AddToCartButton productId={product.id} available={(product.inventoryQuantity ?? 0) > 0} /> : null}
                   {productHref(product) ? <Button size="sm" variant="ghost" asChild><Link href={productHref(product)!}>View details</Link></Button> : product.link ? <Button size="sm" variant="outline" className="gap-2" asChild><a href={product.link}><ShoppingCart className="size-4" />View product</a></Button> : null}
@@ -156,6 +160,12 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
       )}
     </section>
   );
+}
+
+function WholesalePrice({ tiers, currency }: { tiers?: WholesaleTier[]; currency?: string }) {
+  const bestTier = tiers?.at(-1);
+  if (!bestTier || !currency) return null;
+  return <div className="rounded-lg bg-primary/5 px-3 py-2 text-sm"><span className="font-medium text-primary">Wholesale from {formatPrice(bestTier.unitPrice, currency)}</span><span className="text-muted-foreground"> / unit at {bestTier.minQuantity}+ units</span></div>;
 }
 
 function formatPrice(price: number, currency: string) {
