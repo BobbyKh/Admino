@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { BulkExportScope, ExportRowCheckbox, ExportSelectAll } from "@/components/admin/bulk-export-scope";
 import {
   Dialog,
   DialogContent,
@@ -226,10 +227,11 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
-      <Card>
+      <BulkExportScope rows={users} filename="admin-users.csv"><Card>
         <CardHeader className="flex-row items-center gap-3">
           <Users className="size-4 text-primary" />
           <CardTitle className="font-heading">Tenant Users ({users.length})</CardTitle>
+          {users.length > 0 && <ExportSelectAll />}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -241,7 +243,7 @@ export default function UsersPage() {
               <Table className="min-w-[760px] table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-72">User</TableHead>
+                     <TableHead className="w-10"></TableHead><TableHead className="w-72">User</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead className="w-44">Site</TableHead>
                     <TableHead>Joined</TableHead>
@@ -253,12 +255,12 @@ export default function UsersPage() {
                     const RoleIcon = getRoleIcon(user.role);
                     const userSite = sites.find((s) => s.id === user.siteId);
                     return (
-                      <TableRow key={user.id}>
+                       <TableRow key={user.id}><TableCell><ExportRowCheckbox id={user.id} label={`Select ${user.name}`} /></TableCell>
                         <TableCell>
                           <div className="flex min-w-0 items-center gap-3">
                             <div className="flex size-9 items-center justify-center rounded-full bg-muted">
                               <RoleIcon className={`size-4 ${ROLES.find((r) => r.value === user.role)?.color ?? ""}`} />
-                            </div>
+              </div>
                             <div className="w-52 min-w-0">
                               <p className="truncate font-medium">{user.name}</p>
                               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
@@ -341,7 +343,7 @@ export default function UsersPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card></BulkExportScope>
 
       {/* Edit Dialog */}
       {editingUser && (

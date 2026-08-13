@@ -530,8 +530,8 @@ export default function MediaPage() {
                 ))}
               </div>
             )}
-          </BulkExportScope>
           </div>
+          </BulkExportScope>
         </div>
 
         {/* Detail panel */}

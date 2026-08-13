@@ -29,6 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { Site } from "@/lib/db/schema";
+import { BulkExportScope, ExportRowCheckbox, ExportSelectAll } from "@/components/admin/bulk-export-scope";
 import {
   TENANT_FEATURE_METADATA,
   FEATURE_CATEGORIES,
@@ -226,9 +227,10 @@ export default function SitesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <BulkExportScope rows={sites} filename="sites.csv"><div className="space-y-3"><div className="flex items-center gap-2 rounded-lg border p-3"><ExportSelectAll /><span className="text-sm text-muted-foreground">Select all sites</span></div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sites.map((site) => (
             <Card key={site.id} className="relative overflow-hidden">
+              <div className="absolute left-2 top-2 z-10 rounded bg-background p-1"><ExportRowCheckbox id={site.id} label={`Select ${site.name}`} /></div>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -367,7 +369,7 @@ export default function SitesPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
+        </div></div></BulkExportScope>
       )}
 
       {/* Edit Dialog */}

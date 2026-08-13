@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Plus, Trash2, RotateCw, Check, X, ExternalLink, Bell } from "lucide-react";
+import { Plus, Trash2, RotateCw, Check, X, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

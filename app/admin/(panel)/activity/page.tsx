@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ActivityLogFilters } from "@/components/admin/activity-log-filters";
+import { BulkExportScope, ExportRowCheckbox, ExportSelectAll } from "@/components/admin/bulk-export-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -77,10 +78,11 @@ export default async function ActivityLogsPage({
         </p>
       </div>
 
-      <Card>
+      <BulkExportScope rows={logs} filename="activity-log.csv"><Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Recent Activity</CardTitle>
+            {logs.length > 0 && <ExportSelectAll />}
             <ActivityLogFilters currentAction={action} currentEntity={entity} />
           </div>
         </CardHeader>
@@ -94,7 +96,7 @@ export default async function ActivityLogsPage({
               <Table className="min-w-[720px] table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Action</TableHead>
+                    <TableHead className="w-10"></TableHead><TableHead>Action</TableHead>
                     <TableHead className="w-44">User</TableHead>
                     <TableHead className="w-44">Entity</TableHead>
                     <TableHead className="w-52">Details</TableHead>
@@ -103,7 +105,7 @@ export default async function ActivityLogsPage({
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow key={log.id}><TableCell><ExportRowCheckbox id={log.id} label={`Select activity ${log.id}`} /></TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -178,7 +180,7 @@ export default async function ActivityLogsPage({
             </>
           )}
         </CardContent>
-      </Card>
+      </Card></BulkExportScope>
     </div>
   );
 }

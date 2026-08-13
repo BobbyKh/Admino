@@ -157,21 +157,18 @@ export default function CustomersPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <BulkExportScope rows={customers} filename="customers.csv"><Card>
-          {customers.length > 0 && <div className="flex items-center gap-2 border-b p-4"><ExportSelectAll /><span className="text-sm text-muted-foreground">Select all customers</span></div>}
+        <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Customers</CardDescription>
             <CardTitle className="text-2xl">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card><CardHeader className="pb-2">
             <CardDescription>New This Month</CardDescription>
             <CardTitle className="text-2xl">{stats.thisMonth}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
+        <Card><CardHeader className="pb-2">
             <CardDescription>Total Orders</CardDescription>
             <CardTitle className="text-2xl">{stats.totalOrders}</CardTitle>
           </CardHeader>
@@ -212,7 +209,8 @@ export default function CustomersPage() {
           formatCurrency={formatCurrency}
         />
       ) : (
-        <Card>
+        <BulkExportScope rows={customers} filename="customers.csv"><Card>
+          {customers.length > 0 && <div className="flex items-center gap-2 border-b p-4"><ExportSelectAll /><span className="text-sm text-muted-foreground">Select all customers</span></div>}
           <CardContent className="p-0">
             <div className="divide-y">
               {loading ? (

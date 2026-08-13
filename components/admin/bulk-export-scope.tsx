@@ -6,17 +6,16 @@ import { Button } from "@/components/ui/button";
 import { SelectionCheckbox } from "@/components/admin/selection-checkbox";
 import { useRowSelection } from "@/components/admin/use-row-selection";
 
-type Row = { id: number; [key: string]: unknown };
 type ContextValue = ReturnType<typeof useRowSelection>;
 const ExportContext = React.createContext<ContextValue | null>(null);
 
-export function BulkExportScope({ rows, filename, children }: { rows: Row[]; filename: string; children: React.ReactNode }) {
+export function BulkExportScope<T extends { id: number }>({ rows, filename, children }: { rows: T[]; filename: string; children: React.ReactNode }) {
   const selection = useRowSelection(rows.map((row) => row.id));
   function download() {
     const selected = rows.filter((row) => selection.selected.has(row.id));
     if (!selected.length) return;
     const keys = [...new Set(selected.flatMap((row) => Object.keys(row)))];
-    const csv = [keys, ...selected.map((row) => keys.map((key) => serialize(row[key])))].map((values) => values.map((value) => `"${value.replaceAll('"', '""')}"`).join(",")).join("\n");
+    const csv = [keys, ...selected.map((row) => keys.map((key) => serialize((row as Record<string, unknown>)[key])))].map((values) => values.map((value) => `"${value.replaceAll('"', '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
     selection.clear();
