@@ -4,7 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { blogPosts, bookings, conversionFunnels, emailCampaigns, errorLogs, experiments, galleryImages, homeSections, menuItems, messages, navLinks, pages, products, promotions, services, webhooks } from "@/lib/db/schema";
+import { blogPosts, bookings, conversionFunnels, emailCampaigns, errorLogs, experiments, galleryImages, homeSections, menuItems, messages, navLinks, pages, products, promotions, sellerOrganizations, sellerStores, services, webhooks } from "@/lib/db/schema";
 import { requireSiteFeatureForRole } from "@/lib/tenant-access";
 import { requireSiteAccess } from "@/lib/tenant-access";
 import { fulfillOrder } from "@/lib/actions/commerce";
@@ -13,7 +13,7 @@ import { logActivity } from "@/lib/activity";
 
 const requestSchema = z.object({
   siteId: z.number().int().positive(),
-  entity: z.enum(["products", "blog", "promotions", "messages", "bookings", "navigation", "homepage", "menu", "services", "webhooks", "campaigns", "orders", "pages", "gallery", "errors", "experiments", "funnels"]),
+  entity: z.enum(["products", "blog", "promotions", "messages", "bookings", "navigation", "homepage", "menu", "services", "webhooks", "campaigns", "orders", "pages", "gallery", "errors", "experiments", "funnels", "sellers"]),
   action: z.string().min(1).max(40),
   ids: z.array(z.number().int().positive()).min(1).max(100),
 });
@@ -39,8 +39,8 @@ export async function runBulkAction(input: z.input<typeof requestSchema>): Promi
 }
 
 async function authorize(siteId: number, entity: string) {
-  const feature = entity === "blog" ? "blog" : entity === "messages" ? "messages" : entity === "bookings" ? "bookings" : entity === "navigation" ? "navigation" : entity === "menu" ? "menu" : entity === "services" ? "services" : entity === "pages" ? "pages" : entity === "gallery" ? "gallery" : ["products", "promotions", "campaigns"].includes(entity) ? "commerce" : null;
-  if (feature) await requireSiteFeatureForRole(siteId, feature as "blog" | "messages" | "bookings" | "navigation" | "menu" | "services" | "pages" | "gallery" | "commerce", "admin");
+  const feature = entity === "blog" ? "blog" : entity === "messages" ? "messages" : entity === "bookings" ? "bookings" : entity === "navigation" ? "navigation" : entity === "menu" ? "menu" : entity === "services" ? "services" : entity === "pages" ? "pages" : entity === "gallery" ? "gallery" : entity === "sellers" ? "marketplace" : ["products", "promotions", "campaigns"].includes(entity) ? "commerce" : null;
+  if (feature) await requireSiteFeatureForRole(siteId, feature as "blog" | "messages" | "bookings" | "navigation" | "menu" | "services" | "pages" | "gallery" | "commerce" | "marketplace", "admin");
   else await requireSiteAccess(siteId);
 }
 
@@ -70,6 +70,7 @@ async function mutate(siteId: number, entity: string, action: string, ids: numbe
   if (entity === "errors" && action === "delete") return deleteRows(errorLogs, siteId, ids);
   if (entity === "experiments") return transitionExperiments(siteId, ids, action);
   if (entity === "funnels" && action === "delete") return deleteRows(conversionFunnels, siteId, ids);
+  if (entity === "sellers" && ["activate", "suspend"].includes(action)) return updateSellerStatuses(siteId, ids, action);
   if (entity === "bookings") return transitionBookings(siteId, ids, action);
   throw new Error("Unsupported bulk action.");
 }
@@ -115,7 +116,19 @@ async function transitionBookings(siteId: number, ids: number[], action: string)
   return results;
 }
 
+async function updateSellerStatuses(siteId: number, ids: number[], action: string) {
+  const status = action === "activate" ? "active" : "suspended";
+  const now = new Date().toISOString();
+  const updatedIds = await db.transaction(async (tx) => {
+    const updated = await tx.update(sellerOrganizations).set({ status, updatedAt: now }).where(and(eq(sellerOrganizations.siteId, siteId), inArray(sellerOrganizations.id, ids))).returning({ id: sellerOrganizations.id });
+    const sellerIds = updated.map((row) => row.id);
+    if (sellerIds.length) await tx.update(sellerStores).set({ status, updatedAt: now }).where(and(eq(sellerStores.siteId, siteId), inArray(sellerStores.sellerId, sellerIds)));
+    return sellerIds;
+  });
+  return itemResults(ids, updatedIds);
+}
+
 function itemResults(ids: number[], succeeded: number[]) { const set = new Set(succeeded); return ids.map((id) => ({ id, success: set.has(id), message: set.has(id) ? undefined : "Not found or not eligible." })); }
 function summarize(results: BulkItemResult[]): BulkActionResult { const succeeded = results.filter((item) => item.success).length; return { total: results.length, succeeded, failed: results.length - succeeded, results }; }
 async function logBulk(siteId: number, entity: string, action: string, ids: number[], result: BulkActionResult) { await logActivity({ siteId, action: "update", entity: "bulk_operation", entityName: `${entity}:${action}`, details: { ids, total: result.total, succeeded: result.succeeded, failed: result.failed } }); }
-function revalidate(entity: string) { const paths: Record<string, string[]> = { products: ["/admin/commerce/products", "/"], blog: ["/admin/blog", "/blog"], promotions: ["/admin/commerce/promotions"], messages: ["/admin/messages"], bookings: ["/admin/bookings"], navigation: ["/admin/navigation", "/"], homepage: ["/admin/homepage", "/"], menu: ["/admin/menu", "/menu"], services: ["/admin/services"], webhooks: ["/admin/webhooks"], campaigns: ["/admin/commerce/marketing"], pages: ["/admin/pages", "/"], gallery: ["/admin/gallery", "/gallery"], errors: ["/admin/errors"], experiments: ["/admin/experiments"], funnels: ["/admin/funnels"] }; for (const path of paths[entity] ?? []) revalidatePath(path); }
+function revalidate(entity: string) { const paths: Record<string, string[]> = { products: ["/admin/commerce/products", "/"], blog: ["/admin/blog", "/blog"], promotions: ["/admin/commerce/promotions"], messages: ["/admin/messages"], bookings: ["/admin/bookings"], navigation: ["/admin/navigation", "/"], homepage: ["/admin/homepage", "/"], menu: ["/admin/menu", "/menu"], services: ["/admin/services"], webhooks: ["/admin/webhooks"], campaigns: ["/admin/commerce/marketing"], pages: ["/admin/pages", "/"], gallery: ["/admin/gallery", "/gallery"], errors: ["/admin/errors"], experiments: ["/admin/experiments"], funnels: ["/admin/funnels"], sellers: ["/admin/commerce/sellers"] }; for (const path of paths[entity] ?? []) revalidatePath(path); }

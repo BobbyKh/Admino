@@ -8,7 +8,7 @@ import { BulkActionBar, type BulkOption } from "@/components/admin/bulk-action-b
 import { SelectionCheckbox } from "@/components/admin/selection-checkbox";
 import { useRowSelection } from "@/components/admin/use-row-selection";
 
-type BulkEntity = "products" | "blog" | "promotions" | "messages" | "bookings" | "navigation" | "homepage" | "menu" | "services" | "webhooks" | "campaigns" | "orders" | "pages" | "gallery" | "errors" | "experiments" | "funnels";
+type BulkEntity = "products" | "blog" | "promotions" | "messages" | "bookings" | "navigation" | "homepage" | "menu" | "services" | "webhooks" | "campaigns" | "orders" | "pages" | "gallery" | "errors" | "experiments" | "funnels" | "sellers";
 type ContextValue = ReturnType<typeof useRowSelection>;
 const SelectionContext = React.createContext<ContextValue | null>(null);
 

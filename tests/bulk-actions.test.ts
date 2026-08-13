@@ -44,6 +44,18 @@ test("high-risk operations are not exposed as generic bulk mutations", () => {
   assert.doesNotMatch(bulk, /deleteAdminCustomer/);
 });
 
+test("marketplace sellers expose guarded bulk activation and suspension", () => {
+  const bulk = source("lib/actions/bulk.ts");
+  const sellers = source("components/admin/seller-manager.tsx");
+  assert.match(bulk, /entity === "sellers" \? "marketplace"/);
+  assert.match(bulk, /updateSellerStatuses/);
+  assert.match(bulk, /tx\.update\(sellerOrganizations\)/);
+  assert.match(bulk, /tx\.update\(sellerStores\)/);
+  assert.match(sellers, /entity="sellers"/);
+  assert.match(sellers, /Activate sellers and stores/);
+  assert.match(sellers, /Suspend sellers and stores/);
+});
+
 test("canonical admin managers use shared bulk selection", () => {
   for (const path of [
     "components/admin/product-manager.tsx",
