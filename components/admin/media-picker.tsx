@@ -25,7 +25,6 @@ export function MediaPicker({
   label = "Image",
   required,
   placeholder = "https://… or use the buttons below",
-  accept = "image/*",
   showPreview = true,
   type = "image",
 }: {
@@ -35,7 +34,6 @@ export function MediaPicker({
   label?: string;
   required?: boolean;
   placeholder?: string;
-  accept?: string;
   showPreview?: boolean;
   type?: "image" | "video";
 }) {
