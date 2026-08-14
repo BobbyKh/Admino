@@ -27,6 +27,7 @@ export function MediaPicker({
   placeholder = "https://… or use the buttons below",
   accept = "image/*",
   showPreview = true,
+  type = "image",
 }: {
   name: string;
   value: string;
@@ -36,8 +37,10 @@ export function MediaPicker({
   placeholder?: string;
   accept?: string;
   showPreview?: boolean;
+  type?: "image" | "video";
 }) {
   const siteId = useAdminSiteId();
+  const acceptType = type === "video" ? "video/*" : "image/*";
   const [uploading, setUploading] = React.useState(false);
   const [mediaOpen, setMediaOpen] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -72,10 +75,16 @@ export function MediaPicker({
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
 
-      {/* Preview */}
+{/* Preview */}
       {showPreview && value && (
         <div className="relative size-24 overflow-hidden rounded-md border bg-muted">
-          {isPreviewableImageSource(value) ? (
+          {type === "video" && isVideoUrl(value) ? (
+            <video
+              src={value}
+              className="size-full object-cover"
+              controls
+            />
+          ) : isPreviewableImageSource(value) ? (
             <Image
               src={value}
               alt="Preview"
@@ -129,7 +138,7 @@ export function MediaPicker({
         <input
           ref={fileRef}
           type="file"
-          accept={accept}
+          accept={acceptType}
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
@@ -149,7 +158,7 @@ export function MediaPicker({
         open={mediaOpen}
         onOpenChange={setMediaOpen}
         onSelect={handleMediaSelect}
-        filter="image"
+        filter={type}
       />
     </div>
   );
@@ -157,4 +166,8 @@ export function MediaPicker({
 
 function isPreviewableImageSource(value: string) {
   return value.startsWith("/") || /^https?:\/\//i.test(value);
+}
+
+function isVideoUrl(value: string) {
+  return /\.(mp4|webm|ogg)$/i.test(value) || value.includes("/video/");
 }

@@ -111,7 +111,7 @@ function ProductFields({ siteId, product }: { siteId: number; product?: Product 
     <div className="space-y-2 md:col-span-2"><Label htmlFor="wholesaleTiers">Wholesale tiers (quantity:price)</Label><Input id="wholesaleTiers" name="wholesaleTiers" defaultValue={tierList(product?.wholesaleTiers)} placeholder="10:2200, 50:1900, 100:1700" /><p className="text-xs text-muted-foreground">Use minor currency units. Larger quantities must have progressively lower prices.</p></div>
     <div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between"><Label htmlFor="description">Description</Label><Button type="button" variant="outline" size="sm" disabled={aiLoading} onClick={handleGenerateDescription}><Sparkles className="mr-1 size-3.5 text-primary" />{aiLoading ? "Generating..." : "AI Generate"}</Button></div><Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} /></div>
 <div className="rounded-lg border bg-muted/20 p-4 md:col-span-2"><MediaPicker name="image" label="Product image" value={image} onChange={setImage} /></div>
-    <div className="rounded-lg border bg-muted/20 p-4 md:col-span-2"><MediaPicker name="video" label="Product video" value={video} onChange={setVideo} /></div>
+    <div className="rounded-lg border bg-muted/20 p-4 md:col-span-2"><MediaPicker name="video" label="Product video" value={video} onChange={setVideo} type="video" /></div>
     <label className="flex items-end gap-2 pb-2 text-sm font-medium"><input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured product</label>
   </>;
 }
