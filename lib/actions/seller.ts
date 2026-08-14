@@ -41,6 +41,7 @@ const productSchema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
   description: z.string().trim().max(2000).optional().default(""),
   image: z.string().trim().url().optional().or(z.literal("")),
+  video: z.string().trim().optional().or(z.literal("")),
   category: z.string().trim().max(80).optional().default(""),
   price: z.coerce.number().int().min(0),
   currency: z.string().trim().toLowerCase().length(3),
@@ -49,7 +50,7 @@ const productSchema = z.object({
 });
 
 function productInput(formData: FormData) {
-  return productSchema.safeParse({ title: formData.get("title"), slug: formData.get("slug"), description: formData.get("description") ?? "", image: formData.get("image") ?? "", category: formData.get("category") ?? "", price: formData.get("price"), currency: formData.get("currency") ?? "usd", inventoryQuantity: formData.get("inventoryQuantity") ?? 0, status: formData.get("status") ?? "draft" });
+  return productSchema.safeParse({ title: formData.get("title"), slug: formData.get("slug"), description: formData.get("description") ?? "", image: formData.get("image") ?? "", video: formData.get("video") ?? "", category: formData.get("category") ?? "", price: formData.get("price"), currency: formData.get("currency") ?? "usd", inventoryQuantity: formData.get("inventoryQuantity") ?? 0, status: formData.get("status") ?? "draft" });
 }
 
 export async function listSellerProducts() {
@@ -62,7 +63,7 @@ export async function createSellerProduct(formData: FormData) {
   const parsed = productInput(formData);
   if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Invalid product.");
   const product = parsed.data;
-  await db.insert(products).values({ ...product, siteId: seller.siteId, sellerId: seller.sellerId, storeId: seller.storeId, description: product.description || null, image: product.image || null, category: product.category || null, featured: false, updatedAt: new Date().toISOString() });
+  await db.insert(products).values({ ...product, siteId: seller.siteId, sellerId: seller.sellerId, storeId: seller.storeId, description: product.description || null, image: product.image || null, video: product.video || null, category: product.category || null, featured: false, updatedAt: new Date().toISOString() });
   revalidateSellerCatalog();
 }
 
@@ -71,7 +72,7 @@ export async function updateSellerProduct(productId: number, formData: FormData)
   const parsed = productInput(formData);
   if (!Number.isInteger(productId) || productId < 1 || !parsed.success) throw new Error(parsed.success ? "Invalid product." : parsed.error.issues[0]?.message ?? "Invalid product.");
   const product = parsed.data;
-  const updated = await db.update(products).set({ ...product, description: product.description || null, image: product.image || null, category: product.category || null, updatedAt: new Date().toISOString() }).where(and(eq(products.id, productId), eq(products.siteId, seller.siteId), eq(products.sellerId, seller.sellerId), eq(products.storeId, seller.storeId))).returning({ id: products.id });
+  const updated = await db.update(products).set({ ...product, description: product.description || null, image: product.image || null, video: product.video || null, category: product.category || null, updatedAt: new Date().toISOString() }).where(and(eq(products.id, productId), eq(products.siteId, seller.siteId), eq(products.sellerId, seller.sellerId), eq(products.storeId, seller.storeId))).returning({ id: products.id });
   if (!updated.length) throw new Error("Product not found.");
   revalidateSellerCatalog();
 }

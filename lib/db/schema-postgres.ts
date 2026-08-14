@@ -341,6 +341,7 @@ export const products = pgTable("products", {
   slug: text("slug").notNull(),
   description: text("description"),
   image: text("image"),
+  video: text("video"),
   category: text("category"),
   sizes: text("sizes"), // JSON string array, e.g. ["S","M","L"]
   colors: text("colors"), // JSON string array, e.g. ["Black","Blue"]

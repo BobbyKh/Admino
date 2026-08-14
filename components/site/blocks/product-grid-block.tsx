@@ -21,6 +21,7 @@ interface Product {
   name: string;
   price: string;
   image?: string;
+  video?: string;
   description?: string;
   badge?: string;
   link?: string;
@@ -58,11 +59,12 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
   const title = typeof c.title === "string" && c.title ? c.title : "Our Products";
   const subtitle = typeof c.subtitle === "string" ? c.subtitle : "";
   const badge = typeof c.badge === "string" ? c.badge : "";
-  const products: Product[] = catalogProducts.length > 0
+const products: Product[] = catalogProducts.length > 0
     ? displayedCatalogProducts.map((product) => ({
       name: product.title,
       price: formatPrice(product.price, product.currency),
       image: product.image ?? undefined,
+      video: product.video ?? undefined,
       description: product.description ?? undefined,
       badge: product.featured ? "Featured" : undefined,
       link: undefined,
@@ -119,16 +121,34 @@ export function ProductGridBlock({ config, products: catalogProducts }: { config
         <div className={`grid gap-5 sm:grid-cols-2 lg:grid-cols-${columns}`}>
           {filteredProducts.map((product, i) => (
             <Card key={i} className="group overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
-              {product.image && (
+{product.image || product.video && (
                 <Link href={productHref(product) ?? "#"} className="relative block aspect-square overflow-hidden" aria-label={`View ${product.name}`}>
-                  {/* Product images may come from any tenant media host. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    loading="lazy"
-                    className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  {product.image && (
+                    {/* Product images may come from any tenant media host. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  )}
+                  {product.video && !product.image && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <svg
+                        className="size-5 text-primary"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <path d="M15 3h6v5h-5v6h2v-6h5l-5 5-5-5z" />
+                      </svg>
+                    </div>
+                  )}
                   {product.badge && (
                     <Badge className="absolute left-3 top-3">{product.badge}</Badge>
                   )}
