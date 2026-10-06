@@ -124,8 +124,6 @@ const products: Product[] = catalogProducts.length > 0
 {product.image || product.video && (
                 <Link href={productHref(product) ?? "#"} className="relative block aspect-square overflow-hidden" aria-label={`View ${product.name}`}>
                   {product.image && (
-                    {/* Product images may come from any tenant media host. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={product.image}
                       alt={product.name}

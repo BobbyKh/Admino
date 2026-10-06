@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description,
     alternates: canonical ? { canonical } : undefined,
     openGraph: { title, description, url: canonical, images: product.image ? [{ url: product.image, alt: product.title }] : undefined, videos: product.video ? [{ url: product.video, type: "video mp4" }] : undefined },
-    twitter: { card: product.image ? "summary_large_image" : "summary", title, description, images: product.image ? [product.image] : undefined, videos: product.video ? [product.video] : undefined },
+    twitter: { card: product.image ? "summary_large_image" : "summary", title, description, images: product.image ? [product.image] : undefined },
   };
 }
 
@@ -102,7 +102,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             // Product images may be tenant uploads or external URLs.
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image} alt={product.title} className="aspect-square size-full object-cover" />
-          ) : product.video && (
+          ) : product.video ? (
             <div className="aspect-square flex items-center justify-center text-muted-foreground">
               <svg
                 className="size-6 text-primary"

@@ -42,7 +42,7 @@ export function SearchBlock({ config, products }: { config: string | null; produ
             <div className="grid gap-4 sm:grid-cols-2">
               {results.map((product) => (
                 <article key={product.id} className="flex gap-4 rounded-xl border p-4">
-                  {product.image || product.video && (
+                  {product.image && (
                     // Product images may come from any tenant media host.
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
